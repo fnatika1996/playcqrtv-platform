@@ -15,11 +15,9 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Deploy project to Hostinger
-        uses: hostinger/deploy-action@v1
+        uses: hostinger/deploy-on-vps@v2
         with:
           api-key: ${{ secrets.HOSTINGER_API_KEY }}
           virtual-machine: "2150572"
           project-name: playcqrtv
-          personal-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           docker-compose-path: docker-compose.yml
-
