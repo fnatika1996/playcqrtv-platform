@@ -25,6 +25,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract CQRTV icon pack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip 7zip-rar
+          mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv
+          7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar"
+          cp -a "/tmp/cqrtv-icons/Icon Play CQRTV/." assets/icons/cqrtv/
+          icon_count=$(find assets/icons/cqrtv -type f -name '*.svg' | wc -l)
+          test "$icon_count" -gt 0
+          echo "Extracted $icon_count CQRTV SVG icons."
+
       - name: Build and publish website image
         uses: docker/build-push-action@v6
         with:
