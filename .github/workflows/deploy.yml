@@ -58,8 +58,9 @@ jobs:
         run: |
           for attempt in $(seq 1 24); do
             status=$(curl --silent --show-error --location --output /tmp/playcqrtv-live.html --write-out '%{http_code}' https://playcqrtv.com/ 2>/dev/null || true)
-            if [ "$status" = "200" ] && grep -q 'Профиль игрока' /tmp/playcqrtv-live.html && ! grep -q '�' /tmp/playcqrtv-live.html; then
-              echo "Live site is serving the current Russian page without encoding errors."
+            icon_status=$(curl --silent --show-error --location --output /tmp/playcqrtv-home-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/Essentional%20UI/Home--playcqrtv.svg' 2>/dev/null || true)
+            if [ "$status" = "200" ] && grep -q 'Профиль игрока' /tmp/playcqrtv-live.html && ! grep -q '�' /tmp/playcqrtv-live.html && [ "$icon_status" = "200" ] && grep -q '<svg' /tmp/playcqrtv-home-icon.svg; then
+              echo "Live site is serving the current Russian page and CQRTV icon assets."
               exit 0
             fi
             echo "Waiting for deployment to become live (attempt $attempt/24)..."
