@@ -32,6 +32,26 @@ jobs:
           mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv
           7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar"
           cp -a "/tmp/cqrtv-icons/Icon Play CQRTV/." assets/icons/cqrtv/
+          mkdir -p assets/icons/cqrtv/ui
+          cp "assets/icons/cqrtv/Search/Magnifer--playcqrtv.svg" assets/icons/cqrtv/ui/search.svg
+          cp "assets/icons/cqrtv/Notifications/Bell--playcqrtv.svg" assets/icons/cqrtv/ui/bell.svg
+          cp "assets/icons/cqrtv/Messages Conversation/Chat-Round--playcqrtv.svg" assets/icons/cqrtv/ui/chat.svg
+          cp "assets/icons/cqrtv/Essentional UI/Home--playcqrtv.svg" assets/icons/cqrtv/ui/home.svg
+          cp "assets/icons/cqrtv/Electronic Devices/Gamepad--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad.svg
+          cp "assets/icons/cqrtv/Electronic Devices/Gamepad-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad-minimalistic.svg
+          cp "assets/icons/cqrtv/Sports/Ranking--playcqrtv.svg" assets/icons/cqrtv/ui/ranking.svg
+          cp "assets/icons/cqrtv/Users/Users-Group-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/users.svg
+          cp "assets/icons/cqrtv/Settings Fine Tuning/Settings-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/settings.svg
+          cp "assets/icons/cqrtv/Messages Conversation/Pen--playcqrtv.svg" assets/icons/cqrtv/ui/edit.svg
+          cp "assets/icons/cqrtv/Essentional UI/Check-Circle--playcqrtv.svg" assets/icons/cqrtv/ui/check.svg
+          cp "assets/icons/cqrtv/Settings Fine Tuning/Widget--playcqrtv.svg" assets/icons/cqrtv/ui/dashboard.svg
+          cp "assets/icons/cqrtv/Business Statistic/Chart--playcqrtv.svg" assets/icons/cqrtv/ui/chart.svg
+          cp "assets/icons/cqrtv/Like/Medal-Star--playcqrtv.svg" assets/icons/cqrtv/ui/medal.svg
+          cp "assets/icons/cqrtv/Essentional UI/Cup-Star--playcqrtv.svg" assets/icons/cqrtv/ui/cup.svg
+          cp "assets/icons/cqrtv/Video Audio Sound/Play--playcqrtv.svg" assets/icons/cqrtv/ui/play.svg
+          cp "assets/icons/cqrtv/Security/Shield-Check--playcqrtv.svg" assets/icons/cqrtv/ui/shield.svg
+          cp "assets/icons/cqrtv/Users/User-Plus-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/invite.svg
+          test -s assets/icons/cqrtv/ui/home.svg
           icon_count=$(find assets/icons/cqrtv -type f -name '*.svg' | wc -l)
           test "$icon_count" -gt 0
           echo "Extracted $icon_count CQRTV SVG icons."
@@ -58,7 +78,7 @@ jobs:
         run: |
           for attempt in $(seq 1 24); do
             status=$(curl --silent --show-error --max-time 10 --location --output /tmp/playcqrtv-live.html --write-out '%{http_code}' https://playcqrtv.com/ 2>/dev/null || true)
-            icon_status=$(curl --silent --show-error --max-time 10 --location --output /tmp/playcqrtv-home-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/Essentional%20UI/Home--playcqrtv.svg' 2>/dev/null || true)
+            icon_status=$(curl --silent --show-error --max-time 10 --location --output /tmp/playcqrtv-home-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/ui/home.svg' 2>/dev/null || true)
             if [ "$status" = "200" ] && grep -q 'Профиль игрока' /tmp/playcqrtv-live.html && ! grep -q '�' /tmp/playcqrtv-live.html && [ "$icon_status" = "200" ] && test -s /tmp/playcqrtv-home-icon.svg; then
               echo "Live site is serving the current Russian page and CQRTV icon assets."
               exit 0
