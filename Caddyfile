@@ -1,0 +1,10 @@
+playcqrtv.com {
+    root * /srv
+    encode zstd gzip
+    file_server
+}
+
+www.playcqrtv.com {
+    redir https://playcqrtv.com{uri} permanent
+}
+
