@@ -19,12 +19,12 @@ jobs:
       - name: Install RAR extractor
         run: |
           sudo apt-get update
-          sudo apt-get install -y unar
+          sudo apt-get install -y 7zip 7zip-rar
 
       - name: Extract and inventory icons
         run: |
           mkdir -p /tmp/cqrtv-icons
-          unar -f -D -o /tmp/cqrtv-icons "Icon Play CQRTV.rar"
+          7zz x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar" || true
           python3 - <<'PY'
           from collections import Counter
           from pathlib import Path
