@@ -30,7 +30,7 @@ async function init(){await pool.query(`CREATE TABLE IF NOT EXISTS users(id BIGS
 CREATE TABLE IF NOT EXISTS auth_tokens(token_hash TEXT PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,purpose TEXT NOT NULL CHECK(purpose IN ('verify','reset')),expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires_at TIMESTAMPTZ NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS auth_tokens_expiry_idx ON auth_tokens(expires_at);CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);`);}
-async function handle(req,res){const url=new URL(req.url,"http://localhost");if(req.method==="GET"&&url.pathname==="/health"){return json(res,200,{ok:true});}
+async function handle(req,res){const url=new URL(req.url,"http://localhost");if(req.method==="GET"&&url.pathname==="/api/health"){return json(res,200,{ok:true});}
 if(!url.pathname.startsWith("/api/"))return json(res,404,{error:"Not found"});
 if(req.method==="POST")try{checkOrigin(req);}catch(e){return json(res,e.status||403,{error:e.message});}
 try{
