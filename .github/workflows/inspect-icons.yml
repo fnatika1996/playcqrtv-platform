@@ -24,7 +24,7 @@ jobs:
       - name: Extract and inventory icons
         run: |
           mkdir -p /tmp/cqrtv-icons
-          7zz x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar" || true
+          7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar" || true
           python3 - <<'PY'
           from collections import Counter
           from pathlib import Path
