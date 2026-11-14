@@ -3,5 +3,3 @@
 api
 ACCOUNT-SERVICE.md
 docker-compose.yml
-Caddyfile
-Dockerfile
