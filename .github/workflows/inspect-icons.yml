@@ -1,0 +1,39 @@
+name: Inspect CQRTV icon archive
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Icon Play CQRTV.rar"
+      - ".github/workflows/inspect-icons.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install RAR extractor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unar
+
+      - name: Extract and inventory icons
+        run: |
+          mkdir -p /tmp/cqrtv-icons
+          unar -f -D -o /tmp/cqrtv-icons "Icon Play CQRTV.rar"
+          python3 - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+
+          root = Path("/tmp/cqrtv-icons")
+          files = sorted(p for p in root.rglob("*") if p.is_file())
+          print(f"TOTAL_FILES={len(files)}")
+          print("EXTENSIONS=" + str(dict(Counter(p.suffix.lower() or "<none>" for p in files))))
+          print("TOP_LEVEL=" + str(sorted(p.name for p in root.iterdir())))
+          for path in files:
+              print("ICON_FILE: " + path.relative_to(root).as_posix())
+          PY
