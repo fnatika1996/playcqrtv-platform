@@ -29,32 +29,30 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y 7zip 7zip-rar
-          mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv
+          mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv/ui
           7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar"
-          cp -a "/tmp/cqrtv-icons/Icon Play CQRTV/." assets/icons/cqrtv/
-          mkdir -p assets/icons/cqrtv/ui
-          cp "assets/icons/cqrtv/Search/Magnifer--playcqrtv.svg" assets/icons/cqrtv/ui/search.svg
-          cp "assets/icons/cqrtv/Notifications/Bell--playcqrtv.svg" assets/icons/cqrtv/ui/bell.svg
-          cp "assets/icons/cqrtv/Messages Conversation/Chat-Round--playcqrtv.svg" assets/icons/cqrtv/ui/chat.svg
-          cp "assets/icons/cqrtv/Essentional UI/Home--playcqrtv.svg" assets/icons/cqrtv/ui/home.svg
-          cp "assets/icons/cqrtv/Electronic Devices/Gamepad--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad.svg
-          cp "assets/icons/cqrtv/Electronic Devices/Gamepad-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad-minimalistic.svg
-          cp "assets/icons/cqrtv/Sports/Ranking--playcqrtv.svg" assets/icons/cqrtv/ui/ranking.svg
-          cp "assets/icons/cqrtv/Users/Users-Group-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/users.svg
-          cp "assets/icons/cqrtv/Settings Fine Tuning/Settings-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/settings.svg
-          cp "assets/icons/cqrtv/Messages Conversation/Pen--playcqrtv.svg" assets/icons/cqrtv/ui/edit.svg
-          cp "assets/icons/cqrtv/Essentional UI/Check-Circle--playcqrtv.svg" assets/icons/cqrtv/ui/check.svg
-          cp "assets/icons/cqrtv/Settings Fine Tuning/Widget--playcqrtv.svg" assets/icons/cqrtv/ui/dashboard.svg
-          cp "assets/icons/cqrtv/Business Statistic/Chart--playcqrtv.svg" assets/icons/cqrtv/ui/chart.svg
-          cp "assets/icons/cqrtv/Like/Medal-Star--playcqrtv.svg" assets/icons/cqrtv/ui/medal.svg
-          cp "assets/icons/cqrtv/Essentional UI/Cup-Star--playcqrtv.svg" assets/icons/cqrtv/ui/cup.svg
-          cp "assets/icons/cqrtv/Video Audio Sound/Play--playcqrtv.svg" assets/icons/cqrtv/ui/play.svg
-          cp "assets/icons/cqrtv/Security/Shield-Check--playcqrtv.svg" assets/icons/cqrtv/ui/shield.svg
-          cp "assets/icons/cqrtv/Users/User-Plus-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/invite.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Search/Magnifer--playcqrtv.svg" assets/icons/cqrtv/ui/search.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Notifications/Bell--playcqrtv.svg" assets/icons/cqrtv/ui/bell.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Chat-Round--playcqrtv.svg" assets/icons/cqrtv/ui/chat.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Home--playcqrtv.svg" assets/icons/cqrtv/ui/home.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Electronic Devices/Gamepad--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Electronic Devices/Gamepad-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad-minimalistic.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Sports/Ranking--playcqrtv.svg" assets/icons/cqrtv/ui/ranking.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Users/Users-Group-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/users.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Settings Fine Tuning/Settings-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/settings.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Pen--playcqrtv.svg" assets/icons/cqrtv/ui/edit.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Check-Circle--playcqrtv.svg" assets/icons/cqrtv/ui/check.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Settings Fine Tuning/Widget--playcqrtv.svg" assets/icons/cqrtv/ui/dashboard.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Business Statistic/Chart--playcqrtv.svg" assets/icons/cqrtv/ui/chart.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Like/Medal-Star--playcqrtv.svg" assets/icons/cqrtv/ui/medal.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Cup-Star--playcqrtv.svg" assets/icons/cqrtv/ui/cup.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Video Audio Sound/Play--playcqrtv.svg" assets/icons/cqrtv/ui/play.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Shield-Check--playcqrtv.svg" assets/icons/cqrtv/ui/shield.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Users/User-Plus-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/invite.svg
           test -s assets/icons/cqrtv/ui/home.svg
           icon_count=$(find assets/icons/cqrtv -type f -name '*.svg' | wc -l)
-          test "$icon_count" -gt 0
-          echo "Extracted $icon_count CQRTV SVG icons."
+          test "$icon_count" -eq 18
+          echo "Copied $icon_count selected CQRTV icons into the public image."
 
       - name: Build and publish website image
         uses: docker/build-push-action@v6
