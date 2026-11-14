@@ -4,5 +4,4 @@
 .dockerignore
 Dockerfile
 docker-compose.yml
-Caddyfile
 README*
