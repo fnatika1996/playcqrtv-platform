@@ -68,6 +68,15 @@ jobs:
           image="ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}"
           docker pull "$image"
           docker run --rm --entrypoint sh "$image" -c 'test -s /srv/assets/icons/cqrtv/ui/home.svg && find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f | wc -l'
+      - name: Build and publish authentication API
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          push: true
+          tags: |
+            ghcr.io/fnatika1996/playcqrtv-api:latest
+            ghcr.io/fnatika1996/playcqrtv-api:${{ github.sha }}
+
       - name: Deploy project to Hostinger
         uses: hostinger/deploy-on-vps@v2
         with:

@@ -26,7 +26,7 @@
     <nav class="topnav" aria-label="Основная навигация">
       <a class="active" href="#matchmaking">Матчмейкинг</a><a href="#leaderboard">Рейтинг</a><a href="#tournaments">Турниры</a><a href="#matches">Матчи</a>
     </nav>
-    <div class="top-actions"><button class="icon-btn" aria-label="Поиск" data-toast="Поиск игроков появится в следующей версии"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/search.svg" aria-hidden="true"></span></button><button class="icon-btn" aria-label="Уведомления" data-toast="Новые уведомления появятся здесь"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/bell.svg" aria-hidden="true"></span></button><button class="icon-btn" aria-label="Сообщения" data-toast="Чат появится в следующей версии"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chat.svg" aria-hidden="true"></span></button><button class="signup-trigger" id="signup-open" type="button">Создать аккаунт</button><div class="user-menu"><div class="avatar">P</div><div class="user-copy"><div class="user-label">PlayerOne</div><div class="user-sub">Уровень 12</div></div></div></div>
+    <div class="top-actions"><button class="icon-btn" aria-label="Поиск" data-toast="Поиск игроков появится в следующей версии"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/search.svg" aria-hidden="true"></span></button><button class="icon-btn" aria-label="Уведомления" data-toast="Новые уведомления появятся здесь"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/bell.svg" aria-hidden="true"></span></button><button class="icon-btn" aria-label="Сообщения" data-toast="Чат появится в следующей версии"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chat.svg" aria-hidden="true"></span></button><button class="signup-trigger" id="signup-open" type="button">Создать аккаунт</button><a class="signup-trigger" href="/auth.html">Войти</a><div class="user-menu"><div class="avatar">P</div><div class="user-copy"><div class="user-label">PlayerOne</div><div class="user-sub">Уровень 12</div></div></div></div>
   </header>
   <div class="layout">
     <aside class="rail" aria-label="Навигация">
@@ -105,7 +105,7 @@
             <label class="role-option"><input type="checkbox" name="secondaryRoles" value="flex"><span><strong>Flex</strong><small>Гибкая роль</small></span></label>
           </div>
         </fieldset>
-        <label class="signup-terms"><input type="checkbox" name="terms" required><span>Я принимаю <a href="#rules" data-toast="Правила платформы будут опубликованы перед запуском регистрации">Правила платформы</a> и ознакомился с <a href="#privacy" data-toast="Политика конфиденциальности появится до запуска регистрации">Политикой конфиденциальности</a>.</span></label>
+        <label class="signup-terms"><input type="checkbox" name="terms" required><span>Я принимаю <a href="/rules.html">Правила платформы</a> и ознакомился с <a href="/privacy.html">Политикой конфиденциальности</a>.</span></label>
         <p class="signup-note">Steam можно будет привязать позже. Для участия в матчмейкинге потребуется подтвердить Steam-аккаунт.</p>
         <div class="signup-status" id="signup-status" role="status" aria-live="polite"></div>
         <div class="signup-actions"><button class="primary-btn" type="submit">Создать аккаунт</button></div>
@@ -127,7 +127,7 @@
     const passwordInput=signupForm.elements.password,confirmInput=signupForm.elements.passwordConfirm;
     function validatePasswordMatch(){confirmInput.setCustomValidity(confirmInput.value&&confirmInput.value!==passwordInput.value?'Пароли не совпадают':'')}
     passwordInput.addEventListener('input',validatePasswordMatch);confirmInput.addEventListener('input',validatePasswordMatch);
-    signupForm.addEventListener('submit',event=>{event.preventDefault();validatePasswordMatch();if(!signupForm.reportValidity())return;signupStatus.textContent='Форма готова, но аккаунт пока не создаётся: сначала нужно подключить сервер регистрации и отправку подтверждения на email.';signupStatus.classList.add('show')});
+    signupForm.addEventListener('submit',async event=>{event.preventDefault();validatePasswordMatch();if(!signupForm.reportValidity())return;const fd=new FormData(signupForm),payload={nickname:fd.get('nickname'),email:fd.get('email'),password:fd.get('password'),country:fd.get('country'),primaryRole:fd.get('primaryRole'),secondaryRoles:fd.getAll('secondaryRoles'),acceptRules:fd.get('terms')==='on'};const submit=signupForm.querySelector('[type="submit"]');submit.disabled=true;signupStatus.textContent='Создаём аккаунт…';signupStatus.classList.add('show');try{const response=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),data=await response.json();signupStatus.textContent=data.message||data.error||'Не удалось создать аккаунт.';if(response.ok)signupForm.reset();syncRoleChoices()}catch{signupStatus.textContent='Не удалось связаться с сервером. Попробуйте позже.'}finally{submit.disabled=false}});
 
     function notify(message){toast.textContent=message;toast.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('show'),2600)}
     document.querySelectorAll('[data-toast]').forEach(el=>el.addEventListener('click',e=>{e.preventDefault();notify(el.dataset.toast)}));

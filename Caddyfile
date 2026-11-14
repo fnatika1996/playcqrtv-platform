@@ -1,10 +1,14 @@
 playcqrtv.com {
-    root * /srv
     encode zstd gzip
-    file_server
+    handle /api/* {
+        reverse_proxy api:3000
+    }
+    handle {
+        root * /srv
+        file_server
+    }
 }
 
 www.playcqrtv.com {
     redir https://playcqrtv.com{uri} permanent
 }
-

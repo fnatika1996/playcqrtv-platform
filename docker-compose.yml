@@ -1,4 +1,46 @@
 services:
+  secret-init:
+    image: alpine:3.21
+    restart: "no"
+    command: ["sh","-ec","if [ ! -s /run/db-secret/password ]; then umask 077; openssl rand -hex 32 > /run/db-secret/password; fi; chmod 0444 /run/db-secret/password"]
+    volumes:
+      - db_secret:/run/db-secret
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cqrtv
+      POSTGRES_USER: cqrtv
+      POSTGRES_PASSWORD_FILE: /run/db-secret/password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - db_secret:/run/db-secret:ro
+    depends_on:
+      secret-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U cqrtv -d cqrtv"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks: [internal]
+  api:
+    image: ghcr.io/fnatika1996/playcqrtv-api:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      APP_ORIGIN: https://playcqrtv.com
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      DB_PASSWORD_FILE: /run/db-secret/password
+    volumes:
+      - db_secret:/run/db-secret:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
   caddy:
     image: ghcr.io/fnatika1996/playcqrtv-platform:latest
     pull_policy: always
@@ -11,7 +53,15 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
-
+    depends_on:
+      api:
+        condition: service_started
+    networks: [internal]
 volumes:
   caddy_data:
   caddy_config:
+  postgres_data:
+  db_secret:
+networks:
+  internal:
+    internal: true
