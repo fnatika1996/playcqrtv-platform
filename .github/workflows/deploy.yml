@@ -91,12 +91,14 @@ jobs:
           for attempt in $(seq 1 3); do
             status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-live.html --write-out '%{http_code}' https://playcqrtv.com/ 2>/dev/null || true)
             icon_status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-home-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/ui/home.svg' 2>/dev/null || true)
+            api_status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-api-health.json --write-out '%{http_code}' 'https://playcqrtv.com/api/health' 2>/dev/null || true)
+            registration_status=$(curl --silent --show-error --max-time 4 --request POST --header 'Content-Type: application/json' --data '{}' --output /tmp/playcqrtv-registration.json --write-out '%{http_code}' 'https://playcqrtv.com/api/auth/register' 2>/dev/null || true)
             direct_icon_status=$(curl --silent --show-error --max-time 4 --resolve playcqrtv.com:443:2.25.3.45 --location --output /tmp/playcqrtv-direct-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/ui/home.svg' 2>/dev/null || true)
-            if [ "$status" = "200" ] && grep -q 'Профиль игрока' /tmp/playcqrtv-live.html && ! grep -q '�' /tmp/playcqrtv-live.html && [ "$icon_status" = "200" ] && test -s /tmp/playcqrtv-home-icon.svg; then
-              echo "Live site is serving the current Russian page and CQRTV icon assets."
+            if [ "$status" = "200" ] && grep -q 'Профиль игрока' /tmp/playcqrtv-live.html && ! grep -q '�' /tmp/playcqrtv-live.html && [ "$icon_status" = "200" ] && test -s /tmp/playcqrtv-home-icon.svg && [ "$api_status" = "200" ] && grep -q ok /tmp/playcqrtv-api-health.json && [ "$registration_status" = "503" ]; then
+              echo "Live page, icons, API and closed-registration safety state are responding."
               exit 0
             fi
-            echo "Still waiting (attempt $attempt/3): page HTTP $status, icon via domain=$icon_status, direct VPS=$direct_icon_status."
+            echo "Still waiting (attempt $attempt/3): page HTTP $status, icon=$icon_status, API=$api_status, registration=$registration_status, direct VPS=$direct_icon_status."
             sleep 5
           done
           echo "Live-site verification failed."
