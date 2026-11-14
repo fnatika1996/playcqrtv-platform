@@ -65,6 +65,11 @@ jobs:
             ghcr.io/fnatika1996/playcqrtv-platform:latest
             ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}
 
+      - name: Verify CQRTV icons are inside the published image
+        run: |
+          image="ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}"
+          docker pull "$image"
+          docker run --rm --entrypoint sh "$image" -c 'test -s /srv/assets/icons/cqrtv/ui/home.svg && find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f | wc -l'
       - name: Deploy project to Hostinger
         uses: hostinger/deploy-on-vps@v2
         with:
@@ -76,14 +81,14 @@ jobs:
       - name: Verify live website
         shell: bash
         run: |
-          for attempt in $(seq 1 24); do
-            status=$(curl --silent --show-error --max-time 10 --location --output /tmp/playcqrtv-live.html --write-out '%{http_code}' https://playcqrtv.com/ 2>/dev/null || true)
+          for attempt in $(seq 1 12); do
+            status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-live.html --write-out '%{http_code}' https://playcqrtv.com/ 2>/dev/null || true)
             icon_status=$(curl --silent --show-error --max-time 10 --location --output /tmp/playcqrtv-home-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/ui/home.svg' 2>/dev/null || true)
             if [ "$status" = "200" ] && grep -q 'Профиль игрока' /tmp/playcqrtv-live.html && ! grep -q '�' /tmp/playcqrtv-live.html && [ "$icon_status" = "200" ] && test -s /tmp/playcqrtv-home-icon.svg; then
               echo "Live site is serving the current Russian page and CQRTV icon assets."
               exit 0
             fi
-            echo "Still waiting (attempt $attempt/24): page HTTP $status, icon HTTP $icon_status."
+            echo "Still waiting (attempt $attempt/12): page HTTP $status, icon HTTP $icon_status."
             sleep 5
           done
           echo "Live-site verification failed."
