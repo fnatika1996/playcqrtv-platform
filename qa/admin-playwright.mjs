@@ -45,7 +45,7 @@ try {
     }));
     assert.equal(hero.loaded, true);
     assert.equal(hero.fit, "cover");
-    assert.equal(hero.height, width <= 580 ? 135 : 170);
+    assert.equal(hero.height, width <= 760 ? 148 : Math.min(200, Math.max(142, Math.round(width * 0.22))));
     const loginOverflow = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > window.innerWidth, viewport: window.innerWidth, html: {scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth}, body: {scrollWidth:document.body.scrollWidth,clientWidth:document.body.clientWidth,scrollX:document.body.scrollLeft}, offenders: [...document.querySelectorAll("body *")].map(element => { const rect=element.getBoundingClientRect(); return { tag: element.tagName, className: element.className?.baseVal || element.className, id: element.id, left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width), text: element.children.length ? "" : element.textContent.trim().slice(0,60) }; }).filter(element => element.left < -1 || element.right > window.innerWidth + 1).slice(0, 12) }));
     assert.equal(loginOverflow.overflow, false, `login page has horizontal overflow at ${width}px: ${JSON.stringify(loginOverflow)}`);
     if (width === 390) {
