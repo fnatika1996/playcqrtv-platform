@@ -29,3 +29,13 @@ test("verification failure shows an error and never displays the success CTA",as
 test("verification network errors remain a failure state with safe navigation",async()=>{
   const page=makeVerify(async()=>{throw new Error("offline")});await nextTurn();await nextTurn();assert.equal(page.nodes["#verify-failure"].hidden,false);assert.equal(page.nodes["#verify-success"].hidden,true);assert.match(page.nodes["#verify-error-message"].textContent,/Проверьте соединение/);assert.equal(page.nodes["#verify-failure-home-link"].href,"/");
 });
+
+test("login screen includes its branded layout, labelled fields and responsive CQRTV styling",()=>{
+  assert.match(html,/class="login-hero"/);
+  assert.match(html,/login-page #auth-card\{width:min\(600px,100%\)/);
+  assert.match(html,/<label for="email-input">Email<\/label>/);
+  assert.match(html,/<label for="password-input">Пароль<\/label>/);
+  assert.match(html,/l.className="login-forgot"/);
+  assert.match(html,/id="signup"/);
+  assert.match(html,/prefers-reduced-motion:reduce/);
+});
