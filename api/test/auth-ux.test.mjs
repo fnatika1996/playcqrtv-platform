@@ -9,12 +9,12 @@ const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script,"auth page contains its flow script");
 function node(initial={}){const listeners=new Map();return Object.assign({hidden:false,value:"",textContent:"",required:false,disabled:false,href:"",classList:{add(){}},addEventListener(type,listener){listeners.set(type,listener)},setCustomValidity(){},reportValidity(){return true}},initial)}
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r});return {promise,resolve}}
-function makeVerify(fetchImpl){
+function makeVerify(fetchImpl,mode="verify"){
   const elements={email:node({value:"player@example.test",required:true}),password:node({value:"LoginPassword123!",required:true}),newPassword:node()};
   const form=node({elements,addEventListener(type,listener){this.listeners??={};this.listeners[type]=listener}});
-  const nodes={"#form":form,"#status":node(),"#title":node({textContent:"Вход в аккаунт"}),"#desc":node({textContent:"Войдите."}),"#submit":node(),"#emailrow":node(),"#passwordrow":node(),"#tokenrow":node({hidden:true}),"#signup":node({href:"/#signup"}),".links":node(),"#verify-loading":node({hidden:true}),"#verify-success":node({hidden:true}),"#verify-failure":node({hidden:true}),"#verify-error-message":node(),"#verify-login-link":node({href:"/auth.html"}),"#verify-home-link":node({href:"/"}),"#verify-failure-login-link":node({href:"/auth.html"}),"#verify-failure-home-link":node({href:"/"})};
-  const document={title:"",body:node({classList:{add(name){this[name]=true}}}),querySelector(sel){return nodes[sel]??node()},getElementById(id){return nodes["#"+id]??node()}};
-  const calls=[];const context=vm.createContext({document,location:{search:"?mode=verify&token=local-test-token",href:""},URLSearchParams,fetch:async(url,options)=>{calls.push({url,options});return fetchImpl(url,options)},setTimeout,console});
+  const nodes={"#form":form,"#status":node(),"#title":node({textContent:"Вход в аккаунт"}),"#desc":node({textContent:"Войдите."}),"#submit":node(),"#emailrow":node(),"#passwordrow":node(),"#tokenrow":node({hidden:true}),"#signup":node({href:"/#signup"}),".links":node({before(){}}),".login-hero":node({hidden:true}),"#verify-loading":node({hidden:true}),"#verify-success":node({hidden:true}),"#verify-failure":node({hidden:true}),"#verify-error-message":node(),"#verify-login-link":node({href:"/auth.html"}),"#verify-home-link":node({href:"/"}),"#verify-failure-login-link":node({href:"/auth.html"}),"#verify-failure-home-link":node({href:"/"})};
+  const document={title:"",body:node({classList:{add(name){this[name]=true}}}),querySelector(sel){return nodes[sel]??node()},getElementById(id){return nodes["#"+id]??node()},createElement(){return node({style:{}})}};
+  const calls=[];const context=vm.createContext({document,location:{search:"?mode="+mode+"&token=local-test-token",href:""},URLSearchParams,fetch:async(url,options)=>{calls.push({url,options});return fetchImpl(url,options)},setTimeout,console});
   vm.runInContext(script,context);return {nodes,form,calls,document};
 }
 function response(ok,body){return {ok,async json(){return body}}}
@@ -38,4 +38,15 @@ test("login screen includes its branded layout, labelled fields and responsive C
   assert.match(html,/l.className="login-forgot"/);
   assert.match(html,/id="signup"/);
   assert.match(html,/prefers-reduced-motion:reduce/);
+});
+
+test("login hero is visible only in login mode",()=>{
+  const login=makeVerify(async()=>response(true,{}),"login");
+  assert.equal(login.nodes[".login-hero"].hidden,false);
+  assert.equal(login.document.body.classList["login-page"],true);
+  for(const mode of ["forgot","reset","verify"]){
+    const page=makeVerify(async()=>response(true,{}),mode);
+    assert.equal(page.nodes[".login-hero"].hidden,true,mode+" keeps login hero hidden");
+    assert.equal(page.document.body.classList["login-page"],undefined);
+  }
 });
