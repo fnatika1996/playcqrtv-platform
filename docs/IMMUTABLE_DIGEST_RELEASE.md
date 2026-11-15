@@ -24,48 +24,41 @@ docker compose -f docker-compose.release.yml config --images
 
 The effective file must list exactly one immutable registry ref for web and API and retain `secret-init`, `db`, all named volumes, networks, Caddy settings, and existing environment defaults. Do not publish or use local image IDs as a registry digest.
 
-## Hostinger transfer constraint and chosen integration
+## Hostinger existing-project update and saved Compose preflight
 
-Hostinger's `deploy-on-vps@v2` action constructs a GitHub blob URL from `github.sha` and one `docker-compose-path`; it cannot point at a file generated later in the runner workspace. PR #11 therefore uses the documented Docker API with the full generated Compose YAML in `content`.
+The historical Hostinger action sends POST /docker with a GitHub Compose URL; the documented operation creates a project and replaces an existing project with the same name. PR #11 does not use that path.
 
-The API returns a `VPSV1ActionActionResource` with an action ID and state. The workflow now requires a valid action ID, polls the documented action-details endpoint to a recognized success state, stops on terminal failure or unknown state, and only then polls the project's container list. It requires exactly one web and one API container with the expected immutable image refs, running state, and no reported unhealthy/starting health. The following public page/icon/API checks are read-only. POST is never retried because a network failure may occur after Hostinger accepted it; timeout or partial failure stops for owner/operator review and does not trigger automatic rollback. The recognized state vocabulary remains fail-closed and must be checked against a real response before release.
+For the temporary launch flow, Buildx publishes each new web/API image with both a mutable :latest tag and a commit-SHA tag. The workflow records the actual Buildx digests for traceability. Before changing the running project, the runtime client performs a read-only GET of the existing playcqrtv project contents. A Ruby safe-YAML preflight rejects missing or unexpected content, checks both service images are the expected :latest refs with pull_policy: always, and verifies the expected service/volume bindings (postgres_data, db_secret, caddy_data, caddy_config). It does not print saved Compose content or the separate project environment. A mismatch fails before any POST.
 
-**Replacement and data-preservation risk:** the official Hostinger Docker API describes this endpoint as `create_new_project` and says a project with the same name is replaced. The request uses project name `playcqrtv`. The submitted Compose preserves the existing named-volume declarations, but the public API reference does not promise that replacement preserves the VPS's existing volume data, Caddy state, or availability. This behavior has not been verified against the live project. Therefore, the PR remains conditional and must not be merged or run until the owner explicitly accepts the replacement behavior or a separately approved safe update path is established. Do not infer data-preservation guarantees from matching YAML volume names.
+Only after that preflight does the workflow call Hostinger's POST /docker/playcqrtv/update endpoint. It polls the returned action resource to a recognized success state, then checks the read-only container list for the expected refs and running health. It never retries UPDATE, automatically replaces the project, or rolls back after a partial failure. Unknown action states fail closed. The post-update public page, icon and API checks are GET-only.
 
-The deployment workflow change is code only. It has not been executed, and no Hostinger API call was made.
+Hostinger documents the project update operation as pulling latest images and recreating containers while preserving data volumes. This API behavior has not been exercised on the live project. The actual saved Compose, image refs and volume bindings have not been inspected by Codex; PR CI uses synthetic mock responses only.
 
-Relevant official Hostinger API references (generated from its OpenAPI specification):
+The tracked docker-compose.yml in this branch retains the verified baseline digest refs and remains useful for characterization/rollback planning. The existing-project update does not submit that file; it uses the saved Hostinger Compose. Therefore the saved config preflight is a hard gate, and :latest remains mutable rather than a rollback identity. The commit-SHA tags and Buildx digest outputs are recorded for traceability.
 
-- [Docker Manager endpoints and replacement behavior](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSDockerManagerApi.md)
-- [VPS action-details endpoint](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSActionsApi.md)
-- [Action resource fields](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSV1ActionActionResource.md)
-- [Container resource fields](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSV1DockerManagerContainerResource.md)
-- [API overview and asynchronous action guidance](https://docs.hostinger.com/api-reference/overview)
+Official references:
 
-The generator, mocked Hostinger action/container contract tests, and workflow wiring run in PR-only CI without production credentials. The raw-content request, Hostinger action-state vocabulary, container response contents, replacement semantics on this existing project, and actual runtime image refs have not been exercised against Hostinger.
+- Hostinger Docker Manager API, including create/replace semantics and update-project volume behavior: https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSDockerManagerApi.md
+- Hostinger action source: https://github.com/hostinger/deploy-on-vps/blob/main/action.yaml
+- Action resource schema: https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSV1ActionActionResource.md
+- Container resource schema: https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSV1DockerManagerContainerResource.md
 
 ## Pre-merge and release sequence
 
-1. Confirm the exact approved PR/head, review status, and green non-production CI.
-2. Owner confirms local backup file integrity, protected storage, and acceptable age/RPO; if a fresher backup is needed, obtain separate permission and test only in isolated PostgreSQL.
-3. Confirm the proposed workflow uses Buildx registry digests, generates one effective Compose file, and does not publish or deploy on pull_request.
-4. Review Hostinger raw-content API request code; require the API key only in the main deployment job. Never log the authorization header or secrets.
-5. Owner separately approves the exact PR/head for release, knowing that merging to main triggers production deployment. Do not invoke `workflow_dispatch` without a separate explicit authorization.
-6. After the approved deployment, record commit and both digest refs; check Hostinger deployment response, live health, and that Hostinger's read-only container API reports the exact submitted refs.
-7. Keep admin unassigned and do not perform suspend/unsuspend actions in this initial release.
+1. Confirm the exact approved PR/head and green PR-only CI.
+2. Owner verifies the saved Hostinger project Compose through the read-only UI/API view and confirms :latest web/API refs, pull_policy: always, and the expected volume bindings. The deploy workflow repeats this check at runtime and stops before UPDATE if it fails.
+3. Immediately before any separately approved merge, owner confirms a fresh, verified, protected PostgreSQL backup and protected volume backups, with acceptable RPO. No backup command is run by CI.
+4. Owner separately approves the exact PR/head, knowing that merging to main triggers the production workflow. Do not invoke workflow_dispatch without separate explicit authorization.
+5. After deployment, record commit-SHA tags and Buildx digests, action ID/state, container refs/state, and read-only site/API health.
+6. Keep admin unassigned and do not perform suspend/unsuspend actions in this initial release.
 
 ## Fail-closed rollback
 
-Rollback uses the same complete Compose document with digest refs, not a VPS-only override and not `:latest`. Compose named volumes remain unchanged because the manifest retains the same project, volume names, and network:
+The current UPDATE workflow is not an automated rollback mechanism. :latest is mutable, and the update endpoint uses the saved project Compose rather than accepting an arbitrary rollback manifest. Commit-SHA tags and baseline digests are traceability/recovery references only; no automatic rollback is performed.
 
-- `postgres_data`
-- `db_secret`
-- `caddy_data`
-- `caddy_config`
+On a failed action, unexpected refs, unhealthy service, or failed smoke check: stop further deployments, record the action ID and expected/observed refs, preserve database and volumes, and escalate to the owner. Do not retry UPDATE blindly or call the create/replace endpoint as an automatic fallback. A separately approved recovery procedure must establish an exact ref and a volume-preserving method before it is used.
 
-For a web-only rollback, retain the currently approved API digest and replace only the web ref with the verified baseline. For a full application rollback, select the two baseline refs above only if API compatibility criteria below permit it. Render and validate the rollback document before an operator submits that exact document to Hostinger.
-
-Never use `docker compose down -v`, remove named volumes, restore a database over production, or reverse the additive migration with destructive SQL.
+Never use docker compose down -v, remove named volumes, restore a database over production, or reverse the additive migration with destructive SQL.
 
 ### API rollback stop rule
 
@@ -86,7 +79,8 @@ The PR API checks `account_status`; the base API does not. Non-production charac
 
 ## Status
 
-- Generator and PR-only CI validation: implemented and tested with synthetic digests plus the verified baseline rollback refs.
-- Future Hostinger workflow: now submits the generated raw Compose content using Buildx registry digests; code and workflow wiring are covered by a static regression test, but the Hostinger API has not been called.
-- API migration compatibility: structural start passed in disposable CI; suspend rollback incompatibility reproduced in disposable CI.
+- Generator and digest characterization tests: retained for synthetic release/rollback reference checks.
+- Existing-project update workflow: implemented in PR #11 with a fail-closed saved-Compose preflight, action-state polling, container verification and read-only smoke checks. No Hostinger API request has been made.
+- PR-only synthetic tests and CI: safe mocks only; no Hostinger credentials or production workflow execution.
+- Actual Hostinger state vocabulary, saved Compose compatibility, image-ref representation and live volume behavior: unverified.
 - Release: not approved or executed by this document.
