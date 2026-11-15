@@ -43,12 +43,19 @@ function makePage(mode, fetchImpl = async () => response(true, { message: "ok" }
   const tokenRow = { hidden: true };
   const signup = { hidden: false, href: "" };
   const forgottenLinkParent = { before(link) { this.inserted = link; } };
+  const verifyLoading = { hidden: true };
+  const verifySuccess = { hidden: true };
+  const verifyFailure = { hidden: true };
+  const verifyError = { textContent: "" };
   const nodes = {
     "#form": form, "#status": status, "#title": title, "#desc": desc, "#submit": button,
+    "#verify-loading": verifyLoading, "#verify-success": verifySuccess, "#verify-failure": verifyFailure, "#verify-error-message": verifyError,
     "#emailrow": email, "#passwordrow": password, "#tokenrow": tokenRow, "#signup": signup,
     ".links": forgottenLinkParent,
   };
   const document = {
+    body: { classList: { add() {} } },
+    getElementById(id) { return nodes["#" + id]; },
     querySelector(selector) { return nodes[selector]; },
     createElement() { return { style: {}, href: "", textContent: "" }; },
   };
@@ -63,7 +70,7 @@ function makePage(mode, fetchImpl = async () => response(true, { message: "ok" }
     console,
   });
   return {
-    calls, form, input, status, title, desc, button, email, password, tokenRow, signup, location,
+    calls, form, input, status, title, desc, button, email, password, tokenRow, signup, location, verifyLoading, verifySuccess, verifyFailure, verifyError,
     async submit() {
       const handler = formListeners.get("submit");
       assert.ok(handler, "submit listener is attached");
@@ -171,27 +178,33 @@ test("reset client policy agrees with the server policy for each rule", async ()
 
 test("verify mode displays successful confirmation", async () => {
   const page = makePage("verify", async () => response(true, { message: "Email подтверждён." }));
-  assert.equal(page.form.hidden, false);
+  assert.equal(page.form.hidden, true);
   assert.equal(page.button.hidden, true);
   assert.equal(page.input.email.required, false);
   await nextTurn();
   await nextTurn();
   assert.equal(page.calls[0].url, "/api/auth/verify");
-  assert.equal(page.status.textContent, "Email подтверждён.");
+  assert.equal(page.verifySuccess.hidden, false);
+  assert.equal(page.verifyFailure.hidden, true);
+  assert.equal(page.status.textContent, "");
 });
 
 test("verify mode displays invalid-token errors", async () => {
   const page = makePage("verify", async () => response(false, { error: "Ссылка недействительна или уже использована." }));
   await nextTurn();
   await nextTurn();
-  assert.equal(page.status.textContent, "Ссылка недействительна или уже использована.");
+  assert.equal(page.verifyFailure.hidden, false);
+  assert.equal(page.verifySuccess.hidden, true);
+  assert.equal(page.verifyError.textContent, "Ссылка недействительна или уже использована.");
 });
 
 test("verify mode displays network errors", async () => {
   const page = makePage("verify", async () => { throw new Error("offline"); });
   await nextTurn();
   await nextTurn();
-  assert.match(page.status.textContent, /Проверьте соединение/);
+  assert.equal(page.verifyFailure.hidden, false);
+  assert.equal(page.verifySuccess.hidden, true);
+  assert.match(page.verifyError.textContent, /Проверьте соединение/);
 });
 
 test("reset mode displays invalid-token responses", async () => {
