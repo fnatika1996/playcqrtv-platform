@@ -48,6 +48,10 @@ function settingsView(row) {
     subtitle: row.subtitle,
     description: row.description,
     statusLabel: row.status_label,
+    maintenanceHeading: row.maintenance_heading,
+    maintenanceSubtitle: row.maintenance_subtitle,
+    maintenanceDescription: row.maintenance_description,
+    maintenanceStatusLabel: row.maintenance_status_label,
     launchAt: row.launch_at ? new Date(row.launch_at).toISOString() : "",
     countdownEnabled: row.countdown_enabled,
     aboutButtonLabel: row.about_button_label,
@@ -83,6 +87,10 @@ export function validateSiteSettings(input) {
     subtitle: text("subtitle", 180),
     description: text("description", 1200),
     statusLabel: text("statusLabel", 60),
+    maintenanceHeading: text("maintenanceHeading", 120),
+    maintenanceSubtitle: text("maintenanceSubtitle", 180),
+    maintenanceDescription: text("maintenanceDescription", 1200),
+    maintenanceStatusLabel: text("maintenanceStatusLabel", 60),
     launchAt,
     countdownEnabled: input.countdownEnabled,
     aboutButtonLabel: text("aboutButtonLabel", 60),
@@ -202,8 +210,8 @@ export function createSiteControlAdminRoutes({ pool, json, body }) {
         if (!asset.rowCount) return json(res, 400, { error: "Фоновый файл не найден." }), true;
       }
       const result = await pool.query(
-        "UPDATE site_control_settings SET mode=$1,heading=$2,subtitle=$3,description=$4,status_label=$5,launch_at=$6,countdown_enabled=$7,about_button_label=$8,about_title=$9,about_body=$10,animation_enabled=$11,background_asset_id=$12,updated_at=now() WHERE id=1 RETURNING *",
-        [settings.mode,settings.heading,settings.subtitle,settings.description,settings.statusLabel,settings.launchAt,settings.countdownEnabled,settings.aboutButtonLabel,settings.aboutTitle,settings.aboutBody,settings.animationEnabled,settings.backgroundAssetId]
+        "UPDATE site_control_settings SET mode=$1,heading=$2,subtitle=$3,description=$4,status_label=$5,maintenance_heading=$6,maintenance_subtitle=$7,maintenance_description=$8,maintenance_status_label=$9,launch_at=$10,countdown_enabled=$11,about_button_label=$12,about_title=$13,about_body=$14,animation_enabled=$15,background_asset_id=$16,updated_at=now() WHERE id=1 RETURNING *",
+        [settings.mode,settings.heading,settings.subtitle,settings.description,settings.statusLabel,settings.maintenanceHeading,settings.maintenanceSubtitle,settings.maintenanceDescription,settings.maintenanceStatusLabel,settings.launchAt,settings.countdownEnabled,settings.aboutButtonLabel,settings.aboutTitle,settings.aboutBody,settings.animationEnabled,settings.backgroundAssetId]
       );
       json(res, 200, { settings: settingsView(result.rows[0]) });
       return true;
