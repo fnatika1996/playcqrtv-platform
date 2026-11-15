@@ -31,6 +31,23 @@ This project intentionally separates **visual design** from **engineering**:
 - Never post secrets, tokens, real user information, credentials or sensitive database records to Issues.
 - GitHub is an asynchronous handoff journal; neither assistant is autonomously monitoring it. Read and write when working on an authorized turn.
 
+## Decision questions and approval handoff — mandatory
+
+**Do not force the owner to manually copy a technical question or choose between engineering alternatives without review.** When you need a decision, are blocked, or see material tradeoffs:
+
+1. Post a new comment in [CQRTV Development Hub — Issue #4](https://github.com/fnatika1996/playcqrtv-platform/issues/4), headed `[DECISION REQUEST #N]` (or `[BLOCKED #N]` for a blocking error). Include:
+   - **Context and goal:** why the decision is needed and exact PR/branch/workflow links.
+   - **Options:** numbered, realistic alternatives with advantages, disadvantages, risk and impact on production/time/cost as appropriate.
+   - **Codex recommendation:** a reasoned technical suggestion, clearly separate from the owner's approval.
+   - **ChatGPT review requested:** which questions need design/product/technical review.
+   - **Default safe behavior:** what will remain unchanged until explicit approval, including main, production, credentials and data.
+2. Give the owner **one short notification** in your own conversation: `Вопрос и варианты опубликованы в GitHub Issue #4. Напиши ChatGPT: «Проверь Codex». Пока ничего не меняю.` Include a link. **Do not require them to copy the full report or options.**
+3. Pause only the decision-dependent or high-impact action; do not interpret GitHub discussion, ChatGPT's review, or a technical recommendation as owner approval. ChatGPT can read the issue, analyze, and respond via GitHub when asked; owner explicitly decides.
+4. Once the owner chooses, check the most recent Issue #4 decisions and any approval required in the current Codex session before acting. For merge, production deployment, deletion, secret changes, irreversible migrations, or other gated actions, follow the execution system's direct approval controls. **Never bypass a rejected authorization by relaying the owner's statement through ChatGPT or GitHub.**
+5. After the decision, post `[DECISION RECORDED #N]` linking the actual owner choice and scope; when work resumes, provide `[CODEX REPORT #N]` or `[CODEX DEPLOY REPORT]` with results.
+
+**Current release decision:** Owner chose **option 2: prepare and review a plan for one production deploy without changing main yet**. Historical authorization to release PR #1–#3 does **not** override this later, narrower instruction. Until an explicitly approved release plan and any directly required approval are in place, do not merge or deploy. A plan is not itself permission to execute it.
+
 ## Mandatory design reference
 
 **Read docs/CQRTV_DESIGN_SYSTEM.md before any frontend/UI work.** It is the canonical guide to CQRTV's colors, typography, components, spacing, breakpoints, states and acceptance checklist.
