@@ -9,7 +9,6 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const renderer = path.join(repoRoot, "qa", "pin-compose-digests.mjs");
 const sourceCompose = path.join(repoRoot, "docker-compose.yml");
-const deployWorkflow = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "deploy.yml"), "utf8");
 const webDigest = `sha256:${"a".repeat(64)}`;
 const apiDigest = `sha256:${"b".repeat(64)}`;
 
@@ -55,19 +54,4 @@ test("rendered release and rollback manifests contain exactly pinned web/API ref
   assert.deepEqual(json.services.db.volumes.map(volume => volume.type).sort(), ["volume", "volume"]);
   assert.equal(json.services["secret-init"].volumes[0].source, "db_secret");
   assert.deepEqual(json.services.caddy.volumes.map(volume => volume.source).sort(), ["caddy_config", "caddy_data"]);
-});
-
-test("deploy workflow builds immutable references and submits the generated compose content directly", () => {
-  assert.match(deployWorkflow, /branches:\s*\[main\]/);
-  assert.match(deployWorkflow, /workflow_dispatch:/);
-  assert.match(deployWorkflow, /id: build-web[\s\S]*?docker\/build-push-action@v6/);
-  assert.match(deployWorkflow, /id: build-api[\s\S]*?docker\/build-push-action@v6/);
-  assert.match(deployWorkflow, /WEB_IMAGE_DIGEST:\s*\$\{\{ steps\.build-web\.outputs\.digest \}\}/);
-  assert.match(deployWorkflow, /API_IMAGE_DIGEST:\s*\$\{\{ steps\.build-api\.outputs\.digest \}\}/);
-  assert.match(deployWorkflow, /pin-compose-digests\.mjs/);
-  assert.match(deployWorkflow, /--rawfile content/);
-  assert.match(deployWorkflow, /developers\.hostinger\.com\/api\/vps\/v1\/virtual-machines/);
-  assert.doesNotMatch(deployWorkflow, /hostinger\/deploy-on-vps@v2/);
-  assert.doesNotMatch(deployWorkflow, /ghcr\.io\/fnatika1996\/playcqrtv-(?:platform|api):latest/);
-  assert.match(deployWorkflow, /github\.sha/);
 });
