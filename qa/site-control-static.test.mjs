@@ -23,7 +23,7 @@ test("admin site control is session API-based, responsive, and uses existing CQR
  assert.match(page,/\/api\/admin\/site-control/);
  assert.match(page,/X-CSRF-Token/);
  assert.match(page,/accept="image\/png,image\/jpeg,image\/webp"/);
- assert.match(page,/\/assets\/icons\/cqrtv\/ui\/settings\.svg/);
+ assert.match(page,/\/assets\/icons\/cqrtv\/ui\/dashboard\.svg/);
  assert.match(page,/@media\(max-width:760px\)/);
  assert.match(page,/https:\/\//);
 });
