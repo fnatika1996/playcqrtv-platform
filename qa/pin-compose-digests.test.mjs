@@ -74,9 +74,9 @@ test("confirmed baseline digests render as a separate fail-closed rollback manif
 
 
 test("future deploy workflow is wired to Buildx digests and isolated PR QA has no deploy credentials", () => {
-  assert.match(deploymentWorkflow, /branches:\\s*\\[main\\]/);
+  assert.match(deploymentWorkflow, /branches:\s*\[main\]/);
   assert.ok(deploymentWorkflow.includes("workflow_dispatch:"));
-  assert.match(deploymentWorkflow, /concurrency:[\\s\\S]*?cancel-in-progress: false/);
+  assert.match(deploymentWorkflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.ok(deploymentWorkflow.includes("id: build-web"));
   assert.ok(deploymentWorkflow.includes("id: build-api"));
   assert.ok(deploymentWorkflow.includes("docker/build-push-action@v6"));
@@ -93,9 +93,9 @@ test("future deploy workflow is wired to Buildx digests and isolated PR QA has n
   assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api@$API_IMAGE_DIGEST"));
   assert.ok(deploymentWorkflow.includes("/docker/playcqrtv/containers"));
   assert.ok(deploymentWorkflow.includes("HOSTINGER_API_KEY: " + "$" + "{{ secrets.HOSTINGER_API_KEY }}"));
-  assert.match(deploymentWorkflow, /permissions:\\s*contents: read\\s+packages: write/);
+  assert.match(deploymentWorkflow, /permissions:\s*contents: read\s+packages: write/);
   assert.doesNotMatch(deploymentWorkflow, /^    HOSTINGER_API_KEY:/m);
   assert.doesNotMatch(deploymentWorkflow, /pull_request:/);
   assert.match(prWorkflow, /pull_request:/);
-  assert.doesNotMatch(prWorkflow, /secrets\\.HOSTINGER_API_KEY|hostinger\\/deploy-on-vps@v2|packages:\\s*write|docker login|workflow_dispatch:/);
+  assert.doesNotMatch(prWorkflow, /secrets\.HOSTINGER_API_KEY|hostinger\/deploy-on-vps@v2|packages:\s*write|docker login|workflow_dispatch:/);
 });
