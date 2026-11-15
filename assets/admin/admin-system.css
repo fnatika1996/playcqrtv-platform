@@ -235,3 +235,7 @@ body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#
   .admin-app .preview-link{width:40px;min-width:40px;padding:0;font-size:0}
   .admin-app .preview-link:before{content:"";width:18px;height:18px;background:url("/assets/icons/cqrtv/ui/home.svg") center/contain no-repeat}
 }
+.admin-app .topbar-spacer{flex:1 1 0;min-width:0}
+@media(max-width:440px){
+  .admin-app .topbar>strong{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;font-size:20px}
+}
