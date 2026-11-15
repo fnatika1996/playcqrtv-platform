@@ -35,7 +35,8 @@ test("Caddy preserves health/API, login recovery and authenticated admin preview
  assert.match(caddy,/forward_auth api:3000/);
  assert.match(caddy,/X-Forwarded-Uri \{uri\}/);
  assert.match(caddy,/copy_headers X-CQRTV-Site-Mode/);
- assert.match(caddy,/@site_closed header X-CQRTV-Site-Mode coming_soon maintenance/);
+ assert.match(caddy,/@site_closed header X-CQRTV-Site-Mode coming_soon/);
+ assert.match(caddy,/@site_maintenance header X-CQRTV-Site-Mode maintenance/);
  assert.ok(caddy.includes("rewrite @site_closed /site-closed.html"));
 });
 
