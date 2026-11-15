@@ -6,6 +6,7 @@ const login = await readFile(new URL("../../admin-login.html", import.meta.url),
 const dashboard = await readFile(new URL("../../admin.html", import.meta.url), "utf8");
 const migration = await readFile(new URL("../migrations/001_admin_mvp.sql", import.meta.url), "utf8");
 const deployWorkflow = await readFile(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8");
+const testWorkflow = await readFile(new URL("../../.github/workflows/auth-tests.yml", import.meta.url), "utf8");
 
 test("admin login UI exposes only the intended credential flow", () => {
   assert.match(login, /id="login-form"/);
@@ -65,5 +66,7 @@ test("deploy maps the selected archive glyphs explicitly and verifies the bundle
     assert.ok(deployWorkflow.includes(`assets/icons/cqrtv/ui/${target}`));
   }
   assert.match(deployWorkflow, /icon_count.*-eq 25/);
+  assert.match(testWorkflow, /--include='\*\.svg'/);
+  assert.match(testWorkflow, /<script\|<foreignObject\|href=/);
 });
 
