@@ -156,6 +156,7 @@ try {
       await filteredRequest;
       filteredRequest = waitForUsersQuery({ q: "Support", status: "suspended", email_verified: "true", country: "US" });
       await page.locator("#country-filter").fill("us");
+      await page.locator("#country-filter").press("Tab");
       await filteredRequest;
 
       await page.locator("#menu").click();
