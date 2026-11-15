@@ -125,42 +125,20 @@ jobs:
       - name: Validate immutable release Compose generation (non-production)
         run: node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs
 
-      - name: Extract the approved CQRTV icon pack
+      - name: Extract and build the curated CQRTV icon pack
         run: |
           sudo apt-get update
           sudo apt-get install -y 7zip 7zip-rar
           mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv/ui
           7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar"
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Search/Magnifer--playcqrtv.svg" assets/icons/cqrtv/ui/search.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Notifications/Bell--playcqrtv.svg" assets/icons/cqrtv/ui/bell.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Chat-Round--playcqrtv.svg" assets/icons/cqrtv/ui/chat.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Home--playcqrtv.svg" assets/icons/cqrtv/ui/home.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Electronic Devices/Gamepad--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Electronic Devices/Gamepad-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad-minimalistic.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Sports/Ranking--playcqrtv.svg" assets/icons/cqrtv/ui/ranking.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Users/Users-Group-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/users.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Settings Fine Tuning/Settings-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/settings.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Pen--playcqrtv.svg" assets/icons/cqrtv/ui/edit.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Check-Circle--playcqrtv.svg" assets/icons/cqrtv/ui/check.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Settings Fine Tuning/Widget--playcqrtv.svg" assets/icons/cqrtv/ui/dashboard.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Business Statistic/Chart--playcqrtv.svg" assets/icons/cqrtv/ui/chart.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Like/Medal-Star--playcqrtv.svg" assets/icons/cqrtv/ui/medal.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Cup-Star--playcqrtv.svg" assets/icons/cqrtv/ui/cup.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Video Audio Sound/Play--playcqrtv.svg" assets/icons/cqrtv/ui/play.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Shield-Check--playcqrtv.svg" assets/icons/cqrtv/ui/shield.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Users/User-Plus-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/invite.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Letter--playcqrtv.svg" assets/icons/cqrtv/ui/mail.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Lock-Keyhole-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/lock.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Eye--playcqrtv.svg" assets/icons/cqrtv/ui/eye.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Eye-Closed--playcqrtv.svg" assets/icons/cqrtv/ui/eye-closed.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows Action/Login--playcqrtv.svg" assets/icons/cqrtv/ui/login.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows Action/Logout--playcqrtv.svg" assets/icons/cqrtv/ui/logout.svg
-          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows/Alt-Arrow-Left--playcqrtv.svg" assets/icons/cqrtv/ui/arrow-left.svg
-          test "$(find assets/icons/cqrtv -type f -name '*.svg' | wc -l)" -eq 25
-          if grep -RIE --include='*.svg' '<script|<foreignObject|href="https?://|javascript:' assets/icons/cqrtv/ui; then
-            echo "Unsafe SVG found in selected published icons."
-            exit 1
-          fi
+          node scripts/build-cqrtv-admin-icons.mjs --source "/tmp/cqrtv-icons/Icon Play CQRTV" --out assets/icons/cqrtv/ui
+          node --check scripts/build-cqrtv-admin-icons.mjs
+          node --test qa/admin-icon-pack.test.mjs
+          test "$(find assets/icons/cqrtv/ui -maxdepth 1 -type f -name '*.svg' | wc -l)" -eq 38
+
+      - name: Audit the full archive and report icon inventory
+        run: |
+          node scripts/build-cqrtv-admin-icons.mjs --source "/tmp/cqrtv-icons/Icon Play CQRTV"
 
       - name: Build the website image locally (no registry push)
         run: |
