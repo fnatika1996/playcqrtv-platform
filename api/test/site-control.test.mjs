@@ -49,9 +49,9 @@ test("edge gate fails closed for public pages and grants preview only to active 
   let mode = "coming_soon", admin = false, unavailable = false;
   const pool = {
     async query(sql) {
+      if (sql.includes("admin_sessions")) return { rowCount: admin ? 1 : 0, rows: [] };
       if (unavailable) throw new Error("database unavailable");
       if (sql.includes("site_control_settings")) return { rowCount: 1, rows: [{ mode }] };
-      if (sql.includes("admin_sessions")) return { rowCount: admin ? 1 : 0, rows: [] };
       throw new Error("unexpected query");
     }
   };
@@ -71,6 +71,10 @@ test("edge gate fails closed for public pages and grants preview only to active 
   assert.equal(preview.headers["X-CQRTV-Site-Mode"], "admin-preview");
   assert.equal(await routes.blocked({ headers: { cookie: "cqrtv_admin_session=opaque" } }), false);
   unavailable = true;
+  assert.equal(await routes.blocked({ headers: { cookie: "cqrtv_admin_session=opaque" } }), false);
+  const recovery = responseRecorder();
+  await routes.handle({ method: "GET", url: "/api/site-control/gate", headers: { cookie: "cqrtv_admin_session=opaque", "x-forwarded-uri": "/admin/site-control" } }, recovery);
+  assert.equal(recovery.status, 204, "active admin session remains able to reach recovery UI during settings outage");
   await assert.rejects(routes.blocked({ headers: {} }), /database unavailable/);
 });
 
