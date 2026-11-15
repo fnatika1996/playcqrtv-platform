@@ -9,12 +9,12 @@ const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script,"auth page contains its flow script");
 function node(initial={}){const listeners=new Map();return Object.assign({hidden:false,value:"",textContent:"",required:false,disabled:false,href:"",classList:{add(){}},addEventListener(type,listener){listeners.set(type,listener)},setCustomValidity(){},reportValidity(){return true}},initial)}
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r});return {promise,resolve}}
-function makeVerify(fetchImpl){
+function makeVerify(fetchImpl,mode="verify"){
   const elements={email:node({value:"player@example.test",required:true}),password:node({value:"LoginPassword123!",required:true}),newPassword:node()};
   const form=node({elements,addEventListener(type,listener){this.listeners??={};this.listeners[type]=listener}});
-  const nodes={"#form":form,"#status":node(),"#title":node({textContent:"Вход в аккаунт"}),"#desc":node({textContent:"Войдите."}),"#submit":node(),"#emailrow":node(),"#passwordrow":node(),"#tokenrow":node({hidden:true}),"#signup":node({href:"/#signup"}),".links":node(),"#verify-loading":node({hidden:true}),"#verify-success":node({hidden:true}),"#verify-failure":node({hidden:true}),"#verify-error-message":node(),"#verify-login-link":node({href:"/auth.html"}),"#verify-home-link":node({href:"/"}),"#verify-failure-login-link":node({href:"/auth.html"}),"#verify-failure-home-link":node({href:"/"})};
-  const document={title:"",body:node({classList:{add(name){this[name]=true}}}),querySelector(sel){return nodes[sel]??node()},getElementById(id){return nodes["#"+id]??node()}};
-  const calls=[];const context=vm.createContext({document,location:{search:"?mode=verify&token=local-test-token",href:""},URLSearchParams,fetch:async(url,options)=>{calls.push({url,options});return fetchImpl(url,options)},setTimeout,console});
+  const nodes={"#form":form,"#status":node(),"#title":node({textContent:"Вход в аккаунт"}),"#desc":node({textContent:"Войдите."}),"#submit":node(),"#emailrow":node(),"#passwordrow":node(),"#tokenrow":node({hidden:true}),"#signup":node({href:"/#signup"}),".links":node({before(){}}),".login-hero":node({hidden:true}),"#verify-loading":node({hidden:true}),"#verify-success":node({hidden:true}),"#verify-failure":node({hidden:true}),"#verify-error-message":node(),"#verify-login-link":node({href:"/auth.html"}),"#verify-home-link":node({href:"/"}),"#verify-failure-login-link":node({href:"/auth.html"}),"#verify-failure-home-link":node({href:"/"})};
+  const document={title:"",body:node({classList:{add(name){this[name]=true}}}),querySelector(sel){return nodes[sel]??node()},getElementById(id){return nodes["#"+id]??node()},createElement(){return node({style:{}})}};
+  const calls=[];const context=vm.createContext({document,location:{search:"?mode="+mode+"&token=local-test-token",href:""},URLSearchParams,fetch:async(url,options)=>{calls.push({url,options});return fetchImpl(url,options)},setTimeout,console});
   vm.runInContext(script,context);return {nodes,form,calls,document};
 }
 function response(ok,body){return {ok,async json(){return body}}}
@@ -28,4 +28,45 @@ test("verification failure shows an error and never displays the success CTA",as
 });
 test("verification network errors remain a failure state with safe navigation",async()=>{
   const page=makeVerify(async()=>{throw new Error("offline")});await nextTurn();await nextTurn();assert.equal(page.nodes["#verify-failure"].hidden,false);assert.equal(page.nodes["#verify-success"].hidden,true);assert.match(page.nodes["#verify-error-message"].textContent,/Проверьте соединение/);assert.equal(page.nodes["#verify-failure-home-link"].href,"/");
+});
+
+test("login screen includes its branded layout, labelled fields and responsive CQRTV styling",()=>{
+  assert.match(html,/class="login-hero"/);
+  assert.match(html,/login-page #auth-card\{width:min\(700px,100%\)/);
+  assert.match(html,/<label for="email-input">Email<\/label>/);
+  assert.match(html,/<label for="password-input">Пароль<\/label>/);
+  assert.match(html,/l.className="login-forgot"/);
+  assert.match(html,/id="signup"/);
+  assert.match(html,/prefers-reduced-motion:reduce/);
+});
+
+test("login hero is visible only in login mode",()=>{
+  const login=makeVerify(async()=>response(true,{}),"login");
+  assert.equal(login.nodes[".login-hero"].hidden,false);
+  assert.equal(login.document.body.classList["login-page"],true);
+  for(const mode of ["forgot","reset","verify"]){
+    const page=makeVerify(async()=>response(true,{}),mode);
+    assert.equal(page.nodes[".login-hero"].hidden,true,mode+" keeps login hero hidden");
+    assert.equal(page.document.body.classList["login-page"],undefined);
+  }
+});
+
+test("login art is a local optimized raster and stays decorative",async()=>{
+  const art=await readFile(new URL("../../assets/auth/login-hero.jpg",import.meta.url));
+  assert.deepEqual([...art.subarray(0,3)],[0xff,0xd8,0xff]);
+  assert.ok(art.length<150_000,"hero asset stays lightweight");
+  assert.match(html,/src="\/assets\/auth\/login-hero\.jpg" alt="" aria-hidden="true"/);
+  assert.match(html,/class="login-hero" hidden/);
+});
+
+test("login hero layers use a controlled banner layout at desktop and mobile sizes",()=>{
+  const css=html.match(/<style>([\s\S]*?)<\/style>/)?.[1]||"";
+  assert.match(css,/\.login-page \.login-hero:not\(\[hidden\]\)\{position:relative;display:block;width:100%;max-width:100%;min-width:0;height:200px/);
+  assert.match(css,/\.login-page \.login-hero:not\(\[hidden\]\)\{[^}]*overflow:hidden/);
+  assert.match(css,/\.login-page \.login-art\{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:right center/);
+  assert.match(css,/\.login-page \.login-hero-shade\{position:absolute;inset:0;pointer-events:none;background:linear-gradient/);
+  assert.match(css,/\.login-page \.login-hero-copy\{position:absolute;left:0;top:50%;z-index:1/);
+  assert.ok(css.includes("@media(max-width:540px)")&&css.includes(".login-page .login-hero:not([hidden]){height:126px"),"tablet/phone hero height is controlled");
+  assert.ok(css.includes("@media(max-width:360px)")&&css.includes(".login-page .login-hero:not([hidden]){height:116px"),"small phone hero height is controlled");
+  assert.match(css,/object-position:68% center/);
 });
