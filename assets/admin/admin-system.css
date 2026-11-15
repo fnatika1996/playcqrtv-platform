@@ -192,3 +192,10 @@ body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#
 .admin-app .preview-link{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 13px;border:1px solid #ffffff1a;border-radius:9px;color:#e2e2e1;text-decoration:none;background:#1d1f23}
 .admin-app .preview-link:hover{border-color:#ff76295c;color:white}
 .admin-app .field>label .inline-icon{opacity:.85}
+
+.admin-app :where(button,input,select,textarea):disabled{opacity:.58;cursor:not-allowed}
+.admin-app .filters input[type=search]{padding-left:40px;background-image:url("/assets/icons/cqrtv/ui/search.svg");background-repeat:no-repeat;background-position:13px center;background-size:17px 17px}
+.admin-app .dialog-actions .danger{border-color:#ff8e8255;background:#422421;color:#ffd0c8}
+.admin-app .dialog-actions .danger:hover{background:#512b26}
+.admin-app .dialog-actions .confirm{color:#152218;background:linear-gradient(100deg,#a9e9bb,#79d9a5);border-color:#a9e9bb;box-shadow:0 8px 22px #79d9a51e}
+.admin-app .status[role=status]:empty{display:none}
