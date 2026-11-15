@@ -109,60 +109,13 @@ jobs:
           echo "web_ref=ghcr.io/fnatika1996/playcqrtv-platform@$WEB_IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
           echo "api_ref=ghcr.io/fnatika1996/playcqrtv-api@$API_IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
 
-      - name: Submit digest-pinned Compose to Hostinger
+      - name: Submit Compose and verify Hostinger action and containers
         env:
           HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
-          RELEASE_COMPOSE: ${{ steps.release-compose.outputs.manifest }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          payload="$(jq -n --arg project_name playcqrtv --rawfile content "$RELEASE_COMPOSE" '{project_name:$project_name,content:$content}')"
-          response_file="$RUNNER_TEMP/hostinger-deploy-response.json"
-          http_status="$(curl --silent --show-error --max-time 30 --output "$response_file" --write-out '%{http_code}' \
-            --request POST \
-            --header "Authorization: Bearer $HOSTINGER_API_KEY" \
-            --header 'Content-Type: application/json' \
-            --data-binary "$payload" \
-            'https://developers.hostinger.com/api/vps/v1/virtual-machines/2150572/docker')"
-          if [[ ! "$http_status" =~ ^2 ]]; then
-            echo "Hostinger deployment API returned HTTP $http_status. No response body or credentials are printed."
-            exit 1
-          fi
-          echo "Hostinger accepted the digest-pinned Compose request."
-
-      - name: Verify deployed Hostinger image digests
-        env:
-          HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
+          RELEASE_COMPOSE_PATH: ${{ steps.release-compose.outputs.manifest }}
           WEB_IMAGE_REF: ${{ steps.release-compose.outputs.web_ref }}
           API_IMAGE_REF: ${{ steps.release-compose.outputs.api_ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          response_file="$RUNNER_TEMP/hostinger-containers.json"
-          verified=false
-          for attempt in $(seq 1 12); do
-            http_status="$(curl --silent --show-error --max-time 10 --output "$response_file" --write-out '%{http_code}' \
-              --header "Authorization: Bearer $HOSTINGER_API_KEY" \
-              'https://developers.hostinger.com/api/vps/v1/virtual-machines/2150572/docker/playcqrtv/containers' || true)"
-            if [[ "$http_status" == "200" ]] && jq -e --arg web "$WEB_IMAGE_REF" --arg api "$API_IMAGE_REF" '
-              any(.[]; .name == "playcqrtv-web" and .image == $web) and
-              any(.[]; (.name | test("api")) and .image == $api)
-            ' "$response_file" >/dev/null 2>&1; then
-              verified=true
-              break
-            fi
-            sleep 5
-          done
-          if [[ "$verified" != "true" ]]; then
-            echo "Hostinger did not report both expected immutable image refs; deployment needs operator review."
-            exit 1
-          fi
-          {
-            echo "### Immutable deployment verified"
-            echo "- Commit: $GITHUB_SHA"
-            echo "- Web ref: $WEB_IMAGE_REF"
-            echo "- API ref: $API_IMAGE_REF"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: node qa/hostinger-deploy.mjs
 
       - name: Verify live website
         shell: bash
