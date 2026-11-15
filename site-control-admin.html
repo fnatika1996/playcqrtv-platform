@@ -10,13 +10,13 @@
 @media(max-width:600px){.social-item{grid-template-columns:auto minmax(0,1fr)}.social-actions{grid-column:1/-1;justify-content:flex-end}}
 @media(max-width:760px){.shell{display:block}aside{position:static;height:auto;padding:12px 14px;border-right:0;border-bottom:1px solid var(--line)}.brand{padding:0 4px 10px}.nav-label{display:none}.nav-link{margin-top:10px}.topbar{height:58px;padding:0 15px}.content{padding:19px 14px 36px}}
 @media(max-width:390px){.content{padding-left:10px;padding-right:10px}.row{grid-template-columns:1fr}.panel{padding:14px}.topbar{padding:0 10px}}
-</style></head>
-<body><div class="shell">
-<aside><div class="brand"><span class="brand-mark">C</span><div><strong>CQRTV</strong><small>ADMINISTRATION</small></div></div><div class="nav-label">Рабочее пространство</div><a class="nav-link" href="/admin"><img alt="" src="/assets/icons/cqrtv/ui/dashboard.svg">Обзор панели</a></aside>
-<div class="main"><header class="topbar"><strong>Управление сайтом</strong><a href="/site-closed.html" target="_blank" rel="noopener">Предпросмотр</a></header>
+</style><link rel="stylesheet" href="/assets/admin/admin-system.css"></head>
+<body class="admin-app"><div class="shell">
+<aside><div class="brand"><span class="brand-mark">C</span><div><strong>CQRTV</strong><small>ADMINISTRATION</small></div></div><div class="nav-label">Рабочее пространство</div><nav class="nav" aria-label="Разделы панели"><a class="nav-link" href="/admin"><img alt="" src="/assets/icons/cqrtv/ui/dashboard.svg">Обзор</a><a class="nav-link" href="/admin#users-view"><img alt="" src="/assets/icons/cqrtv/ui/users.svg">Пользователи</a><a class="nav-link" href="#settings-form" aria-current="page"><img alt="" src="/assets/icons/cqrtv/ui/settings.svg">Основные настройки</a><a class="nav-link" href="#social-form"><img alt="" src="/assets/icons/cqrtv/ui/chat.svg">Социальные ссылки</a></nav></aside>
+<div class="main"><header class="topbar"><strong>Управление сайтом</strong><span class="topbar-spacer"></span><a class="preview-link" href="/site-closed.html" target="_blank" rel="noopener">Предпросмотр</a></header>
 <main class="content"><p class="eyebrow">Site control</p><h1 class="title">Режим и публичная страница</h1><p class="lead">Изменения сохраняются в PostgreSQL и применяются сразу. Дата запуска показывает обратный отсчёт, но не открывает сайт автоматически.</p>
 <div class="layout">
-<section class="panel"><h2>Основные настройки</h2><form id="settings-form">
+<section class="panel"><h2><img class="section-icon" src="/assets/icons/cqrtv/ui/settings.svg" alt="" aria-hidden="true">Основные настройки</h2><form id="settings-form">
 <div class="field"><label for="mode">Режим сайта</label><select id="mode" name="mode"><option value="open">Открыт — платформа доступна</option><option value="coming_soon">В разработке — страница ожидания</option><option value="maintenance">Технические работы</option></select></div>
 <div class="field"><label for="heading">Заголовок</label><input id="heading" name="heading" maxlength="120" required></div>
 <div class="field"><label for="subtitle">Подзаголовок</label><input id="subtitle" name="subtitle" maxlength="180" required></div>
@@ -32,17 +32,17 @@
 <div class="field"><label for="aboutTitle">Заголовок модального окна</label><input id="aboutTitle" name="aboutTitle" maxlength="120" required></div>
 <div class="field"><label for="aboutBody">Подробное описание платформы</label><textarea id="aboutBody" name="aboutBody" maxlength="4000" required></textarea></div>
 <label class="check"><input id="animationEnabled" type="checkbox">Включить лёгкую анимацию фона</label>
-<div class="field"><label for="backgroundFile">Фоновая картинка (PNG, JPEG или WebP, до 2 MB)</label><input id="backgroundFile" type="file" accept="image/png,image/jpeg,image/webp"><p class="hint">SVG и исполняемые форматы не принимаются. Новое изображение заменит предыдущее после сохранения настроек.</p></div>
+<div class="field"><label for="backgroundFile"><img class="inline-icon" src="/assets/icons/cqrtv/ui/upload.svg" alt="" aria-hidden="true">Фоновая картинка (PNG, JPEG или WebP, до 2 MB)</label><input id="backgroundFile" type="file" accept="image/png,image/jpeg,image/webp"><p class="hint">SVG и исполняемые форматы не принимаются. Новое изображение заменит предыдущее после сохранения настроек.</p></div>
 <div class="buttons"><button id="save-settings" class="primary" type="submit">Сохранить настройки</button><button id="clear-background" class="secondary" type="button">Убрать фон</button></div><p id="settings-status" class="status" role="status" aria-live="polite"></p>
 <div class="preview-box"><strong>Безопасный предпросмотр:</strong> эта сессия администратора обходит закрытый режим; обычные посетители продолжают видеть выбранную страницу.</div>
 </form></section>
-<section class="panel"><h2>Социальные ссылки</h2><form id="social-form">
+<section class="panel"><h2><img class="section-icon" src="/assets/icons/cqrtv/ui/chat.svg" alt="" aria-hidden="true">Социальные ссылки</h2><form id="social-form">
 <input id="social-id" type="hidden">
 <div class="field"><label for="social-label">Платформа / название</label><input id="social-label" maxlength="40" placeholder="Например, Telegram" required></div>
 <div class="field"><label for="social-url">Ссылка (только HTTPS)</label><input id="social-url" type="url" maxlength="2048" placeholder="https://t.me/..." required></div>
 <div class="row"><div class="field"><label for="social-icon">Готовая иконка CQRTV</label><select id="social-icon"><option value="chat">Диалог</option><option value="play">Play</option><option value="mail">Письмо</option><option value="home">Дом</option><option value="users">Игроки</option><option value="gamepad">Игра</option><option value="ranking">Рейтинг</option></select></div>
 <div class="field"><label for="social-file">Своя иконка (PNG, JPEG или WebP)</label><input id="social-file" type="file" accept="image/png,image/jpeg,image/webp"><label class="check"><input id="use-packaged-icon" type="checkbox" checked>Использовать иконку CQRTV вместо загруженной</label></div></div>
-<div class="row"><label class="check"><input id="social-enabled" type="checkbox" checked>Показывать посетителям</label><div class="field"><label for="social-order">Порядок</label><input id="social-order" type="number" min="-1000" max="1000" value="0"></div></div>
+<div class="row"><label class="check"><input id="social-enabled" type="checkbox" checked>Показывать посетителям</label><div class="field"><label for="social-order"><img class="inline-icon" src="/assets/icons/cqrtv/ui/reorder.svg" alt="" aria-hidden="true">Порядок</label><input id="social-order" type="number" min="-1000" max="1000" value="0"></div></div>
 <div class="buttons"><button id="save-social" class="primary" type="submit">Добавить ссылку</button><button id="cancel-social" class="secondary" type="button" hidden>Отмена</button></div><p id="social-status" class="status" role="status" aria-live="polite"></p>
 </form><div id="social-list" class="social-list" aria-live="polite"></div><p class="hint">Публично показываются только активные ссылки. Порядок задаётся числом; одинаковые значения сортируются стабильно.</p></section>
 </div></main></div></div>
