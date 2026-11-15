@@ -31,6 +31,13 @@ try {
     assert.equal(await page.getByLabel("Рабочий email", { exact: true }).isVisible(), true);
     assert.equal(await page.getByLabel("Пароль", { exact: true }).isVisible(), true);
     assert.equal(await page.getByRole("button", { name: "Войти в панель" }).isVisible(), true);
+    const loginTargets = await page.evaluate(() => ["#email", "#password", "#eye", "#submit"].map(selector => {
+      const rect = document.querySelector(selector).getBoundingClientRect();
+      return { selector, width: Math.round(rect.width), height: Math.round(rect.height) };
+    }));
+    assert.ok(loginTargets.filter(target => target.selector !== "#eye").every(target => target.height >= 44), "login fields and submit target should be at least 44px high");
+    assert.ok(loginTargets.find(target => target.selector === "#eye").width >= 44, "password visibility target should be at least 44px wide");
+    console.log(`Login click targets at ${width}px: ${JSON.stringify(loginTargets)}`);
     const hero = await page.locator(".hero img").evaluate(image => ({
       loaded: image.naturalWidth > 0 && image.naturalHeight > 0,
       fit: getComputedStyle(image).objectFit,
@@ -39,8 +46,8 @@ try {
     assert.equal(hero.loaded, true);
     assert.equal(hero.fit, "cover");
     assert.equal(hero.height, width <= 580 ? 135 : 170);
-    const loginOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-    assert.equal(loginOverflow, false, `login page has horizontal overflow at ${width}px`);
+    const loginOverflow = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > window.innerWidth, viewport: window.innerWidth, document: document.documentElement.scrollWidth, offenders: [...document.querySelectorAll("body *")].map(element => ({ tag: element.tagName, className: element.className?.baseVal || element.className, id: element.id, right: Math.round(element.getBoundingClientRect().right) })).filter(element => element.right > window.innerWidth + 1).slice(0, 8) }));
+    assert.equal(loginOverflow.overflow, false, `login page has horizontal overflow at ${width}px: ${JSON.stringify(loginOverflow)}`);
     if (width === 390) {
       await page.keyboard.press("Tab");
       assert.equal(await page.evaluate(() => document.activeElement.matches(".back")), true, "first keyboard focus should reach the back link");
