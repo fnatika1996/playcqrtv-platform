@@ -230,3 +230,8 @@ body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#
   .admin-app .preview-link{min-height:38px;padding:0 8px;font-size:10px;white-space:nowrap}
   .admin-app .layout .buttons>*{flex:1 1 130px}
 }
+
+@media(max-width:440px){
+  .admin-app .preview-link{width:40px;min-width:40px;padding:0;font-size:0}
+  .admin-app .preview-link:before{content:"";width:18px;height:18px;background:url("/assets/icons/cqrtv/ui/home.svg") center/contain no-repeat}
+}
