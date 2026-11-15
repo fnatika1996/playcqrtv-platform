@@ -170,7 +170,7 @@ jobs:
           base=http://127.0.0.1:8765
           fetch() { curl --silent --show-error --fail --header 'Host: playcqrtv.com' -D "$2.headers" "$base$1" -o "$2"; }
           fetch /admin/login "$RUNNER_TEMP/admin-login.html"
-          fetch /admin "$RUNNER_TEMP/admin.html"
+          curl --silent --show-error --fail --header 'Host: playcqrtv.com' --header 'Cookie: cqrtv_qa_admin=valid' -D "$RUNNER_TEMP/admin.html.headers" "$base/admin" -o "$RUNNER_TEMP/admin.html"
           fetch /assets/admin/admin-hero.png "$RUNNER_TEMP/admin-hero.png"
           fetch /assets/icons/cqrtv/ui/mail.svg "$RUNNER_TEMP/mail.svg"
           fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
