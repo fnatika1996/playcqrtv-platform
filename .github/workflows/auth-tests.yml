@@ -83,6 +83,28 @@ jobs:
         run: |
           node --check api/admin-routes.mjs
           node --check api/scripts/grant-admin.mjs
+      - name: Smoke-start packaged API image with disposable PostgreSQL
+        run: |
+          docker run --detach --name cqrtv-api-image-smoke --network host \
+            --env DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/cqrtv_admin_test \
+            --env APP_ORIGIN=http://localhost \
+            cqrtv-api-package-qa >/dev/null
+          cleanup() { docker rm --force cqrtv-api-image-smoke >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail http://127.0.0.1:3000/api/health; then
+              echo
+              echo "PASS packaged API image initialized against disposable PostgreSQL and served /api/health."
+              exit 0
+            fi
+            if [ "$(docker inspect --format '{{.State.Running}}' cqrtv-api-image-smoke)" != "true" ]; then
+              docker logs cqrtv-api-image-smoke
+              exit 1
+            fi
+            sleep 1
+          done
+          docker logs cqrtv-api-image-smoke
+          exit 1
 
   admin-browser-build-qa:
     name: Admin browser and static image QA (non-production)
