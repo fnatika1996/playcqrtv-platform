@@ -134,11 +134,11 @@ try {
     headers: { Origin: process.env.APP_ORIGIN, "Content-Type": "application/json" },
     body: JSON.stringify({ email: "rollback-test@example.test", password })
   });
-  assert.equal(baselineLogin.status, 200,
-    "characterization: baseline API accepts a suspended account, so it is not a safe API rollback after suspend actions");
+  assert.equal(baselineLogin.status, 401,
+    "current main baseline rejects suspended accounts as well");
 
   console.log("PASS: baseline API starts on the additive migrated schema.");
-  console.log("CONFIRMED LIMITATION: baseline API authenticates the synthetic suspended account; do not API-rollback after suspend actions.");
+  console.log("CONFIRMED: current main baseline rejects the synthetic suspended account.");
 } finally {
   if (legacyProcess && legacyProcess.exitCode === null) {
     legacyProcess.kill("SIGTERM");
