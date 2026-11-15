@@ -6,6 +6,11 @@ on:
     paths:
       - index.html
       - auth.html
+      - admin.html
+      - admin-login.html
+      - assets/admin/**
+      - Caddyfile
+      - Dockerfile
       - assets/registration-roles.mjs
       - api/**
       - .github/workflows/auth-tests.yml
@@ -16,14 +21,44 @@ permissions:
 jobs:
   auth-tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: cqrtv_admin_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cqrtv_admin_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      ADMIN_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/cqrtv_admin_test
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install existing API dependencies
+        run: npm install --prefix api --no-save --ignore-scripts --no-audit --no-fund
+      - name: Inspect branded icon candidates from the source archive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip 7zip-rar
+          mkdir -p "$RUNNER_TEMP/cqrtv-icons"
+          7z x -y -o"$RUNNER_TEMP/cqrtv-icons" "Icon Play CQRTV.rar"
+          find "$RUNNER_TEMP/cqrtv-icons" -type f -iname '*.svg' | grep -Ei '/(mail|letter|lock|eye|login|logout|arrow|close|user|key|password|shield|check)' | sort || true
       - name: Run account authentication tests
         run: node --test api/test/*.test.mjs
       - name: Check API syntax
         run: node --check api/server.mjs
       - name: Check registration role module syntax
         run: node --check assets/registration-roles.mjs
+      - name: Check admin route and bootstrap syntax
+        run: |
+          node --check api/admin-routes.mjs
+          node --check api/scripts/grant-admin.mjs
+
