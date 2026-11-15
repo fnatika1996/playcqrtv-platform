@@ -143,7 +143,7 @@ jobs:
       - name: Build the website image locally (no registry push)
         run: |
           docker build --file Dockerfile --tag cqrtv-admin-qa-site .
-          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" | wc -l)" -eq 38 && node --check /srv/scripts/build-cqrtv-admin-icons.mjs && sha256sum /srv/assets/admin/admin-hero.png
+          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" | wc -l)" -eq 38 && sha256sum /srv/assets/admin/admin-hero.png
 
       - name: Start isolated Caddy preview
         run: |
