@@ -1,19 +1,22 @@
 export function bindRegistrationRoles(form) {
   const primaryInputs = [...form.querySelectorAll('input[name="primaryRole"]')];
   const secondaryInputs = [...form.querySelectorAll('input[name="secondaryRoles"]')];
-  const status = form.querySelector("#secondary-role-status");
-  if (!primaryInputs.length || !secondaryInputs.length || !status) return;
+  const counter = form.querySelector("#secondary-role-counter");
+  const resetButton = form.querySelector("#secondary-role-reset");
+  if (!primaryInputs.length || !secondaryInputs.length || !counter || !resetButton) return;
 
-  function update(message = "") {
+  function update() {
     const primaryRole = primaryInputs.find(input => input.checked)?.value || "";
     for (const input of secondaryInputs) {
       if (input.value === primaryRole) input.checked = false;
-      input.disabled = Boolean(primaryRole) && input.value === primaryRole;
     }
     const selectedCount = secondaryInputs.filter(input => input.checked).length;
-    status.textContent = message || (selectedCount
-      ? `Выбрано ${selectedCount} из 2 дополнительных ролей.`
-      : "Можно выбрать до двух дополнительных ролей.");
+    for (const input of secondaryInputs) {
+      input.disabled = (Boolean(primaryRole) && input.value === primaryRole)
+        || (selectedCount >= 2 && !input.checked);
+    }
+    counter.textContent = `${selectedCount}/2`;
+    resetButton.disabled = selectedCount === 0;
   }
 
   for (const input of primaryInputs) {
@@ -22,15 +25,16 @@ export function bindRegistrationRoles(form) {
 
   for (const input of secondaryInputs) {
     input.addEventListener("change", () => {
-      if (input.checked && secondaryInputs.filter(option => option.checked).length > 2) {
-        input.checked = false;
-        update("Можно выбрать не более двух дополнительных ролей.");
-        return;
-      }
       update();
     });
   }
 
+  resetButton.addEventListener("click", () => {
+    for (const input of secondaryInputs) input.checked = false;
+    update();
+  });
+
   form.addEventListener("reset", () => setTimeout(() => update(), 0));
   update();
 }
+
