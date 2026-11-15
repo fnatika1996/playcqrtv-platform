@@ -127,7 +127,7 @@ body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#
 .admin-app .input:focus-within{border-color:#ff914d;box-shadow:0 0 0 3px #ff76291d}
 .admin-app .input input{min-height:46px;border:0;background:transparent;box-shadow:none}
 .admin-app .input>img{width:18px;height:18px;opacity:.75}
-.admin-app .eye{width:40px;min-height:42px;border:0;border-radius:8px;background:transparent}
+.admin-app .eye{width:44px;min-width:44px;min-height:44px;border:0;border-radius:8px;background:transparent}
 .admin-app .eye:hover{background:#ffffff0c}
 .admin-app .submit{width:100%;border-radius:10px;cursor:pointer}
 .admin-app .message{border-color:#ff8e8255;background:#321e1d;color:#ffc2b8}
