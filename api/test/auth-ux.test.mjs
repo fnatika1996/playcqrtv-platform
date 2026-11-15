@@ -32,7 +32,7 @@ test("verification network errors remain a failure state with safe navigation",a
 
 test("login screen includes its branded layout, labelled fields and responsive CQRTV styling",()=>{
   assert.match(html,/class="login-hero"/);
-  assert.match(html,/login-page #auth-card\{width:min\(600px,100%\)/);
+  assert.match(html,/login-page #auth-card\{width:min\(700px,100%\)/);
   assert.match(html,/<label for="email-input">Email<\/label>/);
   assert.match(html,/<label for="password-input">Пароль<\/label>/);
   assert.match(html,/l.className="login-forgot"/);
@@ -49,4 +49,12 @@ test("login hero is visible only in login mode",()=>{
     assert.equal(page.nodes[".login-hero"].hidden,true,mode+" keeps login hero hidden");
     assert.equal(page.document.body.classList["login-page"],undefined);
   }
+});
+
+test("login art is a local optimized raster and stays decorative",async()=>{
+  const art=await readFile(new URL("../../assets/auth/login-hero.jpg",import.meta.url));
+  assert.deepEqual([...art.subarray(0,3)],[0xff,0xd8,0xff]);
+  assert.ok(art.length<150_000,"hero asset stays lightweight");
+  assert.match(html,/src="\/assets\/auth\/login-hero\.jpg" alt="" aria-hidden="true"/);
+  assert.match(html,/class="login-hero" hidden/);
 });
