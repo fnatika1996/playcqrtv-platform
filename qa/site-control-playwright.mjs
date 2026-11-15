@@ -18,7 +18,7 @@ try{
   assert.equal(await page.title(),"CQRTV — скоро");
   assert.equal(await page.getByRole("heading",{name:"CQRTV скоро откроется"}).isVisible(),true);
   assert.equal(await page.getByRole("button",{name:"Что такое CQRTV?"}).isVisible(),true);
-  assert.equal(await page.getByRole("link",{name:"Telegram QA"}).getAttribute("href"),"https://t.me/cqrtv");
+  const social=page.getByRole("link",{name:"Telegram QA"});await social.waitFor({state:"visible"});assert.equal(await social.getAttribute("href"),"https://t.me/cqrtv");
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
   assert.equal(overflow,false,"coming soon page must not overflow horizontally at "+width+"px");
   if(width===1440)await page.screenshot({path:new URL("site-control-desktop.png",dir).pathname,fullPage:true});
@@ -33,7 +33,7 @@ try{
    await page.keyboard.press("Escape");
    assert.equal(await dialog.isHidden(),true);
    assert.equal(await button.evaluate(x=>x===document.activeElement),true,"focus should return to the launch page button");
-   assert.equal(await page.locator("#scene").evaluate(x=>getComputedStyle(x,"::before").animationDuration),"0.01ms");
+   const duration=await page.locator("#scene").evaluate(x=>getComputedStyle(x,"::before").animationDuration);const durationValue=parseFloat(duration);assert.ok(duration.endsWith("ms")?durationValue<=0.01:durationValue<=0.00001,"reduced motion should disable background motion");
    await page.screenshot({path:new URL("site-control-mobile.png",dir).pathname,fullPage:true});
   }
   await context.close();
@@ -41,7 +41,7 @@ try{
  const maintenanceContext=await browser.newContext({viewport:{width:390,height:844},extraHTTPHeaders:{"X-QA-Site-Mode":"maintenance"}});
  const maintenancePage=await maintenanceContext.newPage();
  await maintenancePage.goto(baseUrl+"/",{waitUntil:"domcontentloaded"});
- assert.equal(await maintenancePage.getByRole("heading",{name:"CQRTV на обслуживании"}).isVisible(),true);
+ await maintenancePage.getByRole("heading",{name:"CQRTV на обслуживании"}).waitFor({state:"visible"});
  assert.equal(await maintenancePage.getByText("Выполняются плановые технические работы.").isVisible(),true);
  await maintenanceContext.close();
  const previewContext=await browser.newContext({viewport:{width:1024,height:768},extraHTTPHeaders:{"X-QA-Admin-Preview":"yes"}});
