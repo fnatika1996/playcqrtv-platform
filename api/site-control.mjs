@@ -104,7 +104,7 @@ export function validateSiteSettings(input) {
 export function createSiteControlRoutes({ pool, json, body, tokenHash }) {
   async function currentSettings() {
     const result = await pool.query("SELECT * FROM site_control_settings WHERE id=1");
-    if (!result.rowCount) throw new Error("Site settings are unavailable.");
+    if (!result.rowCount || !modes.has(result.rows[0].mode)) throw new Error("Site settings are unavailable.");
     return result.rows[0];
   }
 
@@ -205,6 +205,7 @@ export function createSiteControlAdminRoutes({ pool, json, body }) {
 
     if (req.method === "POST" && path === "/api/admin/site-control/settings") {
       const settings = validateSiteSettings(await body(req, 16384));
+      const previousBackground = await pool.query("SELECT background_asset_id FROM site_control_settings WHERE id=1");
       if (settings.backgroundAssetId) {
         const asset = await pool.query("SELECT 1 FROM site_control_assets WHERE id=$1 AND kind='background'", [settings.backgroundAssetId]);
         if (!asset.rowCount) return json(res, 400, { error: "Фоновый файл не найден." }), true;
@@ -213,6 +214,8 @@ export function createSiteControlAdminRoutes({ pool, json, body }) {
         "UPDATE site_control_settings SET mode=$1,heading=$2,subtitle=$3,description=$4,status_label=$5,maintenance_heading=$6,maintenance_subtitle=$7,maintenance_description=$8,maintenance_status_label=$9,launch_at=$10,countdown_enabled=$11,about_button_label=$12,about_title=$13,about_body=$14,animation_enabled=$15,background_asset_id=$16,updated_at=now() WHERE id=1 RETURNING *",
         [settings.mode,settings.heading,settings.subtitle,settings.description,settings.statusLabel,settings.maintenanceHeading,settings.maintenanceSubtitle,settings.maintenanceDescription,settings.maintenanceStatusLabel,settings.launchAt,settings.countdownEnabled,settings.aboutButtonLabel,settings.aboutTitle,settings.aboutBody,settings.animationEnabled,settings.backgroundAssetId]
       );
+      const previousAsset = previousBackground.rows[0]?.background_asset_id;
+      if (previousAsset && previousAsset !== settings.backgroundAssetId) await pool.query("DELETE FROM site_control_assets a WHERE a.id=$1 AND NOT EXISTS (SELECT 1 FROM site_control_settings WHERE background_asset_id=a.id) AND NOT EXISTS (SELECT 1 FROM site_control_social_links WHERE icon_asset_id=a.id)", [previousAsset]);
       json(res, 200, { settings: settingsView(result.rows[0]) });
       return true;
     }
@@ -248,10 +251,15 @@ export function createSiteControlAdminRoutes({ pool, json, body }) {
         const asset = await pool.query("SELECT 1 FROM site_control_assets WHERE id=$1 AND kind='social'", [iconAssetId]);
         if (!asset.rowCount) { json(res, 400, { error: "Загруженная иконка не найдена." }); return true; }
       }
+      const previous = await pool.query("SELECT icon_asset_id FROM site_control_social_links WHERE id=$1", [id]);
       const result = await pool.query(
         "INSERT INTO site_control_social_links(id,label,url,icon_key,icon_asset_id,enabled,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO UPDATE SET label=EXCLUDED.label,url=EXCLUDED.url,icon_key=EXCLUDED.icon_key,icon_asset_id=EXCLUDED.icon_asset_id,enabled=EXCLUDED.enabled,sort_order=EXCLUDED.sort_order,updated_at=now() RETURNING id,label,url,icon_key,icon_asset_id,enabled,sort_order",
         [id,label,href,iconKey,iconAssetId,data.enabled,sortOrder]
       );
+      const previousAsset = previous.rows[0]?.icon_asset_id;
+      if (previousAsset && previousAsset !== iconAssetId) {
+        await pool.query("DELETE FROM site_control_assets a WHERE a.id=$1 AND NOT EXISTS (SELECT 1 FROM site_control_settings WHERE background_asset_id=a.id) AND NOT EXISTS (SELECT 1 FROM site_control_social_links WHERE icon_asset_id=a.id)", [previousAsset]);
+      }
       const row = result.rows[0];
       json(res, 200, { socialLink: { id:row.id,label:row.label,url:row.url,iconKey:row.icon_key,iconAssetId:row.icon_asset_id,enabled:row.enabled,sortOrder:row.sort_order } });
       return true;
@@ -259,7 +267,9 @@ export function createSiteControlAdminRoutes({ pool, json, body }) {
 
     const removeLink = req.method === "POST" && path.match(/^\/api\/admin\/site-control\/social-links\/([0-9a-f-]{36})\/delete$/i);
     if (removeLink) {
+      const existing = await pool.query("SELECT icon_asset_id FROM site_control_social_links WHERE id=$1", [removeLink[1]]);
       await pool.query("DELETE FROM site_control_social_links WHERE id=$1", [removeLink[1]]);
+      if (existing.rows[0]?.icon_asset_id) await pool.query("DELETE FROM site_control_assets a WHERE a.id=$1 AND NOT EXISTS (SELECT 1 FROM site_control_settings WHERE background_asset_id=a.id) AND NOT EXISTS (SELECT 1 FROM site_control_social_links WHERE icon_asset_id=a.id)", [existing.rows[0].icon_asset_id]);
       json(res, 200, { ok: true });
       return true;
     }
