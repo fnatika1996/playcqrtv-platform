@@ -46,7 +46,7 @@ if (outputDir) {
     version: manifest.version,
     icons: manifest.icons.map(({ key, file, usedBy }) => ({ key, file, usedBy }))
   };
-  fs.writeFileSync(path.join(outputDir, "admin-icon-map.json"), JSON.stringify(map, null, 2) + "\\n");
+  fs.writeFileSync(path.join(outputDir, "admin-icon-map.json"), JSON.stringify(map, null, 2) + "\n");
 }
 const categories = new Set(manifest.icons.map(icon => icon.source.split("/")[0]));
 console.log("CQRTV_ICON_AUDIT " + JSON.stringify({
@@ -58,4 +58,4 @@ console.log("CQRTV_ICON_AUDIT " + JSON.stringify({
   sourceCategoryCount: categories.size,
   output: outputDir ? path.relative(process.cwd(), outputDir) : "audit-only"
 }));
-console.log("CQRTV_ICON_SELECTION " + manifest.icons.map(icon => icon.file + " <= " + icon.source).join("\\n"));
+console.log("CQRTV_ICON_SELECTION " + manifest.icons.map(icon => icon.file + " <= " + icon.source).join("\n"));
