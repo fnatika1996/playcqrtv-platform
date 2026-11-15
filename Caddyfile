@@ -54,9 +54,7 @@ playcqrtv.com {
                     copy_headers X-CQRTV-Site-Mode
                 }
                 @site_closed header X-CQRTV-Site-Mode coming_soon maintenance
-                handle @site_closed {
-                    rewrite * /site-closed.html
-                }
+                rewrite @site_closed /site-closed.html
                 header Cache-Control "no-store"
                 root * /srv
                 file_server
