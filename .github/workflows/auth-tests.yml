@@ -50,6 +50,11 @@ jobs:
           node-version: 22
       - name: Install existing API dependencies
         run: npm install --prefix api --no-save --ignore-scripts --no-audit --no-fund
+      - name: Build and inspect API image contents (non-production, no push)
+        run: |
+          docker build --file api/Dockerfile --tag cqrtv-api-package-qa api
+          docker run --rm --entrypoint sh cqrtv-api-package-qa -eu -c 'test -s /app/site-control.mjs && test -s /app/migrations/002_site_control.sql && node --check /app/server.mjs && node --check /app/site-control.mjs'
+          docker run --rm --entrypoint node cqrtv-api-package-qa --input-type=module -e 'await import("/app/site-control.mjs"); await import("/app/admin-routes.mjs"); console.log("PASS API image resolves Site Control imports and contains migration 002.")'
       - name: Inspect branded icon candidates from the source archive
         run: |
           sudo apt-get update
