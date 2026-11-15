@@ -26,16 +26,23 @@ The effective file must list exactly one immutable registry ref for web and API 
 
 ## Hostinger transfer constraint and chosen integration
 
-Hostinger's `deploy-on-vps@v2` action constructs a GitHub blob URL from `github.sha` and one `docker-compose-path`; it cannot point at a file generated later in the runner workspace. PR #11 therefore replaces that action with a direct request to the documented Hostinger Docker API, which accepts the complete Compose YAML in the `content` field. The workflow renders and validates that raw manifest after Buildx has pushed both images and returned registry digests. It keeps the push-to-main and workflow_dispatch triggers, serializes production deploy jobs, keeps mutable `:latest` out of image tags/config, and uses a read-only project-containers API query to require the reported refs to match the submitted web/API digests.
+Hostinger's `deploy-on-vps@v2` action constructs a GitHub blob URL from `github.sha` and one `docker-compose-path`; it cannot point at a file generated later in the runner workspace. PR #11 therefore uses the documented Docker API with the full generated Compose YAML in `content`.
+
+The API returns a `VPSV1ActionActionResource` with an action ID and state. The workflow now requires a valid action ID, polls the documented action-details endpoint to a recognized success state, stops on terminal failure or unknown state, and only then polls the project's container list. It requires exactly one web and one API container with the expected immutable image refs, running state, and no reported unhealthy/starting health. The following public page/icon/API checks are read-only. POST is never retried because a network failure may occur after Hostinger accepted it; timeout or partial failure stops for owner/operator review and does not trigger automatic rollback. The recognized state vocabulary remains fail-closed and must be checked against a real response before release.
+
+**Replacement and data-preservation risk:** the official Hostinger Docker API describes this endpoint as `create_new_project` and says a project with the same name is replaced. The request uses project name `playcqrtv`. The submitted Compose preserves the existing named-volume declarations, but the public API reference does not promise that replacement preserves the VPS's existing volume data, Caddy state, or availability. This behavior has not been verified against the live project. Therefore, the PR remains conditional and must not be merged or run until the owner explicitly accepts the replacement behavior or a separately approved safe update path is established. Do not infer data-preservation guarantees from matching YAML volume names.
 
 The deployment workflow change is code only. It has not been executed, and no Hostinger API call was made.
 
-Relevant source documentation:
+Relevant official Hostinger API references (generated from its OpenAPI specification):
 
-- Hostinger action inputs and implementation: https://github.com/hostinger/deploy-on-vps/blob/main/action.yaml
-- Hostinger Docker API: https://developers.hostinger.com/
+- [Docker Manager endpoints and replacement behavior](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSDockerManagerApi.md)
+- [VPS action-details endpoint](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSActionsApi.md)
+- [Action resource fields](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSV1ActionActionResource.md)
+- [Container resource fields](https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSV1DockerManagerContainerResource.md)
+- [API overview and asynchronous action guidance](https://docs.hostinger.com/api-reference/overview)
 
-The generated Compose and workflow wiring are tested in PR-only CI. The raw-content request and Hostinger runtime response have not been exercised against Hostinger. No deployment was run.
+The generator, mocked Hostinger action/container contract tests, and workflow wiring run in PR-only CI without production credentials. The raw-content request, Hostinger action-state vocabulary, container response contents, replacement semantics on this existing project, and actual runtime image refs have not been exercised against Hostinger.
 
 ## Pre-merge and release sequence
 
