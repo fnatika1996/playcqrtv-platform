@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 
 const [sourcePath, outputPath, webDigest, apiDigest] = process.argv.slice(2);
 const digestPattern = /^sha256:[a-f0-9]{64}$/i;
@@ -10,6 +11,11 @@ function fail(message) {
 }
 
 if (!sourcePath || !outputPath) fail("Usage: node pin-compose-digests.mjs <source-compose> <output-compose> <web-digest> <api-digest>");
+const sourceAbsolute = path.resolve(sourcePath);
+const outputAbsolute = path.resolve(outputPath);
+if (sourceAbsolute === outputAbsolute) fail("Output path must not overwrite the source Compose file.");
+// Remove stale output before validating inputs so a failed render cannot leave an older deployable manifest.
+fs.rmSync(outputAbsolute, { force: true });
 if (!digestPattern.test(webDigest || "")) fail("A valid web registry digest is required.");
 if (!digestPattern.test(apiDigest || "")) fail("A valid API registry digest is required.");
 
@@ -56,5 +62,14 @@ if (!output.includes(`image: ghcr.io/fnatika1996/playcqrtv-api@${apiDigest}`) ||
   fail("Rendered Compose does not include both exact registry digests.");
 }
 
-fs.writeFileSync(outputPath, output, { flag: "w" });
+fs.mkdirSync(path.dirname(outputAbsolute), { recursive: true });
+const temporaryPath = `${outputAbsolute}.tmp-${process.pid}`;
+try {
+  fs.writeFileSync(temporaryPath, output, { flag: "wx", mode: 0o600 });
+  fs.renameSync(temporaryPath, outputAbsolute);
+} catch (error) {
+  fs.rmSync(temporaryPath, { force: true });
+  fs.rmSync(outputAbsolute, { force: true });
+  throw error;
+}
 console.log("Rendered digest-pinned Compose manifest for web and API.");
