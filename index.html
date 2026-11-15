@@ -41,6 +41,17 @@
     @media(max-width:760px){.signup-art{width:calc(100% + 28px);margin:-18px -14px 0;height:164px}.signup-title-group{bottom:17px;max-width:calc(100% - 30px)}.signup-heading{font-size:32px}.signup-intro{max-width:340px}.signup-close{right:0;top:10px}}
     @media(max-width:390px){.signup-shell{padding:15px}.signup-art{width:calc(100% + 30px);margin:-15px -15px 0;height:150px}.signup-title-group{bottom:14px}.signup-heading{font-size:29px}.signup-success-content{padding:24px 20px}}
 
+  
+    .password-input-wrap{position:relative;width:100%}
+    .password-input-wrap>input{padding-right:46px!important}
+    .password-visibility{position:absolute;right:5px;top:50%;width:34px;height:34px;transform:translateY(-50%);display:grid;place-items:center;border:0;border-radius:7px;background:transparent;color:#979aa2;padding:0}
+    .password-visibility:hover{background:#2b2d32;color:#f3f3f2}
+    .password-visibility:focus-visible{outline:2px solid var(--orange);outline-offset:1px}
+    .password-visibility svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    .password-visibility .eye-off{display:none}
+    .password-visibility[aria-pressed="true"] .eye{display:none}
+    .password-visibility[aria-pressed="true"] .eye-off{display:block}
+
   </style>
 </head>
 <body>
@@ -99,8 +110,8 @@
         <div class="signup-fields">
           <label class="signup-field"><span>Игровой никнейм</span><input id="signup-nickname" name="nickname" autocomplete="nickname" minlength="3" maxlength="24" placeholder="Например, PlayerOne" aria-describedby="nickname-status" required><small class="signup-help nickname-status" id="nickname-status" role="status" aria-live="polite">Уникальный игровой ник. Бесплатная смена — раз в 3 месяца.</small></label>
           <label class="signup-field"><span>Email</span><input name="email" type="email" autocomplete="email" placeholder="name@example.com" required><small class="signup-help">На почту придёт подтверждение и ссылка для восстановления доступа.</small></label>
-          <label class="signup-field"><span>Пароль</span><input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="Не менее 12 символов" required><small class="signup-help">Можно использовать длинную парольную фразу.</small></label>
-          <label class="signup-field"><span>Повторите пароль</span><input name="passwordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="Введите пароль ещё раз" required><small class="signup-help">Введите тот же пароль для проверки.</small></label>
+          <label class="signup-field"><span>Пароль</span><div class="password-input-wrap"><input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="Не менее 12 символов" required><button class="password-visibility" type="button" data-password-toggle="password" aria-label="Показать пароль" aria-pressed="false"><svg class="eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11.2 11.2 0 0 1 12 5c6.4 0 10 7 10 7s-1 2-3.1 4.1M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1.2 0 2.2-.2 3.2-.6"/></svg></button></div><small class="signup-help">Можно использовать длинную парольную фразу.</small></label>
+          <label class="signup-field"><span>Повторите пароль</span><div class="password-input-wrap"><input name="passwordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="Введите пароль ещё раз" required><button class="password-visibility" type="button" data-password-toggle="passwordConfirm" aria-label="Показать пароль" aria-pressed="false"><svg class="eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11.2 11.2 0 0 1 12 5c6.4 0 10 7 10 7s-1 2-3.1 4.1M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1.2 0 2.2-.2 3.2-.6"/></svg></button></div><small class="signup-help">Введите тот же пароль для проверки.</small></label>
           <label class="signup-field country-field"><span>Страна</span><select name="country" id="signup-country" autocomplete="country-name" tabindex="-1" aria-hidden="true"><option value="">Выберите страну</option></select><div class="country-picker"><button class="country-picker-button" id="country-picker-button" type="button" aria-haspopup="listbox" aria-expanded="false"><img id="country-selected-flag" src="https://flagcdn.com/w40/un.png" alt="🌐" width="20" height="15"><span id="country-selected-name">Выберите страну</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="country-menu" id="country-menu" hidden><input id="country-search" type="search" placeholder="Найти страну…" autocomplete="off" aria-label="Поиск страны"><div class="country-options" id="country-options" role="listbox" aria-label="Список стран"></div></div></div><small class="signup-help">Флаг и страна нужны для подбора игроков по региону.</small></label>
         </div>
         <fieldset class="signup-role-section"><legend class="signup-legend">Основная роль <span class="required-label">(обязательно)</span></legend><div class="signup-role-grid">
@@ -150,6 +161,8 @@ async function checkNickname(){const value=nicknameInput.value.trim();nicknameIn
 nicknameInput.addEventListener("input",()=>{nicknameCheckId++;nicknameInput.setCustomValidity("");nicknameStatus.classList.remove("is-available","is-taken","is-error");clearTimeout(nicknameCheckTimer);nicknameCheckTimer=setTimeout(()=>checkNickname(),450)});
 nicknameInput.addEventListener("blur",()=>{clearTimeout(nicknameCheckTimer);checkNickname()});
     const passwordInput=signupForm.elements.password,confirmInput=signupForm.elements.passwordConfirm;
+    document.querySelectorAll("[data-password-toggle]").forEach(toggle=>{const input=signupForm.elements[toggle.dataset.passwordToggle];toggle.addEventListener("click",()=>{const show=input.type==="password";input.type=show?"text":"password";toggle.setAttribute("aria-pressed",String(show));toggle.setAttribute("aria-label",show?"Скрыть пароль":"Показать пароль")})});
+    signupForm.addEventListener("reset",()=>{document.querySelectorAll("[data-password-toggle]").forEach(toggle=>{const input=signupForm.elements[toggle.dataset.passwordToggle];input.type="password";toggle.setAttribute("aria-pressed","false");toggle.setAttribute("aria-label","Показать пароль")})});
     function validatePasswordMatch(){confirmInput.setCustomValidity(confirmInput.value&&confirmInput.value!==passwordInput.value?'Пароли не совпадают':'')}
     passwordInput.addEventListener('input',validatePasswordMatch);confirmInput.addEventListener('input',validatePasswordMatch);
     const signupSuccessDialog=document.getElementById("signup-success-dialog"),signupSuccessEmail=document.getElementById("signup-success-email");
