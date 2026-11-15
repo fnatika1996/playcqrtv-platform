@@ -99,4 +99,21 @@ test("site control protects public routes, persists settings and allows authenti
   const rejected=await request("/api/admin/site-control/settings",{method:"POST",cookie,body:{mode:"open"}});
   assert.equal(rejected.response.status,403);
 
+  await app.pool.query("DELETE FROM site_control_settings WHERE id=1");
+  result=await request("/api/site-control/gate",{cookie,headers:{"X-Forwarded-Uri":"/admin/site-control"}});
+  assert.equal(result.response.status,204,"admin settings route remains available for recovery");
+  result=await request("/api/admin/site-control",{cookie});
+  assert.equal(result.response.status,200);
+  assert.equal(result.data.settings.mode,"open","missing settings display a safe default to an authenticated admin");
+  result=await request("/api/site-control/gate",{headers:{"X-Forwarded-Uri":"/"}});
+  assert.equal(result.response.status,500,"public gate fails closed when settings are missing");
+  result=await request("/api/admin/site-control/settings",{method:"POST",cookie,csrf,body:{
+    mode:"open",heading:"CQRTV is open",subtitle:"CS2 players and teams",description:"Open.",
+    statusLabel:"OPEN",maintenanceHeading:"Maintenance",maintenanceSubtitle:"Back soon",
+    maintenanceDescription:"Routine service work.",maintenanceStatusLabel:"MAINTENANCE",launchAt:null,
+    countdownEnabled:false,aboutButtonLabel:"About CQRTV",aboutTitle:"CQRTV platform",
+    aboutBody:"Players, teams, matches, tournaments, stats and esports.",animationEnabled:false,backgroundAssetId:null
+  }});
+  assert.equal(result.response.status,200,"settings UPSERT restores the missing singleton row");
+
 });
