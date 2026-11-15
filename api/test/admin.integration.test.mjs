@@ -148,6 +148,23 @@ test("admin API access control and user management", { skip: !connectionString }
       assert.equal(restored.response.status, 200);
     });
 
+    await t.test("password reset revokes both admin and player sessions", async () => {
+      const currentAdmin = await login("admin@example.test", adminPassword);
+      assert.equal(currentAdmin.response.status, 200);
+      const playerSessionForAdmin = crypto.randomBytes(32).toString("base64url");
+      await app.pool.query("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '1 day')", [hash(playerSessionForAdmin), admin.rows[0].id]);
+      const resetToken = crypto.randomBytes(32).toString("base64url");
+      await app.pool.query("INSERT INTO auth_tokens(token_hash,user_id,purpose,expires_at) VALUES($1,$2,'reset',now()+interval '1 hour')", [hash(resetToken), admin.rows[0].id]);
+
+      const nextPassword = "UpdatedAdminPass123!";
+      const reset = await request("/api/auth/reset", { method: "POST", body: { token: resetToken, password: nextPassword } });
+      assert.equal(reset.response.status, 200);
+      assert.equal((await request("/api/admin/stats", { cookie: currentAdmin.cookie })).response.status, 401);
+      assert.equal((await request("/api/auth/me", { cookie: `cqrtv_session=${playerSessionForAdmin}` })).data.user, null);
+      assert.equal((await request("/api/auth/login", { method: "POST", body: { email: "admin@example.test", password: adminPassword } })).response.status, 401);
+      assert.equal((await request("/api/auth/login", { method: "POST", body: { email: "admin@example.test", password: nextPassword } })).response.status, 200);
+    });
+
     await t.test("logout clears separate admin cookie and invalidates session", async () => {
       const logout = await request("/api/admin/logout", { method: "POST", cookie: otherCookie, csrf: otherCsrf, body: {} });
       assert.equal(logout.response.status, 200);
