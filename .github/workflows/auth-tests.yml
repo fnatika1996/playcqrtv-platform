@@ -15,6 +15,7 @@ on:
       - assets/registration-roles.mjs
       - api/**
       - .github/workflows/auth-tests.yml
+      - .github/workflows/deploy.yml
 
 permissions:
   contents: read
@@ -87,6 +88,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Parse deploy workflow without executing it
+        run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/deploy.yml"); puts "Deploy workflow YAML syntax is valid."'
 
       - name: Validate immutable release Compose generation (non-production)
         run: node --test qa/pin-compose-digests.test.mjs
