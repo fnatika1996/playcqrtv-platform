@@ -89,7 +89,8 @@ test("future deploy workflow is wired to Buildx digests and isolated PR QA has n
   assert.match(deploymentWorkflow, /steps\\.build-web\\.outputs\\.digest/);
   assert.match(deploymentWorkflow, /steps\\.build-api\\.outputs\\.digest/);
   assert.match(deploymentWorkflow, /docker\\/playcqrtv\\/containers/);
-  assert.match(deploymentWorkflow, /HOSTINGER_API_KEY:\\s*\\$\\{\\{ secrets\\.HOSTINGER_API_KEY \\}\\}/);\n  assert.match(deploymentWorkflow, /permissions:\\s*contents: read\\s+packages: write/);\n  assert.doesNotMatch(deploymentWorkflow, /^    HOSTINGER_API_KEY:/m);\n  assert.doesNotMatch(deploymentWorkflow, /pull_request:/);\n  assert.doesNotMatch(prWorkflow, /docker\\/build-push-action|docker login|workflow_dispatch:/);
+  assert.match(deploymentWorkflow, /HOSTINGER_API_KEY:\\s*\\$\\{\\{ secrets\\.HOSTINGER_API_KEY \\}\\}/);
+  assert.match(deploymentWorkflow, /permissions:\\s*contents: read\\s+packages: write/);\n  assert.doesNotMatch(deploymentWorkflow, /^    HOSTINGER_API_KEY:/m);\n  assert.doesNotMatch(deploymentWorkflow, /pull_request:/);\n  assert.doesNotMatch(prWorkflow, /docker\\/build-push-action|docker login|workflow_dispatch:/);
   assert.match(prWorkflow, /pull_request:/);
   assert.doesNotMatch(prWorkflow, /secrets\\.HOSTINGER_API_KEY|hostinger\\/deploy-on-vps@v2|packages:\\s*write/);
 });
