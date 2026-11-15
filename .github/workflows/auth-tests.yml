@@ -166,7 +166,7 @@ jobs:
           grep -q 'Обзор платформы' "$RUNNER_TEMP/admin.html"
           grep -q 'Профиль игрока' "$RUNNER_TEMP/player-home.html"
           grep -q '<main id="auth-card"' "$RUNNER_TEMP/player-auth.html"
-          echo '3ef86e6f3dbd7c095382bd13ae21db0a239c0a8271ae2798553740cb3efee08d  '"$RUNNER_TEMP/admin-hero.png" | sha256sum --check
+          echo '3ef86e6f3dbe7c095382bd13ae21db0a239c0a8271ae2798553740cb3efee08d  '"$RUNNER_TEMP/admin-hero.png" | sha256sum --check
 
       - name: Install pinned Playwright Chromium
         run: |
