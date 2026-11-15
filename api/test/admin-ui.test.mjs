@@ -4,6 +4,8 @@ import { test } from "node:test";
 
 const login = await readFile(new URL("../../admin-login.html", import.meta.url), "utf8");
 const dashboard = await readFile(new URL("../../admin.html", import.meta.url), "utf8");
+const siteControl = await readFile(new URL("../../site-control-admin.html", import.meta.url), "utf8");
+const iconManifest = JSON.parse(await readFile(new URL("../../assets/icons/cqrtv/admin-icon-manifest.json", import.meta.url), "utf8"));
 const migration = await readFile(new URL("../migrations/001_admin_mvp.sql", import.meta.url), "utf8");
 const deployWorkflow = await readFile(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8");
 const testWorkflow = await readFile(new URL("../../.github/workflows/auth-tests.yml", import.meta.url), "utf8");
