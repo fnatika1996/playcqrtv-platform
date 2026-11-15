@@ -9,6 +9,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: cqrtv-production-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -66,35 +70,99 @@ jobs:
           echo "Copied $icon_count selected CQRTV icons into the public image."
 
       - name: Build and publish website image
+        id: build-web
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: |
-            ghcr.io/fnatika1996/playcqrtv-platform:latest
-            ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}
+          tags: ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}
 
       - name: Verify CQRTV icons are inside the published image
+        env:
+          WEB_IMAGE_DIGEST: ${{ steps.build-web.outputs.digest }}
         run: |
-          image="ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}"
+          set -euo pipefail
+          image="ghcr.io/fnatika1996/playcqrtv-platform@${WEB_IMAGE_DIGEST}"
           docker pull "$image"
           docker run --rm --entrypoint sh "$image" -c 'for icon in home mail lock eye eye-closed login logout arrow-left; do test -s "/srv/assets/icons/cqrtv/ui/$icon.svg" || exit 1; done; test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f | wc -l)" -eq 25'
       - name: Build and publish authentication API
+        id: build-api
         uses: docker/build-push-action@v6
         with:
           context: ./api
           push: true
-          tags: |
-            ghcr.io/fnatika1996/playcqrtv-api:latest
-            ghcr.io/fnatika1996/playcqrtv-api:${{ github.sha }}
+          tags: ghcr.io/fnatika1996/playcqrtv-api:${{ github.sha }}
 
-      - name: Deploy project to Hostinger
-        uses: hostinger/deploy-on-vps@v2
-        with:
-          api-key: ${{ secrets.HOSTINGER_API_KEY }}
-          virtual-machine: "2150572"
-          project-name: playcqrtv
-          docker-compose-path: docker-compose.yml
+      - name: Render and validate immutable Compose manifest
+        id: release-compose
+        env:
+          WEB_IMAGE_DIGEST: ${{ steps.build-web.outputs.digest }}
+          API_IMAGE_DIGEST: ${{ steps.build-api.outputs.digest }}
+        run: |
+          set -euo pipefail
+          manifest="$RUNNER_TEMP/docker-compose.release.yml"
+          node qa/pin-compose-digests.mjs docker-compose.yml "$manifest" "$WEB_IMAGE_DIGEST" "$API_IMAGE_DIGEST"
+          docker compose -f "$manifest" config --quiet
+          docker compose -f "$manifest" config --images | tee "$RUNNER_TEMP/release-images.txt"
+          ! grep -E ':latest([[:space:]]|$)' "$RUNNER_TEMP/release-images.txt"
+          echo "manifest=$manifest" >> "$GITHUB_OUTPUT"
+          echo "web_ref=ghcr.io/fnatika1996/playcqrtv-platform@$WEB_IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
+          echo "api_ref=ghcr.io/fnatika1996/playcqrtv-api@$API_IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Submit digest-pinned Compose to Hostinger
+        env:
+          HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
+          RELEASE_COMPOSE: ${{ steps.release-compose.outputs.manifest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -n --arg project_name playcqrtv --rawfile content "$RELEASE_COMPOSE" '{project_name:$project_name,content:$content}')"
+          response_file="$RUNNER_TEMP/hostinger-deploy-response.json"
+          http_status="$(curl --silent --show-error --max-time 30 --output "$response_file" --write-out '%{http_code}' \
+            --request POST \
+            --header "Authorization: Bearer $HOSTINGER_API_KEY" \
+            --header 'Content-Type: application/json' \
+            --data-binary "$payload" \
+            'https://developers.hostinger.com/api/vps/v1/virtual-machines/2150572/docker')"
+          if [[ ! "$http_status" =~ ^2 ]]; then
+            echo "Hostinger deployment API returned HTTP $http_status. No response body or credentials are printed."
+            exit 1
+          fi
+          echo "Hostinger accepted the digest-pinned Compose request."
+
+      - name: Verify deployed Hostinger image digests
+        env:
+          HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
+          WEB_IMAGE_REF: ${{ steps.release-compose.outputs.web_ref }}
+          API_IMAGE_REF: ${{ steps.release-compose.outputs.api_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          response_file="$RUNNER_TEMP/hostinger-containers.json"
+          verified=false
+          for attempt in $(seq 1 12); do
+            http_status="$(curl --silent --show-error --max-time 10 --output "$response_file" --write-out '%{http_code}' \
+              --header "Authorization: Bearer $HOSTINGER_API_KEY" \
+              'https://developers.hostinger.com/api/vps/v1/virtual-machines/2150572/docker/playcqrtv/containers' || true)"
+            if [[ "$http_status" == "200" ]] && jq -e --arg web "$WEB_IMAGE_REF" --arg api "$API_IMAGE_REF" '
+              any(.[]; .name == "playcqrtv-web" and .image == $web) and
+              any(.[]; (.name | test("api")) and .image == $api)
+            ' "$response_file" >/dev/null 2>&1; then
+              verified=true
+              break
+            fi
+            sleep 5
+          done
+          if [[ "$verified" != "true" ]]; then
+            echo "Hostinger did not report both expected immutable image refs; deployment needs operator review."
+            exit 1
+          fi
+          {
+            echo "### Immutable deployment verified"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Web ref: $WEB_IMAGE_REF"
+            echo "- API ref: $API_IMAGE_REF"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify live website
         shell: bash
