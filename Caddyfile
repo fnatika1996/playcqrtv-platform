@@ -25,6 +25,8 @@ playcqrtv.com {
         @admin_pages path /admin /admin.html /admin/site-control /site-control-admin.html
         handle @admin_pages {
             route {
+                request_header -X-CQRTV-Site-Mode
+
                 forward_auth api:3000 {
                     uri /api/site-control/gate
                     header_up X-Forwarded-Uri {uri}
@@ -43,6 +45,8 @@ playcqrtv.com {
 
         handle {
             route {
+                request_header -X-CQRTV-Site-Mode
+
                 forward_auth api:3000 {
                     uri /api/site-control/gate
                     header_up X-Forwarded-Uri {uri}
