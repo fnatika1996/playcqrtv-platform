@@ -2,7 +2,7 @@ name: Account authentication tests
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, fix/account-auth-flows-2026-11-15]
     paths:
       - index.html
       - auth.html
@@ -27,4 +27,3 @@ jobs:
         run: node --check api/server.mjs
       - name: Check registration role module syntax
         run: node --check assets/registration-roles.mjs
-
