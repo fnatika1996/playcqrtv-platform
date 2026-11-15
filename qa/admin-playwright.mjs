@@ -23,12 +23,13 @@ try {
     });
     const response = await page.goto(`${baseUrl}/admin/login`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `admin login must load at ${width}px`);
+    assert.equal(await page.title(), "Вход администратора · CQRTV", `admin login document should parse its title at ${width}px`);
     await page.screenshot({ path: new URL(`admin-login-${width}.png`, screenshotDir).pathname, fullPage: true });
     const heroCount = await page.locator(".hero img").count();
     assert.equal(heroCount, 1, `expected the admin hero on ${page.url()} at ${width}px; document title: ${await page.title()}`);
     await page.locator(".hero img").evaluate(image => image.decode());
-    assert.equal(await page.getByLabel("Рабочий email").isVisible(), true);
-    assert.equal(await page.getByLabel("Пароль").isVisible(), true);
+    assert.equal(await page.getByLabel("Рабочий email", { exact: true }).isVisible(), true);
+    assert.equal(await page.getByLabel("Пароль", { exact: true }).isVisible(), true);
     assert.equal(await page.getByRole("button", { name: "Войти в панель" }).isVisible(), true);
     const hero = await page.locator(".hero img").evaluate(image => ({
       loaded: image.naturalWidth > 0 && image.naturalHeight > 0,
@@ -52,12 +53,12 @@ try {
       }));
       assert.equal(focusVisible.focused, true, "password toggle should show keyboard focus");
       assert.equal(focusVisible.outlineWidth, "2px");
-      await page.getByLabel("Пароль").fill("qa-only-not-a-real-password");
+      await page.getByLabel("Пароль", { exact: true }).fill("qa-only-not-a-real-password");
       await page.locator("#eye").click();
-      assert.equal(await page.getByLabel("Пароль").getAttribute("type"), "text");
+      assert.equal(await page.getByLabel("Пароль", { exact: true }).getAttribute("type"), "text");
       assert.equal(await page.locator("#eye").getAttribute("aria-pressed"), "true");
       await page.locator("#eye").click();
-      assert.equal(await page.getByLabel("Пароль").getAttribute("type"), "password");
+      assert.equal(await page.getByLabel("Пароль", { exact: true }).getAttribute("type"), "password");
       assert.equal(loginPosts, 0, "eye toggle must not submit credentials");
     }
     await page.close();
