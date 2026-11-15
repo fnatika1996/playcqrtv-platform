@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS site_control_settings (
   subtitle TEXT NOT NULL CHECK (length(subtitle) BETWEEN 1 AND 180),
   description TEXT NOT NULL CHECK (length(description) BETWEEN 1 AND 1200),
   status_label TEXT NOT NULL CHECK (length(status_label) BETWEEN 1 AND 60),
+  maintenance_heading TEXT NOT NULL CHECK (length(maintenance_heading) BETWEEN 1 AND 120),
+  maintenance_subtitle TEXT NOT NULL CHECK (length(maintenance_subtitle) BETWEEN 1 AND 180),
+  maintenance_description TEXT NOT NULL CHECK (length(maintenance_description) BETWEEN 1 AND 1200),
+  maintenance_status_label TEXT NOT NULL CHECK (length(maintenance_status_label) BETWEEN 1 AND 60),
   launch_at TIMESTAMPTZ,
   countdown_enabled BOOLEAN NOT NULL DEFAULT false,
   about_button_label TEXT NOT NULL CHECK (length(about_button_label) BETWEEN 1 AND 60),
@@ -24,12 +28,12 @@ CREATE TABLE IF NOT EXISTS site_control_settings (
 );
 
 INSERT INTO site_control_settings (
-  id, mode, heading, subtitle, description, status_label, countdown_enabled,
+  id, mode, heading, subtitle, description, status_label, maintenance_heading, maintenance_subtitle, maintenance_description, maintenance_status_label, countdown_enabled,
   about_button_label, about_title, about_body, animation_enabled
 ) VALUES (
   1, 'open', 'CQRTV скоро откроется', 'Новая платформа для игроков Counter-Strike 2',
   'Мы готовим пространство для игроков и команд: подбор матчей, турниры, статистика и развитие esports-сцены.',
-  'ПЛАТФОРМА ГОТОВИТСЯ', false, 'Что такое CQRTV?',
+  'ПЛАТФОРМА ГОТОВИТСЯ', 'CQRTV на техобслуживании', 'Мы настраиваем платформу и скоро вернёмся.', 'Проводятся технические работы', 'ТЕХНИЧЕСКИЕ РАБОТЫ', false, 'Что такое CQRTV?',
   'Играй. Объединяйся. Развивайся.',
   'CQRTV — будущая платформа Counter-Strike 2 для игроков и команд. Здесь можно будет находить партнёров, собирать составы, играть матчи, участвовать в турнирах, следить за статистикой и вместе развивать esports-сцену.',
   true
