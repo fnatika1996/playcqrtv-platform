@@ -75,8 +75,27 @@ test("both role blocks offer only the five approved roles, keep primary required
 test("role cards use the approved compact grid, colors, radius, and responsive single-column layout", () => {
   assert.match(indexHtml, /\.signup-dialog \.signup-role-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\);gap:8px\}/);
   assert.match(indexHtml, /\.role-option>span\{[^}]*border-radius:8px;[^}]*background:#1C1E23/s);
-  assert.match(indexHtml, /\.role-option:has\(input:checked\)>span\{border-color:#FF7629;background:#302219/);
+  assert.match(indexHtml, /\.role-option:has\(input:checked\)>span\{border-color:var\(--role-color\);background:var\(--role-bg\)/);
   assert.match(indexHtml, /@media\(max-width:390px\)\{\.signup-dialog \.signup-role-grid\{grid-template-columns:1fr;gap:8px\}\}/);
+});
+
+test("role cards use the five approved distinct icons and role colors in both groups", () => {
+  const roleStyles = { awper: ["#C09AFF", "#29203A"], entry: ["#FF7777", "#321D21"], rifler: ["#6BB7FF", "#172638"], support: ["#71D5A2", "#183027"], igl: ["#FFD16B", "#332C1D"] };
+  const icons = new Map();
+  for (const [role, [accent, selectedBackground]] of Object.entries(roleStyles)) {
+    const labels = [...indexHtml.matchAll(new RegExp(`<label class="role-option" data-role="${role}">([\\s\\S]*?)</label>`, "g"))].map(match => match[1]);
+    assert.equal(labels.length, 2, `${role} has primary and secondary cards`);
+    const svgMarkup = labels.map(label => { const start = label.indexOf("<svg"); const end = label.indexOf("</svg>", start) + 6; return start >= 0 && end > 5 ? label.slice(start, end) : ""; });
+    assert.ok(svgMarkup.every(Boolean), `${role} has an inline SVG icon in both groups`);
+    assert.equal(svgMarkup[0], svgMarkup[1], `${role} icon matches across groups`);
+    assert.match(svgMarkup[0], /stroke="currentColor"/);
+    assert.match(labels[0], /aria-hidden="true"/);
+    icons.set(role, svgMarkup[0]);
+    assert.ok(indexHtml.includes(`.signup-dialog .role-option[data-role="${role}"]{--role-color:${accent};--role-bg:${selectedBackground}`));
+  }
+  assert.equal(new Set(icons.values()).size, 5, "each role has a unique icon");
+  assert.ok(indexHtml.includes(":has(input:checked)>span{border-color:var(--role-color);background:var(--role-bg)"));
+  assert.equal(indexHtml.includes('role-icon pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad-minimalistic.svg'), false);
 });
 
 test("counter updates at 0/2, 1/2, and 2/2; at two choices only selected options remain enabled", () => {
