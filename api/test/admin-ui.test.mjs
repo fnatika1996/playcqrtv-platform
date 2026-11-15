@@ -34,8 +34,20 @@ test("admin login UI exposes only the intended credential flow", () => {
 });
 
 test("admin dashboard uses selected CQRTV pack assets and safe DOM text rendering", () => {
-  for (const icon of ["dashboard", "users", "chart", "chat", "gamepad", "cup", "settings", "logout"]) {
-    assert.ok(dashboard.includes(`/assets/icons/cqrtv/ui/${icon}.svg`), `missing selected CQRTV icon ${icon}`);
+  for (const icon of ["dashboard", "users", "chart", "settings", "logout", "user", "user-circle", "reorder", "close"]) {
+    assert.ok(dashboard.includes("/assets/icons/cqrtv/ui/" + icon + ".svg"), "missing selected CQRTV icon " + icon);
+  }
+  for (const icon of ["user-check", "user-block", "letter-open", "shield-warning"]) {
+    assert.ok(dashboard.includes("'" + icon + "'"), "missing dynamic user state icon " + icon);
+  }
+  for (const icon of ["chat", "gamepad", "upload"]) {
+    assert.ok(siteControl.includes("/assets/icons/cqrtv/ui/" + icon + ".svg") || siteControl.includes(icon + ":" + icon), "missing Site Control icon " + icon);
+  }
+  assert.ok(siteControl.includes("'lock-open'"), "open mode uses the branded open-state icon");
+  assert.doesNotMatch(dashboard, /<button disabled>/, "navigation must not expose dead placeholder sections");
+  assert.match(dashboard, /new URLSearchParams\(location\.search\)/, "the Site Control Users link must open the working Users view");
+  for (const route of ["/api/admin/me", "/api/admin/stats", "/api/admin/users", "/api/admin/audit"]) {
+    assert.ok(dashboard.includes(route));
   }
   for (const route of ["/api/admin/me", "/api/admin/stats", "/api/admin/users", "/api/admin/audit"]) {
     assert.ok(dashboard.includes(route));
@@ -70,11 +82,13 @@ test("deploy maps the selected archive glyphs explicitly and verifies the bundle
     ["Arrows Action/Logout--playcqrtv.svg", "logout.svg"],
     ["Arrows/Alt-Arrow-Left--playcqrtv.svg", "arrow-left.svg"]
   ];
-  for (const [source, target] of mappings) {
-    assert.ok(deployWorkflow.includes(source));
-    assert.ok(deployWorkflow.includes(`assets/icons/cqrtv/ui/${target}`));
+  for (const [source, file] of mappings) {
+    assert.ok(iconManifest.icons.some(icon => icon.source === source && icon.file === file), "manifest should preserve " + file);
   }
-  assert.match(deployWorkflow, /icon_count.*-eq 25/);
+  assert.equal(iconManifest.icons.length, 38);
+  assert.match(deployWorkflow, /scripts\/build-cqrtv-admin-icons\.mjs/);
+  assert.match(deployWorkflow, /-eq 38/);
+  assert.match(testWorkflow, /node --test qa\/admin-icon-pack\.test\.mjs/);
   assert.match(testWorkflow, /--include='\*\.svg'/);
   assert.match(testWorkflow, /<script\|<foreignObject\|href=/);
 });
