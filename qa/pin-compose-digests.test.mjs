@@ -50,7 +50,7 @@ test("rendered release and rollback manifests contain exactly pinned web/API ref
   assert.equal(images.some(image => /:latest$/.test(image)), false);
   assert.deepEqual(Object.keys(json.services).sort(), ["api", "caddy", "db", "secret-init"]);
   assert.deepEqual(Object.keys(json.volumes).sort(), ["caddy_config", "caddy_data", "db_secret", "postgres_data"]);
-  assert.deepEqual(Object.keys(json.networks).sort(), ["internal"]);
+  assert.deepEqual(Object.keys(json.networks).sort(), ["default", "internal"]);
   assert.deepEqual(json.services.db.volumes.map(volume => volume.type).sort(), ["volume", "volume"]);
   assert.equal(json.services["secret-init"].volumes[0].source, "db_secret");
   assert.deepEqual(json.services.caddy.volumes.map(volume => volume.source).sort(), ["caddy_config", "caddy_data"]);
