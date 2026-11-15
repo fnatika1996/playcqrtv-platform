@@ -5,7 +5,7 @@ import { bindRegistrationRoles } from "../../assets/registration-roles.mjs";
 
 const indexHtml = await readFile(new URL("../../index.html", import.meta.url), "utf8");
 const apiSource = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
-const roleValues = ["rifler", "entry", "support", "awper", "igl", "lurker", "anchor", "flex"];
+const roleValues = ["awper", "entry", "rifler", "support", "igl"];
 
 function input(value) {
   const listeners = new Map();
@@ -16,90 +16,129 @@ function input(value) {
   };
 }
 
+function button() {
+  const listeners = new Map();
+  return {
+    disabled: false,
+    addEventListener(type, callback) { listeners.set(type, callback); },
+    click() { listeners.get("click")?.({ target: this }); },
+  };
+}
+
 function makeForm() {
   const primary = roleValues.map(input);
   const secondary = roleValues.map(input);
-  const status = { textContent: "" };
+  const counter = { textContent: "" };
+  const reset = button();
+  const otherField = { value: "keep this value" };
   const formListeners = new Map();
   return {
-    primary, secondary, status,
+    primary, secondary, counter, reset, otherField,
     querySelectorAll(selector) {
       if (selector === 'input[name="primaryRole"]') return primary;
       if (selector === 'input[name="secondaryRoles"]') return secondary;
       return [];
     },
-    querySelector(selector) { return selector === "#secondary-role-status" ? status : null; },
+    querySelector(selector) {
+      if (selector === "#secondary-role-counter") return counter;
+      if (selector === "#secondary-role-reset") return reset;
+      return null;
+    },
     addEventListener(type, callback) { formListeners.set(type, callback); },
     emit(type) { formListeners.get(type)?.({ type }); },
   };
 }
 
-test("registration keeps one required primary role and offers the same eight roles as optional secondary checkboxes", () => {
-  const primary = [...indexHtml.matchAll(/name="primaryRole" value="([^"]+)"/g)].map(match => match[1]);
-  const secondary = [...indexHtml.matchAll(/name="secondaryRoles" value="([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(primary, roleValues);
-  assert.deepEqual(secondary, roleValues);
-  assert.match(indexHtml, /name="primaryRole" value="rifler" required/);
-  assert.match(indexHtml, /class="signup-role-section signup-secondary"/);
-  assert.match(indexHtml, /\.signup-secondary \.signup-role-grid\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)\}/);
-  assert.match(indexHtml, /\.signup-role-grid,\.signup-secondary \.signup-role-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/);
-});
+function signupRoleBlock(name) {
+  const start = indexHtml.indexOf(`<fieldset class="signup-role-section${name === "secondaryRoles" ? " signup-secondary" : ""}"`);
+  const end = indexHtml.indexOf("</fieldset>", start);
+  assert.notEqual(start, -1, `${name} block exists`);
+  assert.notEqual(end, -1, `${name} block closes`);
+  return indexHtml.slice(start, end);
+}
 
-test("registration sends the selected optional roles using the API's existing contract", () => {
+test("both role blocks offer only the five approved roles, keep primary required, and pass secondaryRoles to the API", () => {
+  for (const name of ["primaryRole", "secondaryRoles"]) {
+    const block = signupRoleBlock(name);
+    const values = [...block.matchAll(new RegExp(`name="${name}" value="([^"]+)"`, "g"))].map(match => match[1]);
+    assert.deepEqual(values, roleValues);
+    assert.equal((block.match(/class="role-icon pack-icon/g) || []).length, 5);
+    assert.equal((block.match(/class="role-indicator"/g) || []).length, 5);
+  }
+  assert.match(signupRoleBlock("primaryRole"), /name="primaryRole" value="awper" required/);
+  assert.match(signupRoleBlock("secondaryRoles"), /id="secondary-role-counter"[^>]*>0\/2/);
+  assert.match(signupRoleBlock("secondaryRoles"), /id="secondary-role-reset"[^>]*>Сбросить/);
   assert.match(indexHtml, /secondaryRoles:fd\.getAll\("secondaryRoles"\)/);
   assert.match(apiSource, /secondary\.length>2\|\|secondary\.some\(x=>!roles\.has\(x\)\|\|x===primaryRole\)/);
 });
 
-test("secondary roles are optional, capped at two, and duplicate primary role is disabled and cleared", () => {
-  const form = makeForm();
-  bindRegistrationRoles(form);
-  assert.match(form.status.textContent, /до двух/);
-
-  const supportSecondary = form.secondary[2];
-  supportSecondary.checked = true;
-  supportSecondary.emit();
-  assert.match(form.status.textContent, /1 из 2/);
-
-  const awperSecondary = form.secondary[3];
-  awperSecondary.checked = true;
-  awperSecondary.emit();
-  assert.match(form.status.textContent, /2 из 2/);
-
-  const entrySecondary = form.secondary[1];
-  entrySecondary.checked = true;
-  entrySecondary.emit();
-  assert.equal(entrySecondary.checked, false);
-  assert.match(form.status.textContent, /не более двух/);
-
-  const supportPrimary = form.primary[2];
-  supportPrimary.checked = true;
-  supportPrimary.emit();
-  assert.equal(supportSecondary.checked, false);
-  assert.equal(supportSecondary.disabled, true);
-  assert.equal(awperSecondary.disabled, false);
+test("role cards use the approved compact grid, colors, radius, and responsive single-column layout", () => {
+  assert.match(indexHtml, /\.signup-dialog \.signup-role-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\);gap:8px\}/);
+  assert.match(indexHtml, /\.role-option>span\{[^}]*border-radius:8px;[^}]*background:#1C1E23/s);
+  assert.match(indexHtml, /\.role-option:has\(input:checked\)>span\{border-color:#FF7629;background:#302219/);
+  assert.match(indexHtml, /@media\(max-width:390px\)\{\.signup-dialog \.signup-role-grid\{grid-template-columns:1fr;gap:8px\}\}/);
 });
 
-test("changing the primary role clears a conflicting secondary selection", () => {
+test("counter updates at 0/2, 1/2, and 2/2; at two choices only selected options remain enabled", () => {
   const form = makeForm();
   bindRegistrationRoles(form);
-  const entrySecondary = form.secondary[1];
-  entrySecondary.checked = true;
-  entrySecondary.emit();
+  assert.equal(form.counter.textContent, "0/2");
 
-  const entryPrimary = form.primary[1];
-  entryPrimary.checked = true;
-  entryPrimary.emit();
-  assert.equal(entrySecondary.checked, false);
-  assert.equal(entrySecondary.disabled, true);
+  form.secondary[0].checked = true;
+  form.secondary[0].emit();
+  assert.equal(form.counter.textContent, "1/2");
 
-  const riflerPrimary = form.primary[0];
-  entryPrimary.checked = false;
-  riflerPrimary.checked = true;
-  riflerPrimary.emit();
-  assert.equal(entrySecondary.disabled, false);
+  form.secondary[1].checked = true;
+  form.secondary[1].emit();
+  assert.equal(form.counter.textContent, "2/2");
+  assert.equal(form.secondary[0].disabled, false);
+  assert.equal(form.secondary[1].disabled, false);
+  assert.equal(form.secondary[2].disabled, true);
+
+  form.secondary[0].checked = false;
+  form.secondary[0].emit();
+  assert.equal(form.counter.textContent, "1/2");
+  assert.equal(form.secondary[2].disabled, false);
 });
 
-test("form reset clears the primary-role exclusion state", async () => {
+test("primary role is always excluded from secondary choices and changing it clears a conflict", () => {
+  const form = makeForm();
+  bindRegistrationRoles(form);
+  form.secondary[1].checked = true;
+  form.secondary[1].emit();
+
+  form.primary[1].checked = true;
+  form.primary[1].emit();
+  assert.equal(form.secondary[1].checked, false);
+  assert.equal(form.secondary[1].disabled, true);
+  assert.equal(form.counter.textContent, "0/2");
+
+  form.primary[1].checked = false;
+  form.primary[2].checked = true;
+  form.primary[2].emit();
+  assert.equal(form.secondary[1].disabled, false);
+});
+
+test("secondary reset clears only additional roles and preserves the primary role and other form values", () => {
+  const form = makeForm();
+  bindRegistrationRoles(form);
+  form.primary[0].checked = true;
+  form.primary[0].emit();
+  form.secondary[1].checked = true;
+  form.secondary[1].emit();
+  form.secondary[2].checked = true;
+  form.secondary[2].emit();
+
+  form.reset.click();
+  assert.equal(form.counter.textContent, "0/2");
+  assert.equal(form.reset.disabled, true);
+  assert.equal(form.primary[0].checked, true);
+  assert.equal(form.secondary.every(option => !option.checked), true);
+  assert.equal(form.secondary[0].disabled, true);
+  assert.equal(form.otherField.value, "keep this value");
+});
+
+test("native form reset refreshes role state after the browser restores default values", async () => {
   const form = makeForm();
   bindRegistrationRoles(form);
   form.primary[0].checked = true;
@@ -110,6 +149,6 @@ test("form reset clears the primary-role exclusion state", async () => {
   form.emit("reset");
   await new Promise(resolve => setTimeout(resolve, 5));
   assert.equal(form.secondary[0].disabled, false);
-  assert.match(form.status.textContent, /до двух/);
+  assert.equal(form.counter.textContent, "0/2");
 });
 
