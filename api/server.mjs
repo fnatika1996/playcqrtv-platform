@@ -56,7 +56,7 @@ if (!applied.rowCount) {
 }
 async function handle(req,res){const url=new URL(req.url,"http://localhost");if(req.method==="GET"&&url.pathname==="/api/health"){return json(res,200,{ok:true});}
 
-if(await siteControlRoutes.handle(req,res))return;
+try{if(await siteControlRoutes.handle(req,res))return;}catch(e){console.error("Site control request failed:",e.message);return json(res,e.status||500,{error:e.status===400?"Некорректный запрос.":"Платформа временно недоступна."});}
 if(!url.pathname.startsWith("/api/"))return json(res,404,{error:"Not found"});
 if(req.method==="POST")try{checkOrigin(req);}catch(e){return json(res,e.status||403,{error:e.message});}
 try{
