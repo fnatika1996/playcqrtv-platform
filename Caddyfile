@@ -53,8 +53,10 @@ playcqrtv.com {
                     header_up X-Forwarded-Method {method}
                     copy_headers X-CQRTV-Site-Mode
                 }
-                @site_closed header X-CQRTV-Site-Mode coming_soon maintenance
+                @site_closed header X-CQRTV-Site-Mode coming_soon
+                @site_maintenance header X-CQRTV-Site-Mode maintenance
                 rewrite @site_closed /site-closed.html
+                rewrite @site_maintenance /site-closed.html
                 header Cache-Control "no-store"
                 root * /srv
                 file_server
