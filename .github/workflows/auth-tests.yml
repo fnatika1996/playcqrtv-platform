@@ -117,7 +117,9 @@ jobs:
           fi
 
       - name: Build the website image locally (no registry push)
-        run: docker build --file Dockerfile --tag cqrtv-admin-qa-site .
+        run: |
+          docker build --file Dockerfile --tag cqrtv-admin-qa-site .
+          docker run --rm --entrypoint sh cqrtv-admin-qa-site -c 'sha256sum /srv/assets/admin/admin-hero.png'
 
       - name: Start isolated Caddy preview
         run: |
@@ -149,6 +151,7 @@ jobs:
           fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
           fetch / "$RUNNER_TEMP/player-home.html"
           fetch /auth.html "$RUNNER_TEMP/player-auth.html"
+          sha256sum "$RUNNER_TEMP/admin-hero.png"
           for file in "$RUNNER_TEMP/admin-login.html.headers" "$RUNNER_TEMP/admin.html.headers" "$RUNNER_TEMP/admin-hero.png.headers" "$RUNNER_TEMP/mail.svg.headers" "$RUNNER_TEMP/shield.svg.headers"; do
             printf '%s: ' "$(basename "$file")"
             grep -i '^content-type:' "$file" | tr '\n' ' '
