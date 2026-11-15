@@ -29,7 +29,7 @@ for (const icon of manifest.icons) {
   const source = path.resolve(sourceRoot, icon.source);
   if (!source.startsWith(sourceRoot + path.sep) || !fs.existsSync(source)) throw new Error("Missing icon source: " + icon.source);
   const xml = fs.readFileSync(source, "utf8");
-  if (/<script\\b|<foreignObject\\b|\\b(?:href|xlink:href)\\s*=\\s*["'](?:https?:|javascript:|data:)/i.test(xml)) {
+  if (/<script\b|<foreignObject\b|\b(?:href|xlink:href)\s*=\s*["'](?:https?:|javascript:|data:)/i.test(xml)) {
     throw new Error("Unsafe SVG content in " + icon.source);
   }
   if (!xml.includes("<svg")) throw new Error("Invalid SVG source: " + icon.source);
