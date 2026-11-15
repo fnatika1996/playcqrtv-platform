@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { test } from "node:test";
 
-const root=new URL("../../",import.meta.url);
+const root=new URL("../",import.meta.url);
 const read=path=>fs.readFileSync(new URL(path,root),"utf8");
 
 test("site control landing implements safe editable copy, modal accessibility and responsive reduced motion",()=>{
