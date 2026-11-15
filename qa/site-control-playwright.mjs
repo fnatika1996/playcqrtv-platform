@@ -84,7 +84,8 @@ try{
   await page.locator("#social-list .social-item").waitFor({state:"visible"});
   assert.equal(await page.getByRole("heading",{name:"Режим и публичная страница"}).isVisible(),true);
   assert.equal(await page.getByLabel("Режим сайта").isVisible(),true);
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,"admin site control must not overflow at "+width+"px");
+  const adminOverflow=await page.evaluate(()=>({page:document.documentElement.scrollWidth>innerWidth,scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,offenders:[...document.querySelectorAll("body *")].map(element=>{const rect=element.getBoundingClientRect();return{tag:element.tagName,id:element.id,className:typeof element.className==="string"?element.className:"",left:Math.round(rect.left),right:Math.round(rect.right),width:Math.round(rect.width),text:(element.innerText||"").slice(0,70)}}).filter(item=>item.id!=="shell"&&!item.className.includes("aside")&&item.right>innerWidth+1).slice(0,15)}));
+  assert.equal(adminOverflow.page,false,"admin site control must not overflow at "+width+"px: "+JSON.stringify(adminOverflow));
   if(width===1440){
    await page.getByRole("button",{name:"Изменить"}).click();
    const packagedIcon=page.getByLabel("Использовать иконку CQRTV вместо загруженной");
