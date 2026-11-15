@@ -76,7 +76,10 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
     let suspendCalls = 0;
     let logoutCalls = 0;
-    await page.route("**/api/admin/**", async route => {
+    page.on("request", request => { if (new URL(request.url()).pathname.startsWith("/api/admin")) console.log(`Dashboard request ${request.method()} ${new URL(request.url()).pathname}`); });
+    page.on("response", response => { if (new URL(response.url()).pathname.startsWith("/api/admin")) console.log(`Dashboard response ${response.status()} ${new URL(response.url()).pathname}`); });
+    page.on("pageerror", error => console.log(`Dashboard page error ${error.message}`));
+    await page.route("**/api/admin**", async route => {
       const request = route.request();
       const url = new URL(request.url());
       let data;
