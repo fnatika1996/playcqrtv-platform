@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -181,10 +182,29 @@ export async function waitForExpectedContainers({
   throw new Error("Expected digest-pinned containers did not become ready before the timeout; deployment needs operator review.");
 }
 
+export function validateSavedCompose(content, { webImageRef, apiImageRef, validatorPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "hostinger-compose-preflight.rb") }) {
+  if (typeof content !== "string" || !content.trim() || Buffer.byteLength(content, "utf8") > 256 * 1024) {
+    throw new Error("Hostinger saved Compose content is missing or too large; refusing update.");
+  }
+  const result = spawnSync("ruby", [validatorPath], {
+    input: content,
+    encoding: "utf8",
+    timeout: 10000,
+    maxBuffer: 64 * 1024,
+    env: {
+      PATH: process.env.PATH || "",
+      EXPECTED_WEB_IMAGE_REF: webImageRef,
+      EXPECTED_API_IMAGE_REF: apiImageRef
+    }
+  });
+  if (result.error || result.status !== 0) {
+    throw new Error("Hostinger saved Compose failed image and volume preflight; refusing update.");
+  }
+}
+
 export async function deployCompose({
   fetchImpl = fetch,
   token,
-  manifest,
   vmId = DEFAULT_VM_ID,
   projectName = "playcqrtv",
   webImageRef,
@@ -195,14 +215,16 @@ export async function deployCompose({
   sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 }) {
   if (!token) throw new Error("Hostinger API token is required.");
-  if (typeof manifest !== "string" || !manifest.trim()) throw new Error("A complete Compose manifest is required.");
   if (!webImageRef || !apiImageRef || webImageRef === apiImageRef) throw new Error("Distinct web and API image refs are required.");
 
-  const url = API_ORIGIN + "/api/vps/v1/virtual-machines/" + vmId + "/docker";
-  // Do not retry POST: a network error can happen after Hostinger has accepted the replacement action.
-  const action = await requestJson(fetchImpl, url, token, {
+  const projectUrl = API_ORIGIN + "/api/vps/v1/virtual-machines/" + vmId + "/docker/" + encodeURIComponent(projectName);
+  const savedProject = await requestJson(fetchImpl, projectUrl, token);
+  validateSavedCompose(savedProject.content, { webImageRef, apiImageRef });
+
+  const updateUrl = projectUrl + "/update";
+  // Do not retry UPDATE: a network error can happen after Hostinger accepted the existing-project update.
+  const action = await requestJson(fetchImpl, updateUrl, token, {
     method: "POST",
-    body: { project_name: projectName, content: manifest },
     timeoutMs: 30000
   });
   if (action.id === undefined || !Number.isSafeInteger(Number(action.id)) || Number(action.id) <= 0) {
@@ -222,21 +244,17 @@ export async function deployCompose({
 
 async function main() {
   const token = process.env.HOSTINGER_API_KEY;
-  const manifestPath = process.env.RELEASE_COMPOSE_PATH;
-  if (!manifestPath) throw new Error("Release Compose path is required.");
-  const manifest = fs.readFileSync(path.resolve(manifestPath), "utf8");
   const result = await deployCompose({
     token,
-    manifest,
     vmId: process.env.HOSTINGER_VM_ID || DEFAULT_VM_ID,
     projectName: process.env.HOSTINGER_PROJECT_NAME || "playcqrtv",
     webImageRef: process.env.WEB_IMAGE_REF,
     apiImageRef: process.env.API_IMAGE_REF
   });
-  console.log("Hostinger action " + result.actionId + " completed; both expected image refs are running.");
+  console.log("Hostinger existing-project update " + result.actionId + " completed; both expected image refs are running.");
   if (process.env.GITHUB_STEP_SUMMARY) {
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
-      "### Hostinger deployment action completed and containers are running",
+      "### Hostinger existing-project update completed and containers are running",
       "- Action ID: " + result.actionId,
       "- Project: " + result.projectName,
       "- Web ref: " + result.webImageRef,
