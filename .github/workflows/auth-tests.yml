@@ -88,6 +88,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Validate immutable release Compose generation (non-production)
+        run: node --test qa/pin-compose-digests.test.mjs
+
       - name: Extract the approved CQRTV icon pack
         run: |
           sudo apt-get update
