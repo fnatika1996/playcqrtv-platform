@@ -59,6 +59,10 @@ jobs:
           test -s assets/icons/cqrtv/ui/home.svg
           icon_count=$(find assets/icons/cqrtv -type f -name '*.svg' | wc -l)
           test "$icon_count" -eq 25
+          if grep -RIE --include='*.svg' '<script|<foreignObject|href="https?://|javascript:' assets/icons/cqrtv/ui; then
+            echo "Unsafe SVG found in selected published icons."
+            exit 1
+          fi
           echo "Copied $icon_count selected CQRTV icons into the public image."
 
       - name: Build and publish website image
