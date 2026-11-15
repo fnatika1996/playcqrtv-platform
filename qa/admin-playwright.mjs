@@ -46,7 +46,7 @@ try {
     assert.equal(hero.loaded, true);
     assert.equal(hero.fit, "cover");
     assert.equal(hero.height, width <= 580 ? 135 : 170);
-    const loginOverflow = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > window.innerWidth, viewport: window.innerWidth, document: document.documentElement.scrollWidth, offenders: [...document.querySelectorAll("body *")].map(element => ({ tag: element.tagName, className: element.className?.baseVal || element.className, id: element.id, right: Math.round(element.getBoundingClientRect().right) })).filter(element => element.right > window.innerWidth + 1).slice(0, 8) }));
+    const loginOverflow = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > window.innerWidth, viewport: window.innerWidth, document: document.documentElement.scrollWidth, offenders: [...document.querySelectorAll("body *")].map(element => ({ tag: element.tagName, className: element.className?.baseVal || element.className, id: element.id, right: Math.round(element.getBoundingClientRect().right) })).filter(element => element.left < -1 || element.right > window.innerWidth + 1).slice(0, 12) }));
     assert.equal(loginOverflow.overflow, false, `login page has horizontal overflow at ${width}px: ${JSON.stringify(loginOverflow)}`);
     if (width === 390) {
       await page.keyboard.press("Tab");
