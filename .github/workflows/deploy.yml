@@ -49,9 +49,16 @@ jobs:
           cp "/tmp/cqrtv-icons/Icon Play CQRTV/Video Audio Sound/Play--playcqrtv.svg" assets/icons/cqrtv/ui/play.svg
           cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Shield-Check--playcqrtv.svg" assets/icons/cqrtv/ui/shield.svg
           cp "/tmp/cqrtv-icons/Icon Play CQRTV/Users/User-Plus-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/invite.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Letter--playcqrtv.svg" assets/icons/cqrtv/ui/mail.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Lock-Keyhole-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/lock.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Eye--playcqrtv.svg" assets/icons/cqrtv/ui/eye.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Eye-Closed--playcqrtv.svg" assets/icons/cqrtv/ui/eye-closed.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows Action/Login--playcqrtv.svg" assets/icons/cqrtv/ui/login.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows Action/Logout--playcqrtv.svg" assets/icons/cqrtv/ui/logout.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows/Alt-Arrow-Left--playcqrtv.svg" assets/icons/cqrtv/ui/arrow-left.svg
           test -s assets/icons/cqrtv/ui/home.svg
           icon_count=$(find assets/icons/cqrtv -type f -name '*.svg' | wc -l)
-          test "$icon_count" -eq 18
+          test "$icon_count" -eq 25
           echo "Copied $icon_count selected CQRTV icons into the public image."
 
       - name: Build and publish website image
@@ -67,7 +74,7 @@ jobs:
         run: |
           image="ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}"
           docker pull "$image"
-          docker run --rm --entrypoint sh "$image" -c 'test -s /srv/assets/icons/cqrtv/ui/home.svg && find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f | wc -l'
+          docker run --rm --entrypoint sh "$image" -c 'for icon in home mail lock eye eye-closed login logout arrow-left; do test -s "/srv/assets/icons/cqrtv/ui/$icon.svg" || exit 1; done; test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f | wc -l)" -eq 25'
       - name: Build and publish authentication API
         uses: docker/build-push-action@v6
         with:
