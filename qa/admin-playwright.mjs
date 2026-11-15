@@ -10,7 +10,10 @@ const widths = [1440, 1024, 760, 390, 375, 320];
 const screenshotDir = new URL("../qa-artifacts/", import.meta.url);
 await mkdir(screenshotDir, { recursive: true });
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]
+});
 try {
   for (const width of widths) {
     const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
@@ -20,6 +23,9 @@ try {
     });
     const response = await page.goto(`${baseUrl}/admin/login`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `admin login must load at ${width}px`);
+    await page.screenshot({ path: new URL(`admin-login-${width}.png`, screenshotDir).pathname, fullPage: true });
+    const heroCount = await page.locator(".hero img").count();
+    assert.equal(heroCount, 1, `expected the admin hero on ${page.url()} at ${width}px; document title: ${await page.title()}`);
     await page.locator(".hero img").evaluate(image => image.decode());
     assert.equal(await page.getByLabel("Рабочий email").isVisible(), true);
     assert.equal(await page.getByLabel("Пароль").isVisible(), true);
@@ -34,8 +40,6 @@ try {
     assert.equal(hero.height, width <= 580 ? 135 : 170);
     const loginOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     assert.equal(loginOverflow, false, `login page has horizontal overflow at ${width}px`);
-    await page.screenshot({ path: new URL(`admin-login-${width}.png`, screenshotDir).pathname, fullPage: true });
-
     if (width === 390) {
       await page.keyboard.press("Tab");
       assert.equal(await page.evaluate(() => document.activeElement.matches(".back")), true, "first keyboard focus should reach the back link");
