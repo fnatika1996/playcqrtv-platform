@@ -79,9 +79,10 @@ try {
     page.on("request", request => { if (new URL(request.url()).pathname.startsWith("/api/admin")) console.log(`Dashboard request ${request.method()} ${new URL(request.url()).pathname}`); });
     page.on("response", response => { if (new URL(response.url()).pathname.startsWith("/api/admin")) console.log(`Dashboard response ${response.status()} ${new URL(response.url()).pathname}`); });
     page.on("pageerror", error => console.log(`Dashboard page error ${error.message}`));
-    await page.route("**/api/admin**", async route => {
+    await page.route("**/*", async route => {
       const request = route.request();
       const url = new URL(request.url());
+      if (!url.pathname.startsWith("/api/admin/")) return route.continue();
       let data;
       if (url.pathname === "/api/admin/me") {
         data = { user: { id: 9001, nickname: "QA Operator", emailMasked: "q•••@example.test" }, csrfToken: "qa-csrf-token" };
