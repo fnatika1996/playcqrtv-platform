@@ -58,3 +58,15 @@ test("login art is a local optimized raster and stays decorative",async()=>{
   assert.match(html,/src="\/assets\/auth\/login-hero\.jpg" alt="" aria-hidden="true"/);
   assert.match(html,/class="login-hero" hidden/);
 });
+
+test("login hero layers use a controlled banner layout at desktop and mobile sizes",()=>{
+  const css=html.match(/<style>([\s\S]*?)<\/style>/)?.[1]||"";
+  assert.match(css,/\.login-page \.login-hero:not\(\[hidden\]\)\{position:relative;display:block;width:100%;max-width:100%;min-width:0;height:200px/);
+  assert.match(css,/\.login-page \.login-hero:not\(\[hidden\]\)\{[^}]*overflow:hidden/);
+  assert.match(css,/\.login-page \.login-art\{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:right center/);
+  assert.match(css,/\.login-page \.login-hero-shade\{position:absolute;inset:0;pointer-events:none;background:linear-gradient/);
+  assert.match(css,/\.login-page \.login-hero-copy\{position:absolute;left:0;top:50%;z-index:1/);
+  assert.ok(css.includes("@media(max-width:540px)")&&css.includes(".login-page .login-hero:not([hidden]){height:126px"),"tablet/phone hero height is controlled");
+  assert.ok(css.includes("@media(max-width:360px)")&&css.includes(".login-page .login-hero:not([hidden]){height:116px"),"small phone hero height is controlled");
+  assert.match(css,/object-position:68% center/);
+});
