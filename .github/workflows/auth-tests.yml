@@ -6,6 +6,8 @@ on:
     paths:
       - index.html
       - auth.html
+      - site-closed.html
+      - site-control-admin.html
       - admin.html
       - admin-login.html
       - assets/admin/**
@@ -94,7 +96,7 @@ jobs:
         # Static parse only; this PR job has no production credentials or API calls.
 
       - name: Validate immutable release Compose generation (non-production)
-        run: node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs
+        run: node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs
 
       - name: Extract the approved CQRTV icon pack
         run: |
@@ -144,6 +146,12 @@ jobs:
               -e 's/^www\.playcqrtv\.com {/http:\/\/www.playcqrtv.com {/' \
               Caddyfile > "$RUNNER_TEMP/Caddyfile.qa"
           echo "127.0.0.1 playcqrtv.com" | sudo tee -a /etc/hosts
+          node qa/site-control-gate-mock.mjs > "$RUNNER_TEMP/site-control-gate.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/site-control-gate.pid"
+          for attempt in $(seq 1 20); do
+            if curl --silent --fail http://127.0.0.1:3000/api/site-control/gate >/dev/null; then break; fi
+            sleep 1
+          done
           docker run -d --name cqrtv-admin-qa \
             -p 127.0.0.1:8765:80 \
             --add-host api:host-gateway \
@@ -194,14 +202,16 @@ jobs:
         env:
           CQRTV_QA_BASE_URL: http://playcqrtv.com:8765
           PLAYWRIGHT_PACKAGE: ${{ runner.temp }}/cqrtv-playwright/node_modules/playwright
-        run: node qa/admin-playwright.mjs
+        run: |
+          node qa/admin-playwright.mjs
+          node qa/site-control-playwright.mjs
 
       - name: Upload non-sensitive browser screenshots
         id: upload-screenshots
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: cqrtv-admin-browser-qa
+          name: cqrtv-admin-site-control-browser-qa
           path: qa-artifacts/*.png
           if-no-files-found: warn
           retention-days: 30
@@ -219,4 +229,6 @@ jobs:
 
       - name: Stop isolated preview container
         if: always()
-        run: docker rm --force cqrtv-admin-qa || true
+        run: |
+          docker rm --force cqrtv-admin-qa || true
+          if [ -f "$RUNNER_TEMP/site-control-gate.pid" ]; then kill "$(cat "$RUNNER_TEMP/site-control-gate.pid")" || true; fi
