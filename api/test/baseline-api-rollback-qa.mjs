@@ -101,6 +101,8 @@ try {
   const legacyServerSource = execFileSync("git", ["show", `${baselineSha}:api/server.mjs`], { cwd: root, encoding: "utf8" });
   const legacyPasswordPolicy = execFileSync("git", ["show", `${baselineSha}:api/password-policy.mjs`], { cwd: root, encoding: "utf8" });
   const legacyAdminRoutes = execFileSync("git", ["show", `${baselineSha}:api/admin-routes.mjs`], { cwd: root, encoding: "utf8" });
+  const legacySiteControl = execFileSync("git", ["show", `${baselineSha}:api/site-control.mjs`], { cwd: root, encoding: "utf8" });
+  const legacySiteMigration = execFileSync("git", ["show", `${baselineSha}:api/migrations/002_site_control.sql`], { cwd: root, encoding: "utf8" });
   const legacyAdminMigration = execFileSync("git", ["show", `${baselineSha}:api/migrations/001_admin_mvp.sql`], { cwd: root, encoding: "utf8" });
   const apiRoot = path.join(root, "api");
   tempDir = fs.mkdtempSync(path.join(apiRoot, ".baseline-compat-"));
@@ -108,8 +110,10 @@ try {
   fs.writeFileSync(legacyServerPath, legacyServerSource);
   fs.writeFileSync(path.join(tempDir, "password-policy.mjs"), legacyPasswordPolicy);
   fs.writeFileSync(path.join(tempDir, "admin-routes.mjs"), legacyAdminRoutes);
+  fs.writeFileSync(path.join(tempDir, "site-control.mjs"), legacySiteControl);
   fs.mkdirSync(path.join(tempDir, "migrations"), { recursive: true });
   fs.writeFileSync(path.join(tempDir, "migrations", "001_admin_mvp.sql"), legacyAdminMigration);
+  fs.writeFileSync(path.join(tempDir, "migrations", "002_site_control.sql"), legacySiteMigration);
   const passwordFile = path.join(tempDir, "db-password");
   fs.writeFileSync(passwordFile, localPassword, { mode: 0o600 });
 
