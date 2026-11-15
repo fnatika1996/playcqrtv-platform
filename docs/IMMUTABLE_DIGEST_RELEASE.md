@@ -1,6 +1,6 @@
 # CQRTV Immutable Digest Release and Rollback
 
-This document records the intended deployment design and its limits for PR #11. It does not authorize or execute a release. The current Hostinger workflow is not yet switched to this design; a production-workflow change is pending separate approval.
+This document records the digest-pinned deployment design implemented in PR #11. It does not authorize or execute a release.
 
 ## Confirmed baseline
 
@@ -26,16 +26,16 @@ The effective file must list exactly one immutable registry ref for web and API 
 
 ## Hostinger transfer constraint and chosen integration
 
-The current `hostinger/deploy-on-vps@v2` action constructs a GitHub blob URL from `github.sha` and one `docker-compose-path`; it cannot point at a file generated later in the runner workspace. A generated manifest cannot be passed reliably through that action's current inputs.
+Hostinger's `deploy-on-vps@v2` action constructs a GitHub blob URL from `github.sha` and one `docker-compose-path`; it cannot point at a file generated later in the runner workspace. PR #11 therefore replaces that action with a direct request to the documented Hostinger Docker API, which accepts the complete Compose YAML in the `content` field. The workflow renders and validates that raw manifest after Buildx has pushed both images and returned registry digests. It keeps the push-to-main and workflow_dispatch triggers, serializes production deploy jobs, keeps mutable `:latest` out of image tags/config, and uses a read-only project-containers API query to require the reported refs to match the submitted web/API digests.
 
-Hostinger's documented Docker API accepts the Compose YAML directly in the `content` field, in addition to a URL. The viable design is therefore: render and validate the digest-pinned Compose in the workflow, then submit that raw manifest to the same Hostinger API endpoint used by the action. Keep the existing push-to-main trigger, project name, VM target, and secret boundary. Remove mutable `:latest` build tags from the workflow. Add a read-only post-deploy API query to Hostinger's project containers endpoint and require the reported web/API image refs to equal the exact digests submitted.
+The deployment workflow change is code only. It has not been executed, and no Hostinger API call was made.
 
 Relevant source documentation:
 
 - Hostinger action inputs and implementation: https://github.com/hostinger/deploy-on-vps/blob/main/action.yaml
 - Hostinger Docker API: https://developers.hostinger.com/
 
-This integration has not been sent to Hostinger or tested against a production account. No deployment was run. The current branch still contains the pre-existing deploy action until the deployment-workflow code change receives the required approval.
+The generated Compose and workflow wiring are tested in PR-only CI. The raw-content request and Hostinger runtime response have not been exercised against Hostinger. No deployment was run.
 
 ## Pre-merge and release sequence
 
@@ -79,7 +79,7 @@ The PR API checks `account_status`; the base API does not. Non-production charac
 
 ## Status
 
-- Generator and no-deploy CI validation: intended for PR-only implementation.
-- Hostinger API raw-content deployment: design supported by public API documentation, but not implemented or production-verified yet.
+- Generator and PR-only CI validation: implemented and tested with synthetic digests plus the verified baseline rollback refs.
+- Future Hostinger workflow: now submits the generated raw Compose content using Buildx registry digests; code and workflow wiring are covered by a static regression test, but the Hostinger API has not been called.
 - API migration compatibility: structural start passed in disposable CI; suspend rollback incompatibility reproduced in disposable CI.
 - Release: not approved or executed by this document.
