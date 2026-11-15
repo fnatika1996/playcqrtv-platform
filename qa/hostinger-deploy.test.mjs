@@ -54,7 +54,7 @@ test("deploy posts one complete manifest, polls action success, then verifies bo
   assert.equal(calls[0].options.headers.Authorization, "Bearer " + token);
   const postBody = JSON.parse(calls[0].options.body);
   assert.equal(postBody.project_name, "playcqrtv");
-  assert.match(postBody.content, apiImageRef);
+  assert.ok(postBody.content.includes(apiImageRef));
 });
 
 test("a terminal Hostinger action failure stops before container verification", async () => {
@@ -122,9 +122,10 @@ test("documented container list schema is validated and health is required when 
     assert.equal(assessExpectedContainers(containers(), { webImageRef, apiImageRef }), true);
   });
   await t.test("starting or stopped containers are not ready", () => {
-    assert.equal(assessExpectedContainers(containers({
-      extra: [{ name: "pending", image: webImageRef, state: "running", health: "starting" }]
-    }), { webImageRef, apiImageRef }), false);
+    assert.equal(assessExpectedContainers([
+      { name: "web", image: webImageRef, state: "running", health: "starting" },
+      { name: "api", image: apiImageRef, state: "running", health: "healthy" }
+    ], { webImageRef, apiImageRef }), false);
     assert.equal(assessExpectedContainers([
       { name: "web", image: webImageRef, state: "running" },
       { name: "api", image: apiImageRef, state: "exited" }
