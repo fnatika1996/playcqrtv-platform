@@ -153,8 +153,8 @@ export function createSiteControlRoutes({ pool, json, body, tokenHash }) {
       );
       json(res, 200, {
         ...settings,
-        socialLinks: links.rows.map(row => ({
-          id: row.id, label: row.label, url: row.url, iconKey: row.icon_key, iconAssetId: row.icon_asset_id
+        socialLinks: links.rows.filter(row => safeHttpsUrl(row.url)).map(row => ({
+          id: row.id, label: row.label, url: safeHttpsUrl(row.url), iconKey: row.icon_key, iconAssetId: row.icon_asset_id
         }))
       });
       return true;
