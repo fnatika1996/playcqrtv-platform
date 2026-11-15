@@ -199,3 +199,17 @@ body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#
 .admin-app .dialog-actions .danger:hover{background:#512b26}
 .admin-app .dialog-actions .confirm{color:#152218;background:linear-gradient(100deg,#a9e9bb,#79d9a5);border-color:#a9e9bb;box-shadow:0 8px 22px #79d9a51e}
 .admin-app .status[role=status]:empty{display:none}
+
+.admin-app .avatar{position:relative;overflow:hidden}
+.admin-app .avatar>img{position:absolute;inset:5px;width:calc(100% - 10px);height:calc(100% - 10px);object-fit:contain;opacity:.24}
+.admin-app .avatar>span{position:relative;z-index:1}
+.admin-app .security-icon{width:14px;height:14px;vertical-align:-3px;margin-right:5px;opacity:.85}
+.admin-app .panel-title .section-icon{width:18px;height:18px;vertical-align:-3px;margin-right:7px}
+.admin-app .field-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.admin-app .mode-state{display:inline-flex;align-items:center;gap:6px;color:#aeb2ba;font-size:10px}
+.admin-app .mode-state img{width:15px;height:15px}
+.admin-app .mode-state[data-mode=open]{color:#91e3af}
+.admin-app .mode-state[data-mode=maintenance]{color:#ffaaa0}
+.admin-app .mode-state[data-mode=coming_soon]{color:#f4ce83}
+.admin-app .check input[type=checkbox]{appearance:none;position:relative;border:1px solid #555a62;border-radius:5px;background:#202226}
+.admin-app .check input[type=checkbox]:checked{border-color:#ff9b5a;background:#ff7629;-webkit-mask:url("/assets/icons/cqrtv/ui/check-square.svg") center/contain no-repeat;mask:url("/assets/icons/cqrtv/ui/check-square.svg") center/contain no-repeat}
