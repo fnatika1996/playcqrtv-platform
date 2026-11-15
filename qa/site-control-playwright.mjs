@@ -96,7 +96,7 @@ try{
    assert.equal(socialPayload?.iconKey,"chat");
    await page.screenshot({path:new URL("site-control-admin-desktop.png",dir).pathname,fullPage:true});
   }
-  if(width===390)await page.screenshot({path:new URL("site-control-admin-mobile.png",dir).pathname,fullPage:true});
+  if(width===390){await page.locator("#menu").click();assert.equal(await page.locator("#shell").evaluate(element=>element.classList.contains("open")),true,"mobile Site Control menu should open");await page.locator('aside a[href="#social-form"]').click();assert.equal(await page.locator("#shell").evaluate(element=>element.classList.contains("open")),false,"selecting a real section should close the mobile menu");await page.screenshot({path:new URL("site-control-admin-mobile.png",dir).pathname,fullPage:true});}
   await context.close();
  }
  console.log("PASS site control desktop/mobile, modal keyboard flow, maintenance mode, admin preview, spoofed-header denial, expired-session recovery and packaged-icon replacement.");
