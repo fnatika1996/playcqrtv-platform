@@ -100,11 +100,13 @@ try {
   const root = process.cwd();
   const legacyServerSource = execFileSync("git", ["show", `${baselineSha}:api/server.mjs`], { cwd: root, encoding: "utf8" });
   const legacyPasswordPolicy = execFileSync("git", ["show", `${baselineSha}:api/password-policy.mjs`], { cwd: root, encoding: "utf8" });
+  const legacyAdminRoutes = execFileSync("git", ["show", `${baselineSha}:api/admin-routes.mjs`], { cwd: root, encoding: "utf8" });
   const apiRoot = path.join(root, "api");
   tempDir = fs.mkdtempSync(path.join(apiRoot, ".baseline-compat-"));
   const legacyServerPath = path.join(tempDir, "server.mjs");
   fs.writeFileSync(legacyServerPath, legacyServerSource);
   fs.writeFileSync(path.join(tempDir, "password-policy.mjs"), legacyPasswordPolicy);
+  fs.writeFileSync(path.join(tempDir, "admin-routes.mjs"), legacyAdminRoutes);
   const passwordFile = path.join(tempDir, "db-password");
   fs.writeFileSync(passwordFile, localPassword, { mode: 0o600 });
 
