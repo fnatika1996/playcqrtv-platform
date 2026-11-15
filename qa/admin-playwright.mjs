@@ -127,7 +127,7 @@ try {
     if (width <= 760) {
       await page.locator("#menu").click();
       assert.equal(await page.locator("#shell").evaluate(element => element.classList.contains("open")), true);
-      await page.locator("#menu").click();
+      assert.equal(await page.locator("#menu").getAttribute("aria-expanded"), "true");
     }
 
     await page.locator('[data-view="users"]').click();
