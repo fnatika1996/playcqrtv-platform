@@ -141,8 +141,10 @@ try {
     }
 
     if (width === 390) {
+      await page.locator("#menu").click();
       await page.locator('[data-view="audit"]').click();
       await page.getByText("QA fixture review", { exact: true }).waitFor({ state: "visible" });
+      await page.locator("#menu").click();
       await page.locator('[data-view="users"]').click();
       await page.locator('#users button[data-action="suspend"]').first().click();
       await page.locator("#reason").waitFor({ state: "visible" });
