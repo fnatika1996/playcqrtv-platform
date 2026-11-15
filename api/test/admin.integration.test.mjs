@@ -116,7 +116,7 @@ test("admin API access control and user management", { skip: !connectionString }
     });
 
     await t.test("suspend requires a reason, blocks self-lockout and revokes player sessions", async () => {
-      const self = await request(`/api/admin/users/${admin.rows[0].id}/suspend`, { method: "POST", cookie: adminCookie, csrf: adminCsrf, body: { reason: "self" } });
+      const self = await request(`/api/admin/users/${admin.rows[0].id}/suspend`, { method: "POST", cookie: adminCookie, csrf: adminCsrf, body: { reason: "Prevent self lockout" } });
       assert.equal(self.response.status, 409);
       const noReason = await request(`/api/admin/users/${player.rows[0].id}/suspend`, { method: "POST", cookie: adminCookie, csrf: adminCsrf, body: { reason: "" } });
       assert.equal(noReason.response.status, 400);
