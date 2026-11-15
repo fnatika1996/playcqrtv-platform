@@ -65,7 +65,7 @@ jobs:
           BASELINE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           printf '127.0.0.1 db\n' | sudo tee -a /etc/hosts >/dev/null
-          node api/test/baseline-api-rollback.test.mjs
+          node api/test/baseline-api-rollback-qa.mjs
 
       - name: Check API syntax
         run: node --check api/server.mjs
