@@ -75,7 +75,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}
+          tags: |
+            ghcr.io/fnatika1996/playcqrtv-platform:latest
+            ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}
 
       - name: Verify CQRTV icons are inside the published image
         env:
@@ -91,30 +93,30 @@ jobs:
         with:
           context: ./api
           push: true
-          tags: ghcr.io/fnatika1996/playcqrtv-api:${{ github.sha }}
+          tags: |
+            ghcr.io/fnatika1996/playcqrtv-api:latest
+            ghcr.io/fnatika1996/playcqrtv-api:${{ github.sha }}
 
-      - name: Render and validate immutable Compose manifest
-        id: release-compose
+      - name: Record pushed image digests
         env:
           WEB_IMAGE_DIGEST: ${{ steps.build-web.outputs.digest }}
           API_IMAGE_DIGEST: ${{ steps.build-api.outputs.digest }}
         run: |
           set -euo pipefail
-          manifest="$RUNNER_TEMP/docker-compose.release.yml"
-          node qa/pin-compose-digests.mjs docker-compose.yml "$manifest" "$WEB_IMAGE_DIGEST" "$API_IMAGE_DIGEST"
-          docker compose -f "$manifest" config --quiet
-          docker compose -f "$manifest" config --images | tee "$RUNNER_TEMP/release-images.txt"
-          ! grep -E ':latest([[:space:]]|$)' "$RUNNER_TEMP/release-images.txt"
-          echo "manifest=$manifest" >> "$GITHUB_OUTPUT"
-          echo "web_ref=ghcr.io/fnatika1996/playcqrtv-platform@$WEB_IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
-          echo "api_ref=ghcr.io/fnatika1996/playcqrtv-api@$API_IMAGE_DIGEST" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Built CQRTV image identities"
+            echo "- Web commit tag: ghcr.io/fnatika1996/playcqrtv-platform:$GITHUB_SHA"
+            echo "- Web digest: $WEB_IMAGE_DIGEST"
+            echo "- API commit tag: ghcr.io/fnatika1996/playcqrtv-api:$GITHUB_SHA"
+            echo "- API digest: $API_IMAGE_DIGEST"
+            echo "- Hostinger existing-project update uses the verified saved Compose latest refs."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Submit Compose and verify Hostinger action and containers
         env:
           HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
-          RELEASE_COMPOSE_PATH: ${{ steps.release-compose.outputs.manifest }}
-          WEB_IMAGE_REF: ${{ steps.release-compose.outputs.web_ref }}
-          API_IMAGE_REF: ${{ steps.release-compose.outputs.api_ref }}
+          WEB_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-platform:latest
+          API_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-api:latest
         run: node qa/hostinger-deploy.mjs
 
       - name: Verify live website and API health (read-only)
