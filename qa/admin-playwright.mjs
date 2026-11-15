@@ -131,7 +131,7 @@ try {
     }
 
     await page.locator('[data-view="users"]').click();
-    await page.getByText("Rifler QA", { exact: true }).waitFor({ state: "visible" });
+    await page.locator("#users").getByText("Rifler QA", { exact: true }).waitFor({ state: "visible" });
     if (width === 1440 || width === 390 || width === 320) {
       await page.screenshot({ path: new URL(`admin-dashboard-${width}-users.png`, screenshotDir).pathname, fullPage: true });
     }
