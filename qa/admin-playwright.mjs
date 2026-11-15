@@ -16,7 +16,9 @@ const browser = await chromium.launch({
 });
 try {
   for (const width of widths) {
-    const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
+    const context = await browser.newContext({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
+    await context.addCookies([{ name: "cqrtv_qa_admin", value: "valid", domain: "playcqrtv.com", path: "/" }]);
+    const page = await context.newPage();
     let loginPosts = 0;
     page.on("request", request => {
       if (request.method() === "POST" && request.url().includes("/api/admin/login")) loginPosts++;
@@ -178,7 +180,7 @@ try {
       await page.waitForURL("**/admin/login");
       assert.equal(logoutCalls, 1, "logout should call only the mock API");
     }
-    await page.close();
+    await context.close();
     console.log(`PASS admin dashboard viewport ${width}px`);
   }
 } finally {
