@@ -36,7 +36,7 @@ test("Caddy preserves health/API, login recovery and authenticated admin preview
  assert.match(caddy,/X-Forwarded-Uri \{uri\}/);
  assert.match(caddy,/copy_headers X-CQRTV-Site-Mode/);
  assert.match(caddy,/@site_closed header X-CQRTV-Site-Mode coming_soon maintenance/);
- assert.match(caddy,/rewrite \* \/site-closed\.html/);
+ assert.ok(caddy.includes("rewrite @site_closed /site-closed.html"));
 });
 
 test("site control migration defaults to open and stores only raster upload types",()=>{
