@@ -213,3 +213,6 @@ body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#
 .admin-app .mode-state[data-mode=coming_soon]{color:#f4ce83}
 .admin-app .check input[type=checkbox]{appearance:none;position:relative;border:1px solid #555a62;border-radius:5px;background:#202226}
 .admin-app .check input[type=checkbox]:checked{border-color:#ff9b5a;background:#ff7629;-webkit-mask:url("/assets/icons/cqrtv/ui/check-square.svg") center/contain no-repeat;mask:url("/assets/icons/cqrtv/ui/check-square.svg") center/contain no-repeat}
+
+.admin-app .topbar .mobile-menu{display:none}
+@media(max-width:760px){.admin-app .topbar .mobile-menu{display:grid}}
