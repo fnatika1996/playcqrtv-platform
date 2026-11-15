@@ -64,6 +64,7 @@ const b=await body(req),nickname=String(b.nickname||"").normalize("NFKC").trim()
 if(nickname.length<3||nickname.length>24||!/^[\p{L}\p{N}_ .-]+$/u.test(nickname))return json(res,400,{error:"Никнейм: 3–24 символа, буквы, цифры, пробел, точка, дефис или _."});
 if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return json(res,400,{error:"Проверьте адрес email."});
 if(password.length<12||password.length>128)return json(res,400,{error:"Пароль должен содержать от 12 до 128 символов."});
+if(!/^\p{Lu}/u.test(password)||!/\p{Ll}/u.test(password)||!/\p{N}/u.test(password)||!/[^\p{L}\p{N}]/u.test(password))return json(res,400,{error:"Начните пароль с заглавной буквы и добавьте строчную букву, цифру и специальный символ."});
 if(!validCountry(country))return json(res,400,{error:"Выберите страну из списка."});
 if(!roles.has(primaryRole)||secondary.length>2||secondary.some(x=>!roles.has(x)||x===primaryRole))return json(res,400,{error:"Проверьте выбранные игровые роли."});
 if(b.acceptRules!==true)return json(res,400,{error:"Для регистрации нужно принять правила и политику конфиденциальности."});
