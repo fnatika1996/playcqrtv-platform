@@ -4,6 +4,16 @@ const modes = new Set(["open", "coming_soon", "maintenance"]);
 const iconKeys = new Set(["chat", "play", "mail", "home", "users", "gamepad", "ranking"]);
 const assetKinds = new Set(["background", "social"]);
 const maxAssetBytes = 2 * 1024 * 1024;
+const defaultSettings = {
+  mode: "open", heading: "CQRTV скоро откроется", subtitle: "Новая платформа для игроков Counter-Strike 2",
+  description: "Мы готовим пространство для игроков и команд: подбор матчей, турниры, статистика и развитие esports-сцены.",
+  statusLabel: "ПЛАТФОРМА ГОТОВИТСЯ", maintenanceHeading: "CQRTV на техобслуживании",
+  maintenanceSubtitle: "Мы настраиваем платформу и скоро вернёмся.", maintenanceDescription: "Проводятся технические работы",
+  maintenanceStatusLabel: "ТЕХНИЧЕСКИЕ РАБОТЫ", launchAt: "", countdownEnabled: false,
+  aboutButtonLabel: "Что такое CQRTV?", aboutTitle: "Играй. Объединяйся. Развивайся.",
+  aboutBody: "CQRTV — будущая платформа Counter-Strike 2 для игроков и команд. Здесь можно будет находить партнёров, собирать составы, играть матчи, участвовать в турнирах, следить за статистикой и вместе развивать esports-сцену.",
+  animationEnabled: true, backgroundAssetId: null
+};
 
 function cookieValue(req, name) {
   const prefix = name + "=";
@@ -42,6 +52,7 @@ export function decodeImageUpload({ mimeType, base64, kind }) {
 }
 
 function settingsView(row) {
+  if (!row) return { ...defaultSettings };
   return {
     mode: row.mode,
     heading: row.heading,
@@ -119,9 +130,9 @@ export function createSiteControlRoutes({ pool, json, body, tokenHash }) {
   }
 
   async function blocked(req) {
+    if (await isActiveAdmin(req)) return false;
     const settings = await currentSettings();
-    if (settings.mode === "open") return false;
-    return !(await isActiveAdmin(req));
+    return settings.mode !== "open";
   }
 
   async function handle(req, res) {
@@ -129,7 +140,6 @@ export function createSiteControlRoutes({ pool, json, body, tokenHash }) {
     const path = url.pathname;
 
     if (req.method === "GET" && path === "/api/site-control/gate") {
-      const settings = await currentSettings();
       const originalUri = String(req.headers["x-forwarded-uri"] || "").split("?")[0];
       const adminPage = originalUri === "/admin" || originalUri === "/admin.html" || originalUri === "/admin/site-control" || originalUri === "/site-control-admin.html";
       const admin = await isActiveAdmin(req);
@@ -137,6 +147,7 @@ export function createSiteControlRoutes({ pool, json, body, tokenHash }) {
         json(res, 401, { error: "Требуется вход администратора." });
         return true;
       }
+      const settings = admin ? null : await currentSettings();
       res.writeHead(204, {
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
@@ -211,7 +222,7 @@ export function createSiteControlAdminRoutes({ pool, json, body }) {
         if (!asset.rowCount) return json(res, 400, { error: "Фоновый файл не найден." }), true;
       }
       const result = await pool.query(
-        "UPDATE site_control_settings SET mode=$1,heading=$2,subtitle=$3,description=$4,status_label=$5,maintenance_heading=$6,maintenance_subtitle=$7,maintenance_description=$8,maintenance_status_label=$9,launch_at=$10,countdown_enabled=$11,about_button_label=$12,about_title=$13,about_body=$14,animation_enabled=$15,background_asset_id=$16,updated_at=now() WHERE id=1 RETURNING *",
+        "INSERT INTO site_control_settings(id,mode,heading,subtitle,description,status_label,maintenance_heading,maintenance_subtitle,maintenance_description,maintenance_status_label,launch_at,countdown_enabled,about_button_label,about_title,about_body,animation_enabled,background_asset_id) VALUES(1,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT(id) DO UPDATE SET mode=EXCLUDED.mode,heading=EXCLUDED.heading,subtitle=EXCLUDED.subtitle,description=EXCLUDED.description,status_label=EXCLUDED.status_label,maintenance_heading=EXCLUDED.maintenance_heading,maintenance_subtitle=EXCLUDED.maintenance_subtitle,maintenance_description=EXCLUDED.maintenance_description,maintenance_status_label=EXCLUDED.maintenance_status_label,launch_at=EXCLUDED.launch_at,countdown_enabled=EXCLUDED.countdown_enabled,about_button_label=EXCLUDED.about_button_label,about_body=EXCLUDED.about_body,about_title=EXCLUDED.about_title,animation_enabled=EXCLUDED.animation_enabled,background_asset_id=EXCLUDED.background_asset_id,updated_at=now() RETURNING *",
         [settings.mode,settings.heading,settings.subtitle,settings.description,settings.statusLabel,settings.maintenanceHeading,settings.maintenanceSubtitle,settings.maintenanceDescription,settings.maintenanceStatusLabel,settings.launchAt,settings.countdownEnabled,settings.aboutButtonLabel,settings.aboutTitle,settings.aboutBody,settings.animationEnabled,settings.backgroundAssetId]
       );
       const previousAsset = previousBackground.rows[0]?.background_asset_id;
