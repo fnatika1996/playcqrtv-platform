@@ -70,6 +70,27 @@ test("site control protects public routes, persists settings and allows authenti
   assert.equal(result.response.status,200);
   assert.equal(result.data.heading,"CQRTV is coming");
 
+  result=await request("/api/auth/me",{headers:{"X-CQRTV-Site-Mode":"open","X-Forwarded-Uri":"/admin/site-control"}});
+  assert.equal(result.response.status,503,"untrusted mode and forwarded-URI headers cannot bypass direct API gating");
+  result=await request("/api/auth/register",{method:"POST",body:{},headers:{"X-CQRTV-Site-Mode":"open"}});
+  assert.equal(result.response.status,503);
+
+  result=await request("/api/admin/site-control/settings",{method:"POST",cookie,csrf,body:{
+    mode:"maintenance",heading:"CQRTV is coming",subtitle:"CS2 players and teams",description:"Closed for launch.",
+    statusLabel:"COMING SOON",maintenanceHeading:"Maintenance",maintenanceSubtitle:"Back soon",
+    maintenanceDescription:"Routine service work.",maintenanceStatusLabel:"MAINTENANCE",launchAt:null,
+    countdownEnabled:false,aboutButtonLabel:"About CQRTV",aboutTitle:"CQRTV platform",
+    aboutBody:"Players, teams, matches, tournaments, stats and esports.",animationEnabled:false,backgroundAssetId:null
+  }});
+  assert.equal(result.response.status,200);
+  assert.equal(result.data.settings.mode,"maintenance");
+  result=await request("/api/auth/me",{headers:{"X-CQRTV-Site-Mode":"open"}});
+  assert.equal(result.response.status,503,"maintenance mode must also close direct API requests");
+  result=await request("/api/auth/register",{method:"POST",body:{},headers:{"X-CQRTV-Site-Mode":"open"}});
+  assert.equal(result.response.status,503);
+  result=await request("/api/site-control/public");
+  assert.equal(result.data.mode,"maintenance","public page settings remain available in maintenance mode");
+
   result=await request("/api/site-control/gate",{headers:{"X-Forwarded-Uri":"/admin/site-control"}});
   assert.equal(result.response.status,401);
   result=await request("/api/site-control/gate",{cookie,headers:{"X-Forwarded-Uri":"/admin/site-control"}});
@@ -115,5 +136,13 @@ test("site control protects public routes, persists settings and allows authenti
     aboutBody:"Players, teams, matches, tournaments, stats and esports.",animationEnabled:false,backgroundAssetId:null
   }});
   assert.equal(result.response.status,200,"settings UPSERT restores the missing singleton row");
+
+  const rawAdminToken=cookie.slice("cqrtv_admin_session=".length);
+  const tokenHash=crypto.createHash("sha256").update(rawAdminToken).digest("hex");
+  await app.pool.query("UPDATE admin_sessions SET expires_at=now()-interval '1 second' WHERE token_hash=$1",[tokenHash]);
+  result=await request("/api/site-control/gate",{cookie,headers:{"X-Forwarded-Uri":"/admin/site-control"}});
+  assert.equal(result.response.status,401,"an expired admin session cannot reach the control-panel route");
+  result=await request("/api/admin/site-control",{cookie});
+  assert.equal(result.response.status,401,"an expired admin session cannot use site-control APIs");
 
 });
