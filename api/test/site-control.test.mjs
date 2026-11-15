@@ -83,7 +83,8 @@ test("Caddy gates public static routes and keeps health/admin login recovery pat
   const caddy = fs.readFileSync(new URL("../../Caddyfile", import.meta.url), "utf8");
   assert.match(caddy, /forward_auth api:3000/);
   assert.match(caddy, /copy_headers X-CQRTV-Site-Mode/);
-  assert.match(caddy, /@site_closed header X-CQRTV-Site-Mode coming_soon maintenance/);
+  assert.match(caddy, /@site_closed header X-CQRTV-Site-Mode coming_soon/);
+  assert.match(caddy, /@site_maintenance header X-CQRTV-Site-Mode maintenance/);
   assert.match(caddy, /@admin_login path \/admin\/login \/admin-login\.html/);
   assert.match(caddy, /@api path \/api\/\*/);
 });
