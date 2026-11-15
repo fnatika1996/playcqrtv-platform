@@ -141,6 +141,23 @@ try {
     }
 
     if (width === 390) {
+      const waitForUsersQuery = params => page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return url.pathname === "/api/admin/users" && Object.entries(params).every(([key, value]) => url.searchParams.get(key) === value);
+      });
+      let filteredRequest = waitForUsersQuery({ q: "Support" });
+      await page.locator("#search").fill("Support");
+      await filteredRequest;
+      filteredRequest = waitForUsersQuery({ q: "Support", status: "suspended" });
+      await page.locator("#status-filter").selectOption("suspended");
+      await filteredRequest;
+      filteredRequest = waitForUsersQuery({ q: "Support", status: "suspended", email_verified: "true" });
+      await page.locator("#verified-filter").selectOption("true");
+      await filteredRequest;
+      filteredRequest = waitForUsersQuery({ q: "Support", status: "suspended", email_verified: "true", country: "US" });
+      await page.locator("#country-filter").fill("us");
+      await filteredRequest;
+
       await page.locator("#menu").click();
       await page.locator('[data-view="audit"]').click();
       await page.getByText("QA fixture review", { exact: true }).waitFor({ state: "visible" });
