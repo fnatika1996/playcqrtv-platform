@@ -50,6 +50,10 @@ jobs:
           sudo apt-get install -y 7zip 7zip-rar
           mkdir -p "$RUNNER_TEMP/cqrtv-icons"
           7z x -y -o"$RUNNER_TEMP/cqrtv-icons" "Icon Play CQRTV.rar"
+          if grep -RIE --include='*.svg' '<script|<foreignObject|href="https?://|javascript:' "$RUNNER_TEMP/cqrtv-icons"; then
+            echo "Unsafe active or externally linked SVG found in the icon pack."
+            exit 1
+          fi
           find "$RUNNER_TEMP/cqrtv-icons" -type f -iname '*.svg' | grep -Ei '/(mail|letter|lock|eye|login|logout|arrow|close|user|key|password|shield|check)' | sort || true
       - name: Run account authentication tests
         run: node --test api/test/*.test.mjs
