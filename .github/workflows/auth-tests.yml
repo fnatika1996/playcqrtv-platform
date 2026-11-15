@@ -40,6 +40,8 @@ jobs:
       ADMIN_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/cqrtv_admin_test
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -58,6 +60,13 @@ jobs:
           find "$RUNNER_TEMP/cqrtv-icons" -type f -iname '*.svg' | grep -Ei '/(mail|letter|lock|eye|login|logout|arrow|close|user|key|password|shield|check)' | sort || true
       - name: Run account authentication tests
         run: node --test api/test/*.test.mjs
+      - name: Characterize baseline API rollback on disposable migrated PostgreSQL
+        env:
+          BASELINE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          printf '127.0.0.1 db\n' | sudo tee -a /etc/hosts >/dev/null
+          node api/test/baseline-api-rollback.test.mjs
+
       - name: Check API syntax
         run: node --check api/server.mjs
       - name: Check registration role module syntax
