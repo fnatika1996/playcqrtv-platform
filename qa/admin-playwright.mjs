@@ -112,6 +112,8 @@ try {
 
     const response = await page.goto(`${baseUrl}/admin`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `admin dashboard must load at ${width}px`);
+    assert.equal(await page.title(), "Администрирование · CQRTV", "admin dashboard title/head must parse cleanly");
+    assert.equal(await page.locator("#shell").count(), 1, "admin dashboard body should be parsed");
     console.log(`Dashboard document ${width}px: URL=${page.url()} title=${await page.title()} emailCount=${await page.locator("#admin-email").count()} body=${(await page.locator("body").innerText()).slice(0,240).replaceAll("\n", " | ")}`);
     await page.locator("#admin-email").waitFor({ state: "visible" });
     assert.equal((await page.locator("#admin-email").innerText()).includes("example.test"), true);
