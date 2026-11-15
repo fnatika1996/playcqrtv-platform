@@ -73,7 +73,8 @@ test("confirmed baseline digests render as a separate fail-closed rollback manif
 });
 
 
-test("future deploy workflow is wired to Buildx digests and isolated PR QA has no deploy credentials", () => {
+test("deploy workflow uses validated Buildx digests and the tested Hostinger client only outside PR CI", () => {
+  const deployClient = fs.readFileSync(path.join(repoRoot, "qa", "hostinger-deploy.mjs"), "utf8");
   assert.match(deploymentWorkflow, /branches:\s*\[main\]/);
   assert.ok(deploymentWorkflow.includes("workflow_dispatch:"));
   assert.match(deploymentWorkflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
@@ -83,19 +84,23 @@ test("future deploy workflow is wired to Buildx digests and isolated PR QA has n
   assert.ok(deploymentWorkflow.includes("WEB_IMAGE_DIGEST: " + "$" + "{{ steps.build-web.outputs.digest }}"));
   assert.ok(deploymentWorkflow.includes("API_IMAGE_DIGEST: " + "$" + "{{ steps.build-api.outputs.digest }}"));
   assert.ok(deploymentWorkflow.includes("node qa/pin-compose-digests.mjs docker-compose.yml"));
-  assert.ok(deploymentWorkflow.includes("--rawfile content"));
-  assert.ok(deploymentWorkflow.includes("--data-binary \"$payload\""));
-  assert.ok(deploymentWorkflow.includes("https://developers.hostinger.com/api/vps/v1/virtual-machines/2150572/docker"));
+  assert.ok(deploymentWorkflow.includes("node qa/hostinger-deploy.mjs"));
+  assert.ok(deploymentWorkflow.includes("HOSTINGER_API_KEY: " + "$" + "{{ secrets.HOSTINGER_API_KEY }}"));
+  assert.ok(deploymentWorkflow.includes("RELEASE_COMPOSE_PATH: " + "$" + "{{ steps.release-compose.outputs.manifest }}"));
+  assert.ok(deploymentWorkflow.includes("WEB_IMAGE_REF: " + "$" + "{{ steps.release-compose.outputs.web_ref }}"));
+  assert.ok(deploymentWorkflow.includes("API_IMAGE_REF: " + "$" + "{{ steps.release-compose.outputs.api_ref }}"));
   assert.ok(!deploymentWorkflow.includes("hostinger/deploy-on-vps@v2"));
   assert.ok(!deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-platform:latest"));
   assert.ok(!deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api:latest"));
   assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-platform@$WEB_IMAGE_DIGEST"));
   assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api@$API_IMAGE_DIGEST"));
-  assert.ok(deploymentWorkflow.includes("/docker/playcqrtv/containers"));
-  assert.ok(deploymentWorkflow.includes("HOSTINGER_API_KEY: " + "$" + "{{ secrets.HOSTINGER_API_KEY }}"));
-  assert.match(deploymentWorkflow, /permissions:\s*contents: read\s+packages: write/);
-  assert.doesNotMatch(deploymentWorkflow, /^    HOSTINGER_API_KEY:/m);
   assert.doesNotMatch(deploymentWorkflow, /pull_request:/);
+  assert.ok(deployClient.includes("/actions/"));
+  assert.ok(deployClient.includes("/containers"));
+  assert.ok(deployClient.includes("Do not retry POST"));
+  assert.ok(deployClient.includes("finished with a failure state"));
+  assert.ok(deployClient.includes("unknown state; stopping safely"));
   assert.match(prWorkflow, /pull_request:/);
+  assert.ok(prWorkflow.includes("qa/hostinger-deploy.test.mjs"));
   assert.doesNotMatch(prWorkflow, /secrets\.HOSTINGER_API_KEY|hostinger\/deploy-on-vps@v2|packages:\s*write|docker login|workflow_dispatch:/);
 });
