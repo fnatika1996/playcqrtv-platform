@@ -41,7 +41,7 @@ test("admin dashboard uses selected CQRTV pack assets and safe DOM text renderin
     assert.ok(dashboard.includes("'" + icon + "'"), "missing dynamic user state icon " + icon);
   }
   for (const icon of ["chat", "gamepad", "upload"]) {
-    assert.ok(siteControl.includes("/assets/icons/cqrtv/ui/" + icon + ".svg") || siteControl.includes(icon + ":" + icon), "missing Site Control icon " + icon);
+    assert.ok(siteControl.includes("/assets/icons/cqrtv/ui/" + icon + ".svg") || siteControl.includes(icon + ":'" + icon + "'"), "missing Site Control icon " + icon);
   }
   assert.ok(siteControl.includes("'lock-open'"), "open mode uses the branded open-state icon");
   assert.doesNotMatch(dashboard, /<button disabled>/, "navigation must not expose dead placeholder sections");
