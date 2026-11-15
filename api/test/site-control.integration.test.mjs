@@ -22,6 +22,7 @@ test("site control protects public routes, persists settings and allows authenti
   const server = app.createHttpServer();
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
+  t.after(async()=>{await new Promise(resolve=>server.close(resolve));await basePool.query(`DROP SCHEMA ${schema} CASCADE`);await basePool.end()});
   const origin = process.env.APP_ORIGIN;
   const password = "AdminPass123!";
   const salt = crypto.randomBytes(16);
@@ -98,5 +99,4 @@ test("site control protects public routes, persists settings and allows authenti
   const rejected=await request("/api/admin/site-control/settings",{method:"POST",cookie,body:{mode:"open"}});
   assert.equal(rejected.response.status,403);
 
-  t.after(async()=>{await new Promise(resolve=>server.close(resolve));await basePool.query(`DROP SCHEMA ${schema} CASCADE`);await basePool.end()});
 });
