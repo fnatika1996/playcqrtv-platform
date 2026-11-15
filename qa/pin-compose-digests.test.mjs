@@ -73,33 +73,37 @@ test("confirmed baseline digests render as a separate fail-closed rollback manif
 });
 
 
-test("deploy workflow uses validated Buildx digests and the tested Hostinger client only outside PR CI", () => {
+test("deploy workflow pushes traceable tags and uses fail-closed existing-project update outside PR CI", () => {
   const deployClient = fs.readFileSync(path.join(repoRoot, "qa", "hostinger-deploy.mjs"), "utf8");
+  const composePreflight = fs.readFileSync(path.join(repoRoot, "qa", "hostinger-compose-preflight.rb"), "utf8");
   assert.match(deploymentWorkflow, /branches:\s*\[main\]/);
   assert.ok(deploymentWorkflow.includes("workflow_dispatch:"));
   assert.match(deploymentWorkflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
   assert.ok(deploymentWorkflow.includes("id: build-web"));
   assert.ok(deploymentWorkflow.includes("id: build-api"));
   assert.ok(deploymentWorkflow.includes("docker/build-push-action@v6"));
+  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-platform:latest"));
+  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api:latest"));
+  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-platform:" + "$" + "{{ github.sha }}"));
+  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api:" + "$" + "{{ github.sha }}"));
   assert.ok(deploymentWorkflow.includes("WEB_IMAGE_DIGEST: " + "$" + "{{ steps.build-web.outputs.digest }}"));
   assert.ok(deploymentWorkflow.includes("API_IMAGE_DIGEST: " + "$" + "{{ steps.build-api.outputs.digest }}"));
-  assert.ok(deploymentWorkflow.includes("node qa/pin-compose-digests.mjs docker-compose.yml"));
   assert.ok(deploymentWorkflow.includes("node qa/hostinger-deploy.mjs"));
   assert.ok(deploymentWorkflow.includes("HOSTINGER_API_KEY: " + "$" + "{{ secrets.HOSTINGER_API_KEY }}"));
-  assert.ok(deploymentWorkflow.includes("RELEASE_COMPOSE_PATH: " + "$" + "{{ steps.release-compose.outputs.manifest }}"));
-  assert.ok(deploymentWorkflow.includes("WEB_IMAGE_REF: " + "$" + "{{ steps.release-compose.outputs.web_ref }}"));
-  assert.ok(deploymentWorkflow.includes("API_IMAGE_REF: " + "$" + "{{ steps.release-compose.outputs.api_ref }}"));
+  assert.ok(deploymentWorkflow.includes("WEB_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-platform:latest"));
+  assert.ok(deploymentWorkflow.includes("API_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-api:latest"));
   assert.ok(!deploymentWorkflow.includes("hostinger/deploy-on-vps@v2"));
-  assert.ok(!deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-platform:latest"));
-  assert.ok(!deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api:latest"));
-  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-platform@$WEB_IMAGE_DIGEST"));
-  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api@$API_IMAGE_DIGEST"));
   assert.doesNotMatch(deploymentWorkflow, /pull_request:/);
+  assert.ok(deployClient.includes("/update"));
+  assert.ok(deployClient.includes("validateSavedCompose"));
+  assert.ok(deployClient.includes("Do not retry UPDATE"));
   assert.ok(deployClient.includes("/actions/"));
   assert.ok(deployClient.includes("/containers"));
-  assert.ok(deployClient.includes("Do not retry POST"));
-  assert.ok(deployClient.includes("finished with a failure state"));
   assert.ok(deployClient.includes("unknown state; stopping safely"));
+  assert.ok(composePreflight.includes("postgres_data"));
+  assert.ok(composePreflight.includes("caddy_data"));
+  assert.ok(composePreflight.includes("db_secret"));
+  assert.ok(composePreflight.includes("pull_policy"));
   assert.match(prWorkflow, /pull_request:/);
   assert.ok(prWorkflow.includes("qa/hostinger-deploy.test.mjs"));
   assert.doesNotMatch(prWorkflow, /secrets\.HOSTINGER_API_KEY|hostinger\/deploy-on-vps@v2|packages:\s*write|docker login|workflow_dispatch:/);
