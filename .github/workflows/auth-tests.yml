@@ -149,6 +149,11 @@ jobs:
           fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
           fetch / "$RUNNER_TEMP/player-home.html"
           fetch /auth.html "$RUNNER_TEMP/player-auth.html"
+          for file in "$RUNNER_TEMP/admin-login.html.headers" "$RUNNER_TEMP/admin.html.headers" "$RUNNER_TEMP/admin-hero.png.headers" "$RUNNER_TEMP/mail.svg.headers" "$RUNNER_TEMP/shield.svg.headers"; do
+            printf '%s: ' "$(basename "$file")"
+            grep -i '^content-type:' "$file" | tr '\n' ' '
+            printf '\n'
+          done
           grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin-login.html.headers"
           grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin.html.headers"
           grep -qi '^content-type: image/png' "$RUNNER_TEMP/admin-hero.png.headers"
@@ -157,7 +162,7 @@ jobs:
           grep -q 'Панель администратора' "$RUNNER_TEMP/admin-login.html"
           grep -q 'Обзор платформы' "$RUNNER_TEMP/admin.html"
           grep -q 'Профиль игрока' "$RUNNER_TEMP/player-home.html"
-          grep -q 'Войти в CQRTV' "$RUNNER_TEMP/player-auth.html"
+          grep -q '<main id="auth-card"' "$RUNNER_TEMP/player-auth.html"
           echo '3ef86e6f3dbd7c095382bd13ae21db0a239c0a8271ae2798553740cb3efee08d  '"$RUNNER_TEMP/admin-hero.png" | sha256sum --check
 
       - name: Install pinned Playwright Chromium
