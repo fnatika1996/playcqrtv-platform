@@ -216,3 +216,17 @@ body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#
 
 .admin-app .topbar .mobile-menu{display:none}
 @media(max-width:760px){.admin-app .topbar .mobile-menu{display:grid}}
+
+.admin-app .row>*{min-width:0}
+.admin-app .buttons{display:flex;flex-wrap:wrap}
+.admin-app .buttons>*{flex:1 1 150px;max-width:100%;min-width:0}
+.admin-app .social-item{min-width:0}
+.admin-app .social-item>*{min-width:0}
+.admin-app .social-actions button{min-width:38px}
+@media(max-width:440px){
+  .admin-app .row{grid-template-columns:minmax(0,1fr)}
+  .admin-app .topbar{gap:7px}
+  .admin-app .topbar>strong{font-size:23px;white-space:nowrap}
+  .admin-app .preview-link{min-height:38px;padding:0 8px;font-size:10px;white-space:nowrap}
+  .admin-app .layout .buttons>*{flex:1 1 130px}
+}
