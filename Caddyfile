@@ -1,21 +1,70 @@
 playcqrtv.com {
     encode zstd gzip
-    @admin_login path /admin/login
-    rewrite @admin_login /admin-login.html
-    @admin_dashboard path /admin
-    rewrite @admin_dashboard /admin.html
-    handle /api/* {
-        reverse_proxy api:3000 {
-            header_up X-Forwarded-For {remote_host}
+    route {
+        @api path /api/*
+        handle @api {
+            reverse_proxy api:3000 {
+                header_up X-Forwarded-For {remote_host}
+            }
         }
-    }
-    handle {
-        root * /srv
-        file_server
+
+        @admin_login path /admin/login /admin-login.html
+        handle @admin_login {
+            root * /srv
+            rewrite * /admin-login.html
+            header Cache-Control "no-store"
+            file_server
+        }
+
+        @admin_assets path /assets/icons/cqrtv/ui/* /assets/admin/admin-hero.png
+        handle @admin_assets {
+            root * /srv
+            file_server
+        }
+
+        @admin_pages path /admin /admin.html /admin/site-control /site-control-admin.html
+        handle @admin_pages {
+            route {
+                request_header -X-CQRTV-Site-Mode
+
+                forward_auth api:3000 {
+                    uri /api/site-control/gate
+                    header_up X-Forwarded-Uri {uri}
+                    header_up X-Forwarded-Method {method}
+                    copy_headers X-CQRTV-Site-Mode
+                }
+                @site_control_page path /admin/site-control /site-control-admin.html
+                rewrite @site_control_page /site-control-admin.html
+                @dashboard_page path /admin /admin.html
+                rewrite @dashboard_page /admin.html
+                header Cache-Control "no-store"
+                root * /srv
+                file_server
+            }
+        }
+
+        handle {
+            route {
+                request_header -X-CQRTV-Site-Mode
+
+                forward_auth api:3000 {
+                    uri /api/site-control/gate
+                    header_up X-Forwarded-Uri {uri}
+                    header_up X-Forwarded-Method {method}
+                    copy_headers X-CQRTV-Site-Mode
+                }
+                @site_closed header X-CQRTV-Site-Mode coming_soon
+                @site_maintenance header X-CQRTV-Site-Mode maintenance
+                rewrite @site_closed /site-closed.html
+                rewrite @site_maintenance /site-closed.html
+                header Cache-Control "no-store"
+                root * /srv
+                file_server
+            }
+        }
     }
 }
 
 www.playcqrtv.com {
     redir https://playcqrtv.com{uri} permanent
 }
-

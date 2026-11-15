@@ -100,11 +100,16 @@ try {
   const root = process.cwd();
   const legacyServerSource = execFileSync("git", ["show", `${baselineSha}:api/server.mjs`], { cwd: root, encoding: "utf8" });
   const legacyPasswordPolicy = execFileSync("git", ["show", `${baselineSha}:api/password-policy.mjs`], { cwd: root, encoding: "utf8" });
+  const legacyAdminRoutes = execFileSync("git", ["show", `${baselineSha}:api/admin-routes.mjs`], { cwd: root, encoding: "utf8" });
+  const legacyAdminMigration = execFileSync("git", ["show", `${baselineSha}:api/migrations/001_admin_mvp.sql`], { cwd: root, encoding: "utf8" });
   const apiRoot = path.join(root, "api");
   tempDir = fs.mkdtempSync(path.join(apiRoot, ".baseline-compat-"));
   const legacyServerPath = path.join(tempDir, "server.mjs");
   fs.writeFileSync(legacyServerPath, legacyServerSource);
   fs.writeFileSync(path.join(tempDir, "password-policy.mjs"), legacyPasswordPolicy);
+  fs.writeFileSync(path.join(tempDir, "admin-routes.mjs"), legacyAdminRoutes);
+  fs.mkdirSync(path.join(tempDir, "migrations"), { recursive: true });
+  fs.writeFileSync(path.join(tempDir, "migrations", "001_admin_mvp.sql"), legacyAdminMigration);
   const passwordFile = path.join(tempDir, "db-password");
   fs.writeFileSync(passwordFile, localPassword, { mode: 0o600 });
 
@@ -129,11 +134,11 @@ try {
     headers: { Origin: process.env.APP_ORIGIN, "Content-Type": "application/json" },
     body: JSON.stringify({ email: "rollback-test@example.test", password })
   });
-  assert.equal(baselineLogin.status, 200,
-    "characterization: baseline API accepts a suspended account, so it is not a safe API rollback after suspend actions");
+  assert.equal(baselineLogin.status, 401,
+    "current main baseline rejects suspended accounts as well");
 
   console.log("PASS: baseline API starts on the additive migrated schema.");
-  console.log("CONFIRMED LIMITATION: baseline API authenticates the synthetic suspended account; do not API-rollback after suspend actions.");
+  console.log("CONFIRMED: current main baseline rejects the synthetic suspended account.");
 } finally {
   if (legacyProcess && legacyProcess.exitCode === null) {
     legacyProcess.kill("SIGTERM");

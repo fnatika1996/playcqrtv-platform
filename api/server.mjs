@@ -5,6 +5,7 @@ import pg from "pg";
 import nodemailer from "nodemailer";
 import { passwordError } from "./password-policy.mjs";
 import { createAdminRoutes } from "./admin-routes.mjs";
+import { createSiteControlRoutes } from "./site-control.mjs";
 
 const { Pool } = pg;
 const origin = process.env.APP_ORIGIN || "https://playcqrtv.com";
@@ -21,7 +22,7 @@ const tokenHash = value=>crypto.createHash("sha256").update(value).digest("hex")
 function sessionToken(req){return (req.headers.cookie||"").split(";").map(v=>v.trim()).find(v=>v.startsWith("cqrtv_session="))?.slice(14)||"";}
 const cookie=(name,value,maxAge)=>`${name}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
 function rateLimit(req,key,max,windowMs){const ip=(req.headers["x-forwarded-for"]||req.socket.remoteAddress||"unknown").toString().split(",")[0].trim();const id=key+":"+ip,now=Date.now(),item=rates.get(id);if(!item||item.until<now){rates.set(id,{count:1,until:now+windowMs});return false;}item.count++;return item.count>max;}
-async function body(req){let raw="";for await(const chunk of req){raw+=chunk;if(raw.length>32768)throw Object.assign(new Error("Request too large"),{status:413});}try{return JSON.parse(raw||"{}");}catch{throw Object.assign(new Error("Invalid JSON"),{status:400});}}
+async function body(req,maxBytes=32768){let raw="";for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>maxBytes)throw Object.assign(new Error("Request too large"),{status:413});}try{return JSON.parse(raw||"{}");}catch{throw Object.assign(new Error("Invalid JSON"),{status:400});}}
 function checkOrigin(req){const value=req.headers.origin;if(value&&value!==origin)throw Object.assign(new Error("Origin rejected"),{status:403});}
 async function hashPassword(password){const salt=crypto.randomBytes(16);const key=await new Promise((resolve,reject)=>crypto.scrypt(password,salt,64,{N:32768,r:8,p:1,maxmem:64*1024*1024},(e,k)=>e?reject(e):resolve(k)));return `scrypt$${salt.toString("hex")}$${key.toString("hex")}`;}
 async function verifyPassword(password,encoded){const [kind,saltHex,keyHex]=String(encoded).split("$");if(kind!=="scrypt"||!saltHex||!keyHex)return false;const salt=Buffer.from(saltHex,"hex"),expected=Buffer.from(keyHex,"hex");const actual=await new Promise((resolve,reject)=>crypto.scrypt(password,salt,expected.length,{N:32768,r:8,p:1,maxmem:64*1024*1024},(e,k)=>e?reject(e):resolve(k)));return crypto.timingSafeEqual(actual,expected);}
@@ -44,13 +45,23 @@ if (!applied.rowCount) {
  catch (error) { await client.query("ROLLBACK"); throw error; }
  finally { client.release(); }
 }
+ const siteControlMigrationId = "002_site_control";
+ const siteControlApplied = await pool.query("SELECT 1 FROM schema_migrations WHERE id=$1", [siteControlMigrationId]);
+ if (!siteControlApplied.rowCount) {
+  const client = await pool.connect();
+  try { await client.query("BEGIN"); await client.query(fs.readFileSync(new URL("./migrations/002_site_control.sql", import.meta.url), "utf8")); await client.query("INSERT INTO schema_migrations(id) VALUES($1)", [siteControlMigrationId]); await client.query("COMMIT"); }
+  catch (error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
+ }
 }
 async function handle(req,res){const url=new URL(req.url,"http://localhost");if(req.method==="GET"&&url.pathname==="/api/health"){return json(res,200,{ok:true});}
 
+try{if(await siteControlRoutes.handle(req,res))return;}catch(e){console.error("Site control request failed:",e.message);return json(res,e.status||500,{error:e.status===400?"Некорректный запрос.":"Платформа временно недоступна."});}
 if(!url.pathname.startsWith("/api/"))return json(res,404,{error:"Not found"});
 if(req.method==="POST")try{checkOrigin(req);}catch(e){return json(res,e.status||403,{error:e.message});}
 try{
 if(await adminRoutes(req,res))return;
+if(await siteControlRoutes.blocked(req))return json(res,503,{error:"Платформа временно недоступна."});
 if(req.method==="POST"&&url.pathname==="/api/account/nickname"){
 if(rateLimit(req,"nickname-change",5,3600000))return json(res,429,{error:"Слишком много попыток. Попробуйте позже."});
 const raw=sessionToken(req);if(!raw)return json(res,401,{error:"Войдите в аккаунт, чтобы изменить никнейм."});
@@ -99,6 +110,7 @@ if(req.method==="GET"&&url.pathname==="/api/auth/me"){const raw=sessionToken(req
 return json(res,404,{error:"Not found"});
 }catch(e){console.error("API request failed:",e.message);return json(res,e.status||500,{error:e.status===400?"Некорректный запрос.":e.status===413?"Слишком большой запрос.":"Не удалось выполнить запрос. Попробуйте позже."});}}
 const dummyPasswordHash = "scrypt$00000000000000000000000000000000$00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+const siteControlRoutes = createSiteControlRoutes({ pool, json, body, tokenHash });
 const adminRoutes = createAdminRoutes({ pool, json, body, tokenHash, cookie, sessionToken, verifyPassword, dummyPasswordHash, rateLimit, origin });
 export function createHttpServer(){return http.createServer((req,res)=>{handle(req,res);});}
 if(process.env.NODE_ENV !== "test") {
