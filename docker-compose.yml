@@ -26,8 +26,8 @@ services:
       start_period: 10s
     networks: [internal]
   api:
-    image: ghcr.io/fnatika1996/playcqrtv-api:latest
-    pull_policy: always
+    image: ghcr.io/fnatika1996/playcqrtv-api@sha256:80252038a08b731657686703704ce8ee35b8871af64662134633fbd56c11f2fb
+    pull_policy: missing
     restart: unless-stopped
     environment:
       APP_ORIGIN: https://playcqrtv.com
@@ -42,8 +42,8 @@ services:
         condition: service_healthy
     networks: [internal]
   caddy:
-    image: ghcr.io/fnatika1996/playcqrtv-platform:latest
-    pull_policy: always
+    image: ghcr.io/fnatika1996/playcqrtv-platform@sha256:eca2d70ca29e8311b04f00696e95291b8f7ae7a22c28d1b6ec1485f345a5e190
+    pull_policy: missing
     container_name: playcqrtv-web
     restart: unless-stopped
     ports:

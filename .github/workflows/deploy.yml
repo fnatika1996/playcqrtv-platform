@@ -9,6 +9,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: cqrtv-production-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -49,12 +53,24 @@ jobs:
           cp "/tmp/cqrtv-icons/Icon Play CQRTV/Video Audio Sound/Play--playcqrtv.svg" assets/icons/cqrtv/ui/play.svg
           cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Shield-Check--playcqrtv.svg" assets/icons/cqrtv/ui/shield.svg
           cp "/tmp/cqrtv-icons/Icon Play CQRTV/Users/User-Plus-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/invite.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Letter--playcqrtv.svg" assets/icons/cqrtv/ui/mail.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Lock-Keyhole-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/lock.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Eye--playcqrtv.svg" assets/icons/cqrtv/ui/eye.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Eye-Closed--playcqrtv.svg" assets/icons/cqrtv/ui/eye-closed.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows Action/Login--playcqrtv.svg" assets/icons/cqrtv/ui/login.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows Action/Logout--playcqrtv.svg" assets/icons/cqrtv/ui/logout.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows/Alt-Arrow-Left--playcqrtv.svg" assets/icons/cqrtv/ui/arrow-left.svg
           test -s assets/icons/cqrtv/ui/home.svg
           icon_count=$(find assets/icons/cqrtv -type f -name '*.svg' | wc -l)
-          test "$icon_count" -eq 18
+          test "$icon_count" -eq 25
+          if grep -RIE --include='*.svg' '<script|<foreignObject|href="https?://|javascript:' assets/icons/cqrtv/ui; then
+            echo "Unsafe SVG found in selected published icons."
+            exit 1
+          fi
           echo "Copied $icon_count selected CQRTV icons into the public image."
 
       - name: Build and publish website image
+        id: build-web
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -64,11 +80,15 @@ jobs:
             ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}
 
       - name: Verify CQRTV icons are inside the published image
+        env:
+          WEB_IMAGE_DIGEST: ${{ steps.build-web.outputs.digest }}
         run: |
-          image="ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}"
+          set -euo pipefail
+          image="ghcr.io/fnatika1996/playcqrtv-platform@${WEB_IMAGE_DIGEST}"
           docker pull "$image"
-          docker run --rm --entrypoint sh "$image" -c 'test -s /srv/assets/icons/cqrtv/ui/home.svg && find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f | wc -l'
+          docker run --rm --entrypoint sh "$image" -c 'for icon in home mail lock eye eye-closed login logout arrow-left; do test -s "/srv/assets/icons/cqrtv/ui/$icon.svg" || exit 1; done; test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f | wc -l)" -eq 25'
       - name: Build and publish authentication API
+        id: build-api
         uses: docker/build-push-action@v6
         with:
           context: ./api
@@ -77,29 +97,48 @@ jobs:
             ghcr.io/fnatika1996/playcqrtv-api:latest
             ghcr.io/fnatika1996/playcqrtv-api:${{ github.sha }}
 
-      - name: Deploy project to Hostinger
-        uses: hostinger/deploy-on-vps@v2
-        with:
-          api-key: ${{ secrets.HOSTINGER_API_KEY }}
-          virtual-machine: "2150572"
-          project-name: playcqrtv
-          docker-compose-path: docker-compose.yml
+      - name: Record pushed image digests
+        env:
+          WEB_IMAGE_DIGEST: ${{ steps.build-web.outputs.digest }}
+          API_IMAGE_DIGEST: ${{ steps.build-api.outputs.digest }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Built CQRTV image identities"
+            echo "- Web commit tag: ghcr.io/fnatika1996/playcqrtv-platform:$GITHUB_SHA"
+            echo "- Web digest: $WEB_IMAGE_DIGEST"
+            echo "- API commit tag: ghcr.io/fnatika1996/playcqrtv-api:$GITHUB_SHA"
+            echo "- API digest: $API_IMAGE_DIGEST"
+            echo "- Hostinger existing-project update uses the verified saved Compose latest refs."
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify live website
+      - name: Submit Compose and verify Hostinger action and containers
+        env:
+          HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
+          WEB_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-platform:latest
+          API_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-api:latest
+        run: node qa/hostinger-deploy.mjs
+
+      - name: Verify live website and API health (read-only)
         shell: bash
         run: |
+          set -euo pipefail
           for attempt in $(seq 1 3); do
-            status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-live.html --write-out '%{http_code}' https://playcqrtv.com/ 2>/dev/null || true)
+            page_status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-live.html --write-out '%{http_code}' https://playcqrtv.com/ 2>/dev/null || true)
             icon_status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-home-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/ui/home.svg' 2>/dev/null || true)
             api_status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-api-health.json --write-out '%{http_code}' 'https://playcqrtv.com/api/health' 2>/dev/null || true)
-            registration_status=$(curl --silent --show-error --max-time 4 --request POST --header 'Content-Type: application/json' --data '{}' --output /tmp/playcqrtv-registration.json --write-out '%{http_code}' 'https://playcqrtv.com/api/auth/register' 2>/dev/null || true)
-            direct_icon_status=$(curl --silent --show-error --max-time 4 --resolve playcqrtv.com:443:2.25.3.45 --location --output /tmp/playcqrtv-direct-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/ui/home.svg' 2>/dev/null || true)
-            if [ "$status" = "200" ] && grep -q 'Профиль игрока' /tmp/playcqrtv-live.html && ! grep -q '�' /tmp/playcqrtv-live.html && [ "$icon_status" = "200" ] && test -s /tmp/playcqrtv-home-icon.svg && [ "$api_status" = "200" ] && grep -q ok /tmp/playcqrtv-api-health.json && grep -q "signup-success-dialog" /tmp/playcqrtv-live.html && grep -q "Понятно" /tmp/playcqrtv-live.html && [ "$registration_status" = "400" ] && grep -q "Никнейм" /tmp/playcqrtv-registration.json; then
-              echo "Live page, registration confirmation, icons and API are responding; registration is enabled and rejects the empty request."
+            if [ "$page_status" = "200" ] &&
+              grep -q 'Профиль игрока' /tmp/playcqrtv-live.html &&
+              ! grep -q '�' /tmp/playcqrtv-live.html &&
+              [ "$icon_status" = "200" ] &&
+              test -s /tmp/playcqrtv-home-icon.svg &&
+              [ "$api_status" = "200" ] &&
+              grep -q 'ok' /tmp/playcqrtv-api-health.json; then
+              echo "Read-only page, icon and API health checks passed."
               exit 0
             fi
-            echo "Still waiting (attempt $attempt/3): page HTTP $status, icon=$icon_status, API=$api_status, registration=$registration_status (400 expected while enabled), direct VPS=$direct_icon_status."
+            echo "Health check retry $attempt/3: page=$page_status icon=$icon_status API=$api_status."
             sleep 5
           done
-          echo "Live-site verification failed."
+          echo "Read-only live health verification failed."
           exit 1

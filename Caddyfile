@@ -1,5 +1,9 @@
 playcqrtv.com {
     encode zstd gzip
+    @admin_login path /admin/login
+    rewrite @admin_login /admin-login.html
+    @admin_dashboard path /admin
+    rewrite @admin_dashboard /admin.html
     handle /api/* {
         reverse_proxy api:3000 {
             header_up X-Forwarded-For {remote_host}
@@ -14,3 +18,4 @@ playcqrtv.com {
 www.playcqrtv.com {
     redir https://playcqrtv.com{uri} permanent
 }
+

@@ -6,9 +6,16 @@ on:
     paths:
       - index.html
       - auth.html
+      - admin.html
+      - admin-login.html
+      - assets/admin/**
+      - qa/**
+      - Caddyfile
+      - Dockerfile
       - assets/registration-roles.mjs
       - api/**
       - .github/workflows/auth-tests.yml
+      - .github/workflows/deploy.yml
 
 permissions:
   contents: read
@@ -16,14 +23,200 @@ permissions:
 jobs:
   auth-tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: cqrtv_admin_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cqrtv_admin_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      ADMIN_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/cqrtv_admin_test
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install existing API dependencies
+        run: npm install --prefix api --no-save --ignore-scripts --no-audit --no-fund
+      - name: Inspect branded icon candidates from the source archive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip 7zip-rar
+          mkdir -p "$RUNNER_TEMP/cqrtv-icons"
+          7z x -y -o"$RUNNER_TEMP/cqrtv-icons" "Icon Play CQRTV.rar"
+          if grep -RIE --include='*.svg' '<script|<foreignObject|href="https?://|javascript:' "$RUNNER_TEMP/cqrtv-icons"; then
+            echo "Unsafe active or externally linked SVG found in the icon pack."
+            exit 1
+          fi
+          find "$RUNNER_TEMP/cqrtv-icons" -type f -iname '*.svg' | grep -Ei '/(mail|letter|lock|eye|login|logout|arrow|close|user|key|password|shield|check)' | sort || true
       - name: Run account authentication tests
         run: node --test api/test/*.test.mjs
+      - name: Characterize baseline API rollback on disposable migrated PostgreSQL
+        env:
+          BASELINE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          printf '127.0.0.1 db\n' | sudo tee -a /etc/hosts >/dev/null
+          node api/test/baseline-api-rollback-qa.mjs
+
       - name: Check API syntax
         run: node --check api/server.mjs
       - name: Check registration role module syntax
         run: node --check assets/registration-roles.mjs
+      - name: Check admin route and bootstrap syntax
+        run: |
+          node --check api/admin-routes.mjs
+          node --check api/scripts/grant-admin.mjs
+
+  admin-browser-build-qa:
+    name: Admin browser and static image QA (non-production)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Parse deploy workflow without executing it
+        run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/deploy.yml"); puts "Deploy workflow YAML syntax is valid."'
+        # Static parse only; this PR job has no production credentials or API calls.
+
+      - name: Validate immutable release Compose generation (non-production)
+        run: node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs
+
+      - name: Extract the approved CQRTV icon pack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip 7zip-rar
+          mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv/ui
+          7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar"
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Search/Magnifer--playcqrtv.svg" assets/icons/cqrtv/ui/search.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Notifications/Bell--playcqrtv.svg" assets/icons/cqrtv/ui/bell.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Chat-Round--playcqrtv.svg" assets/icons/cqrtv/ui/chat.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Home--playcqrtv.svg" assets/icons/cqrtv/ui/home.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Electronic Devices/Gamepad--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Electronic Devices/Gamepad-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/gamepad-minimalistic.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Sports/Ranking--playcqrtv.svg" assets/icons/cqrtv/ui/ranking.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Users/Users-Group-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/users.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Settings Fine Tuning/Settings-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/settings.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Pen--playcqrtv.svg" assets/icons/cqrtv/ui/edit.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Check-Circle--playcqrtv.svg" assets/icons/cqrtv/ui/check.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Settings Fine Tuning/Widget--playcqrtv.svg" assets/icons/cqrtv/ui/dashboard.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Business Statistic/Chart--playcqrtv.svg" assets/icons/cqrtv/ui/chart.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Like/Medal-Star--playcqrtv.svg" assets/icons/cqrtv/ui/medal.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Essentional UI/Cup-Star--playcqrtv.svg" assets/icons/cqrtv/ui/cup.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Video Audio Sound/Play--playcqrtv.svg" assets/icons/cqrtv/ui/play.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Shield-Check--playcqrtv.svg" assets/icons/cqrtv/ui/shield.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Users/User-Plus-Rounded--playcqrtv.svg" assets/icons/cqrtv/ui/invite.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Messages Conversation/Letter--playcqrtv.svg" assets/icons/cqrtv/ui/mail.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Lock-Keyhole-Minimalistic--playcqrtv.svg" assets/icons/cqrtv/ui/lock.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Eye--playcqrtv.svg" assets/icons/cqrtv/ui/eye.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Security/Eye-Closed--playcqrtv.svg" assets/icons/cqrtv/ui/eye-closed.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows Action/Login--playcqrtv.svg" assets/icons/cqrtv/ui/login.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows Action/Logout--playcqrtv.svg" assets/icons/cqrtv/ui/logout.svg
+          cp "/tmp/cqrtv-icons/Icon Play CQRTV/Arrows/Alt-Arrow-Left--playcqrtv.svg" assets/icons/cqrtv/ui/arrow-left.svg
+          test "$(find assets/icons/cqrtv -type f -name '*.svg' | wc -l)" -eq 25
+          if grep -RIE --include='*.svg' '<script|<foreignObject|href="https?://|javascript:' assets/icons/cqrtv/ui; then
+            echo "Unsafe SVG found in selected published icons."
+            exit 1
+          fi
+
+      - name: Build the website image locally (no registry push)
+        run: |
+          docker build --file Dockerfile --tag cqrtv-admin-qa-site .
+          docker run --rm --entrypoint sh cqrtv-admin-qa-site -c 'sha256sum /srv/assets/admin/admin-hero.png'
+
+      - name: Start isolated Caddy preview
+        run: |
+          sed -e 's/^playcqrtv\.com {/http:\/\/playcqrtv.com {/' \
+              -e 's/^www\.playcqrtv\.com {/http:\/\/www.playcqrtv.com {/' \
+              Caddyfile > "$RUNNER_TEMP/Caddyfile.qa"
+          echo "127.0.0.1 playcqrtv.com" | sudo tee -a /etc/hosts
+          docker run -d --name cqrtv-admin-qa \
+            -p 127.0.0.1:8765:80 \
+            --add-host api:host-gateway \
+            -v "$RUNNER_TEMP/Caddyfile.qa:/etc/caddy/Caddyfile:ro" \
+            cqrtv-admin-qa-site
+          for attempt in $(seq 1 20); do
+            if curl --silent --fail --header 'Host: playcqrtv.com' http://127.0.0.1:8765/admin/login >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          docker logs cqrtv-admin-qa
+          exit 1
+
+      - name: Verify Caddy routes, image types and approved hero checksum
+        run: |
+          set -euo pipefail
+          base=http://127.0.0.1:8765
+          fetch() { curl --silent --show-error --fail --header 'Host: playcqrtv.com' -D "$2.headers" "$base$1" -o "$2"; }
+          fetch /admin/login "$RUNNER_TEMP/admin-login.html"
+          fetch /admin "$RUNNER_TEMP/admin.html"
+          fetch /assets/admin/admin-hero.png "$RUNNER_TEMP/admin-hero.png"
+          fetch /assets/icons/cqrtv/ui/mail.svg "$RUNNER_TEMP/mail.svg"
+          fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
+          fetch / "$RUNNER_TEMP/player-home.html"
+          fetch /auth.html "$RUNNER_TEMP/player-auth.html"
+          sha256sum "$RUNNER_TEMP/admin-hero.png"
+          for file in "$RUNNER_TEMP/admin-login.html.headers" "$RUNNER_TEMP/admin.html.headers" "$RUNNER_TEMP/admin-hero.png.headers" "$RUNNER_TEMP/mail.svg.headers" "$RUNNER_TEMP/shield.svg.headers"; do
+            printf '%s: ' "$(basename "$file")"
+            grep -i '^content-type:' "$file" | tr '\n' ' '
+            printf '\n'
+          done
+          grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin-login.html.headers"
+          grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin.html.headers"
+          grep -qi '^content-type: image/png' "$RUNNER_TEMP/admin-hero.png.headers"
+          grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/mail.svg.headers"
+          grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/shield.svg.headers"
+          grep -q 'Панель администратора' "$RUNNER_TEMP/admin-login.html"
+          grep -q 'Обзор платформы' "$RUNNER_TEMP/admin.html"
+          grep -q 'Профиль игрока' "$RUNNER_TEMP/player-home.html"
+          grep -q '<main id="auth-card"' "$RUNNER_TEMP/player-auth.html"
+          echo '3ef86e6f3dbe7c095382bd13ae21db0a239c0a8271ae2798553740cb3efee08d  '"$RUNNER_TEMP/admin-hero.png" | sha256sum --check
+
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --prefix "$RUNNER_TEMP/cqrtv-playwright" --no-save --no-package-lock playwright@1.64.1
+          "$RUNNER_TEMP/cqrtv-playwright/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Run responsive browser review and capture screenshots
+        env:
+          CQRTV_QA_BASE_URL: http://playcqrtv.com:8765
+          PLAYWRIGHT_PACKAGE: ${{ runner.temp }}/cqrtv-playwright/node_modules/playwright
+        run: node qa/admin-playwright.mjs
+
+      - name: Upload non-sensitive browser screenshots
+        id: upload-screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cqrtv-admin-browser-qa
+          path: qa-artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Add screenshot artifact link to job summary
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.upload-screenshots.outputs.artifact-url }}
+        run: |
+          if [ -n "$ARTIFACT_URL" ]; then
+            echo "[Download browser screenshots]($ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No browser screenshot artifact was uploaded." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Stop isolated preview container
+        if: always()
+        run: docker rm --force cqrtv-admin-qa || true
