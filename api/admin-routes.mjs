@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { createSiteControlAdminRoutes } from "./site-control.mjs";
 
 const ADMIN_COOKIE = "cqrtv_admin_session";
 const ADMIN_TTL_SECONDS = 8 * 60 * 60;
@@ -28,6 +29,7 @@ function maskEmail(email) {
 
 export function createAdminRoutes(deps) {
   const { pool, json, body, tokenHash, cookie, sessionToken, verifyPassword, dummyPasswordHash, rateLimit, origin } = deps;
+  const siteControlRoutes = createSiteControlAdminRoutes({ pool, json, body });
 
   function requireOrigin(req) {
     if (req.headers.origin !== origin) throw Object.assign(new Error("Origin rejected"), { status: 403 });
@@ -287,6 +289,7 @@ export function createAdminRoutes(deps) {
     const needsCsrf = req.method === "POST";
     const actor = await authorize(req, res, needsCsrf);
     if (!actor) return true;
+    if (await siteControlRoutes(req, res, actor)) return true;
 
     if (req.method === "GET" && path === "/api/admin/me") {
       json(res, 200, { user: { id: actor.user.id, nickname: actor.user.nickname, emailMasked: maskEmail(actor.user.email) }, csrfToken: actor.csrfToken });
