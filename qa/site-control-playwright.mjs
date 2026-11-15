@@ -87,7 +87,9 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,"admin site control must not overflow at "+width+"px");
   if(width===1440){
    await page.getByRole("button",{name:"Изменить"}).click();
-   assert.equal(await page.getByLabel("Использовать иконку CQRTV вместо загруженной").isChecked(),true);
+   const packagedIcon=page.getByLabel("Использовать иконку CQRTV вместо загруженной");
+   assert.equal(await packagedIcon.isChecked(),false,"an existing uploaded icon is initially selected");
+   await packagedIcon.check();
    await page.getByRole("button",{name:"Сохранить ссылку"}).click();
    await page.waitForFunction(()=>document.querySelector("#social-list img")?.getAttribute("src")==="/assets/icons/cqrtv/ui/chat.svg");
    assert.equal(socialPayload?.iconAssetId,null,"switching an existing social link to a packaged icon must clear its prior uploaded asset");
