@@ -20,6 +20,17 @@ This project intentionally separates **visual design** from **engineering**:
 6. Never assume that a successful build, a new commit or a request to work on a feature authorizes production deployment. **Pushes to main auto-deploy**; use feature branches and obtain explicit owner authorization before merge or production-affecting changes.
 7. Report results in concise Russian to the owner unless asked otherwise; summarize what was implemented, tested, what remains, and any needed decisions.
 
+## Shared coordination channel — GitHub Issue #4
+
+**Before starting any new CQRTV task, review the current state of [CQRTV Development Hub — Issue #4](https://github.com/fnatika1996/playcqrtv-platform/issues/4), including its most recent comments, alongside this file and the design system.** Review open PRs and main's HEAD; check for changed task context.
+
+- **ChatGPT designer / reviewer:** posts approved specs and engineering tasks to Issue #4 using `[TASK #N]` or `[REVIEW PR #N]`. Do not assume this is a live chat feed.
+- **Codex engineer:** reads tasks from Issue #4 when invoked, implements on an isolated branch, opens a PR, then posts `[CODEX REPORT #N]` in Issue #4 with implementation, tests, risks, PR link and any decisions required. For blockers, post `[BLOCKED]`.
+- Keep task number / PR links consistent. Do not invent approval: a design is approved only when explicitly confirmed by the owner; technical approval does not grant deploy permission.
+- The owner must explicitly authorize merging to `main` because every push triggers production deployment. Do not merge or publish merely because CI passed.
+- Never post secrets, tokens, real user information, credentials or sensitive database records to Issues.
+- GitHub is an asynchronous handoff journal; neither assistant is autonomously monitoring it. Read and write when working on an authorized turn.
+
 ## Mandatory design reference
 
 **Read docs/CQRTV_DESIGN_SYSTEM.md before any frontend/UI work.** It is the canonical guide to CQRTV's colors, typography, components, spacing, breakpoints, states and acceptance checklist.
