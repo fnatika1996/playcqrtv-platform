@@ -202,7 +202,12 @@ jobs:
           remote_release="$CQRTV_PROJECT_ROOT/releases/$RELEASE_SHA-${{ github.run_id }}"
           printf -v mkdir_command 'mkdir -p -- %q && chmod 700 -- %q' "$remote_release" "$remote_release"
           ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$CQRTV_SSH_USER@$CQRTV_SSH_HOST" "$mkdir_command"
-          scp -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$RUNNER_TEMP/cqrtv-release/docker-compose.release.yml" "$CQRTV_SSH_USER@$CQRTV_SSH_HOST:$remote_release/docker-compose.yml"
+          local_manifest="$RUNNER_TEMP/cqrtv-release/docker-compose.release.yml"
+          manifest_sha256=$(sha256sum "$local_manifest" | cut -d ' ' -f1)
+          remote_manifest="$remote_release/docker-compose.yml"
+          scp -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$local_manifest" "$CQRTV_SSH_USER@$CQRTV_SSH_HOST:$remote_manifest"
+          printf -v verify_command 'actual=$(sha256sum %q | cut -d " " -f1); test "$actual" = %q' "$remote_manifest" "$manifest_sha256"
+          ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$CQRTV_SSH_USER@$CQRTV_SSH_HOST" "$verify_command"
 
       - name: Reconcile and apply exact Compose digests over SSH
         env:
