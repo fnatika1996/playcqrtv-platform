@@ -2,7 +2,7 @@ name: Account authentication tests
 
 on:
   pull_request:
-    branches: [main, fix/account-auth-flows-2026-11-15, feat/deployment-v2-2026-11-17]
+    branches: [main, fix/account-auth-flows-2026-11-15, feat/deployment-v2-2026-11-17, feat/public-site-phase1-2026-11-17]
     paths:
       - index.html
       - auth.html
@@ -11,6 +11,9 @@ on:
       - admin.html
       - admin-login.html
       - assets/admin/**
+      - assets/auth-header.mjs
+      - assets/player-experience.mjs
+      - assets/public-site.css
       - assets/icons/cqrtv/**
       - scripts/build-cqrtv-admin-icons.mjs
       - qa/**
@@ -152,7 +155,7 @@ jobs:
       - name: Build the website image locally (no registry push)
         run: |
           docker build --file Dockerfile --tag cqrtv-admin-qa-site .
-          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/admin/admin-icons.mjs && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-sprite.svg && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" ! -name "admin-icon-sprite.svg" | wc -l)" -eq 38 && sha256sum /srv/assets/admin/admin-hero.png'
+          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/admin/admin-icons.mjs && test -s /srv/assets/auth-header.mjs && test -s /srv/assets/player-experience.mjs && test -s /srv/assets/public-site.css && test -s /srv/assets/signup-registration-banner.png && test -s /srv/assets/auth/login-hero.jpg && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-sprite.svg && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" ! -name "admin-icon-sprite.svg" | wc -l)" -eq 38 && sha256sum /srv/assets/admin/admin-hero.png /srv/assets/signup-registration-banner.png'
 
       - name: Start isolated Caddy preview
         run: |
@@ -186,6 +189,10 @@ jobs:
           fetch /admin/login "$RUNNER_TEMP/admin-login.html"
           curl --silent --show-error --fail --header 'Host: playcqrtv.com' --header 'Cookie: cqrtv_qa_admin=valid' -D "$RUNNER_TEMP/admin.html.headers" "$base/admin" -o "$RUNNER_TEMP/admin.html"
           fetch /assets/admin/admin-hero.png "$RUNNER_TEMP/admin-hero.png"
+          fetch /assets/public-site.css "$RUNNER_TEMP/public-site.css"
+          fetch /assets/player-experience.mjs "$RUNNER_TEMP/player-experience.mjs"
+          fetch /assets/signup-registration-banner.png "$RUNNER_TEMP/public-hero.png"
+          fetch /assets/auth/login-hero.jpg "$RUNNER_TEMP/public-hero-operator.jpg"
           fetch /assets/icons/cqrtv/ui/admin-icon-sprite.svg "$RUNNER_TEMP/admin-icon-sprite.svg"
           fetch /assets/icons/cqrtv/ui/mail.svg "$RUNNER_TEMP/mail.svg"
           fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
@@ -200,12 +207,15 @@ jobs:
           grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin-login.html.headers"
           grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin.html.headers"
           grep -qi '^content-type: image/png' "$RUNNER_TEMP/admin-hero.png.headers"
+          grep -qi '^content-type: text/css' "$RUNNER_TEMP/public-site.css.headers"
+          grep -qi '^content-type: image/png' "$RUNNER_TEMP/public-hero.png.headers"
+          grep -qi '^content-type: image/jpeg' "$RUNNER_TEMP/public-hero-operator.jpg.headers"
           grep -qi '^content-type: image/svg+xml' "$RUNNER_TEMP/admin-icon-sprite.svg.headers"
           grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/mail.svg.headers"
           grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/shield.svg.headers"
           grep -q 'Панель администратора' "$RUNNER_TEMP/admin-login.html"
           grep -q 'Обзор платформы' "$RUNNER_TEMP/admin.html"
-          grep -q 'Профиль игрока' "$RUNNER_TEMP/player-home.html"
+          grep -q 'CQRTV — твоя платформа для CS2' "$RUNNER_TEMP/player-home.html"
           grep -q '<main id="auth-card"' "$RUNNER_TEMP/player-auth.html"
           echo '3ef86e6f3dbe7c095382bd13ae21db0a239c0a8271ae2798553740cb3efee08d  '"$RUNNER_TEMP/admin-hero.png" | sha256sum --check
 
@@ -221,13 +231,14 @@ jobs:
         run: |
           node qa/admin-playwright.mjs
           node qa/site-control-playwright.mjs
+          node qa/public-site-playwright.mjs
 
       - name: Upload non-sensitive browser screenshots
         id: upload-screenshots
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: cqrtv-admin-site-control-browser-qa
+          name: cqrtv-phase1-public-admin-site-control-browser-qa
           path: qa-artifacts/*.png
           if-no-files-found: warn
           retention-days: 30
