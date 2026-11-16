@@ -73,38 +73,32 @@ test("confirmed baseline digests render as a separate fail-closed rollback manif
 });
 
 
-test("deploy workflow pushes traceable tags and uses fail-closed existing-project update outside PR CI", () => {
+test("release manifest transfer is verified against its SHA-256",()=>{
+  assert.match(deploymentWorkflow,/manifest_sha256=\$\(sha256sum/);
+  assert.match(deploymentWorkflow,/sha256sum %q/);
+});
+
+test("release workflow third-party actions are pinned to immutable commit SHAs",()=>{
+  const uses=[...deploymentWorkflow.matchAll(/^\s+uses:\s+([^\s]+)$/gm)].map(match=>match[1]);
+  assert.ok(uses.length>0);
+  assert.ok(uses.every(ref=>/@[a-f0-9]{40}$/.test(ref)),uses.join("\n"));
+});
+
+test("production workflow is manual, protected and uses immutable Compose refs", () => {
   const deployClient = fs.readFileSync(path.join(repoRoot, "qa", "hostinger-deploy.mjs"), "utf8");
-  const composePreflight = fs.readFileSync(path.join(repoRoot, "qa", "hostinger-compose-preflight.rb"), "utf8");
-  assert.match(deploymentWorkflow, /branches:\s*\[main\]/);
-  assert.ok(deploymentWorkflow.includes("workflow_dispatch:"));
-  assert.match(deploymentWorkflow, /concurrency:[\s\S]*?cancel-in-progress: false/);
-  assert.ok(deploymentWorkflow.includes("id: build-web"));
-  assert.ok(deploymentWorkflow.includes("id: build-api"));
-  assert.ok(deploymentWorkflow.includes("docker/build-push-action@v6"));
-  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-platform:latest"));
-  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api:latest"));
-  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-platform:" + "$" + "{{ github.sha }}"));
-  assert.ok(deploymentWorkflow.includes("ghcr.io/fnatika1996/playcqrtv-api:" + "$" + "{{ github.sha }}"));
-  assert.ok(deploymentWorkflow.includes("WEB_IMAGE_DIGEST: " + "$" + "{{ steps.build-web.outputs.digest }}"));
-  assert.ok(deploymentWorkflow.includes("API_IMAGE_DIGEST: " + "$" + "{{ steps.build-api.outputs.digest }}"));
-  assert.ok(deploymentWorkflow.includes("node qa/hostinger-deploy.mjs"));
-  assert.ok(deploymentWorkflow.includes("HOSTINGER_API_KEY: " + "$" + "{{ secrets.HOSTINGER_API_KEY }}"));
-  assert.ok(deploymentWorkflow.includes("WEB_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-platform:latest"));
-  assert.ok(deploymentWorkflow.includes("API_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-api:latest"));
-  assert.ok(!deploymentWorkflow.includes("hostinger/deploy-on-vps@v2"));
-  assert.doesNotMatch(deploymentWorkflow, /pull_request:/);
-  assert.ok(deployClient.includes("/update"));
-  assert.ok(deployClient.includes("validateSavedCompose"));
-  assert.ok(deployClient.includes("Do not retry UPDATE"));
-  assert.ok(deployClient.includes("/actions/"));
-  assert.ok(deployClient.includes("/containers"));
-  assert.ok(deployClient.includes("unknown state; stopping safely"));
-  assert.ok(composePreflight.includes("postgres_data"));
-  assert.ok(composePreflight.includes("caddy_data"));
-  assert.ok(composePreflight.includes("db_secret"));
-  assert.ok(composePreflight.includes("pull_policy"));
+  const remoteScript = fs.readFileSync(path.join(repoRoot, "qa", "deploy-compose-v2-remote.sh"), "utf8");
+  assert.match(deploymentWorkflow, /workflow_dispatch:/);
+  assert.doesNotMatch(deploymentWorkflow, /^  push:/m);
+  assert.match(deploymentWorkflow, /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'workflow_dispatch'/);
+  assert.match(deploymentWorkflow, /environment:\s*\n\s+name: release-artifacts/);
+  assert.match(deploymentWorkflow, /environment:\s*\n\s+name: production/);
+  assert.match(deploymentWorkflow, /steps\.build-web\.outputs\.digest/);
+  assert.match(deploymentWorkflow, /steps\.build-api\.outputs\.digest/);
+  assert.match(deploymentWorkflow, /docker-compose\.release\.yml/);
+  assert.match(deploymentWorkflow, /Reconcile and apply exact Compose digests over SSH/);
+  assert.doesNotMatch(deploymentWorkflow, /HOSTINGER_API_KEY|qa\/hostinger-deploy\.mjs|playcqrtv-platform:latest|playcqrtv-api:latest/);
+  assert.doesNotMatch(remoteScript, /docker compose down\s+-v|docker rm\s+-f/);
+  assert.ok(deployClient.includes("Do not retry UPDATE"), "legacy Hostinger client remains covered but is not wired to production workflow");
   assert.match(prWorkflow, /pull_request:/);
-  assert.ok(prWorkflow.includes("qa/hostinger-deploy.test.mjs"));
-  assert.doesNotMatch(prWorkflow, /secrets\.HOSTINGER_API_KEY|hostinger\/deploy-on-vps@v2|packages:\s*write|docker login|workflow_dispatch:/);
+  assert.doesNotMatch(prWorkflow, /secrets\.HOSTINGER_API_KEY|CQRTV_SSH_PRIVATE_KEY|packages:\s*write|docker login|workflow_dispatch:/);
 });

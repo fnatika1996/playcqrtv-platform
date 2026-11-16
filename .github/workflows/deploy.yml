@@ -1,36 +1,86 @@
-name: Deploy to Hostinger VPS
+name: CQRTV gated release
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Exact green main commit approved for release
+        required: true
+        type: string
+      backup_reference:
+        description: Owner-verified protected backup identifier only; no secret or path
+        required: true
+        type: string
+      backup_sha256:
+        description: SHA-256 recorded by backup owner
+        required: true
+        type: string
+      backup_verified:
+        description: Confirm backup availability, protection, age/RPO and isolated restore evidence
+        required: true
+        type: boolean
+        default: false
+      previous_web_ref:
+        description: Previously observed running web RepoDigest
+        required: true
+        type: string
+      previous_api_ref:
+        description: Previously observed running API RepoDigest
+        required: true
+        type: string
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
-  group: cqrtv-production-deploy
+  group: cqrtv-production-release
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build-release:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    environment:
+      name: release-artifacts
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      web_ref: ${{ steps.build-web.outputs.digest && format('ghcr.io/fnatika1996/playcqrtv-platform@{0}', steps.build-web.outputs.digest) }}
+      api_ref: ${{ steps.build-api.outputs.digest && format('ghcr.io/fnatika1996/playcqrtv-api@{0}', steps.build-api.outputs.digest) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ inputs.release_sha }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Validate exact release and backup evidence
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          WORKFLOW_SHA: ${{ github.sha }}
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          BACKUP_SHA256: ${{ inputs.backup_sha256 }}
+          BACKUP_VERIFIED: ${{ inputs.backup_verified }}
+          PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
+          PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { validateReleaseEvidence } from "./qa/deployment-v2-policy.mjs";
+          validateReleaseEvidence(process.env);
+          NODE
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
 
       - name: Sign in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract and validate the curated CQRTV icon pack
+      - name: Extract and validate CQRTV icon pack
         run: |
+          set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y 7zip 7zip-rar
           mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv/ui
@@ -40,76 +90,146 @@ jobs:
           test "$(find assets/icons/cqrtv/ui -maxdepth 1 -type f -name '*.svg' ! -name 'admin-icon-sprite.svg' | wc -l)" -eq 38
           test -s assets/icons/cqrtv/ui/admin-icon-map.json
 
-      - name: Build and publish website image
+      - name: Build and publish web image with commit tag only
         id: build-web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
         with:
           context: .
           push: true
-          tags: |
-            ghcr.io/fnatika1996/playcqrtv-platform:latest
-            ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}
+          tags: ghcr.io/fnatika1996/playcqrtv-platform:${{ inputs.release_sha }}
 
-      - name: Verify CQRTV icons are inside the published image
+      - name: Verify web image by exact digest
         env:
           WEB_IMAGE_DIGEST: ${{ steps.build-web.outputs.digest }}
         run: |
           set -euo pipefail
           image="ghcr.io/fnatika1996/playcqrtv-platform@${WEB_IMAGE_DIGEST}"
           docker pull "$image"
-          docker run --rm --entrypoint sh "$image" -c 'for icon in home mail lock eye eye-closed login logout arrow-left; do test -s "/srv/assets/icons/cqrtv/ui/$icon.svg" || exit 1; done; test -s /srv/assets/icons/cqrtv/ui/admin-icon-sprite.svg && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" ! -name "admin-icon-sprite.svg" | wc -l)" -eq 38 && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json'
-      - name: Build and publish authentication API
+          docker run --rm --entrypoint sh "$image" -c 'test -s /srv/index.html && test -s /srv/site-closed.html && test -s /srv/assets/icons/cqrtv/ui/home.svg'
+
+      - name: Build and publish API image with commit tag only
         id: build-api
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
         with:
           context: ./api
           push: true
-          tags: |
-            ghcr.io/fnatika1996/playcqrtv-api:latest
-            ghcr.io/fnatika1996/playcqrtv-api:${{ github.sha }}
+          tags: ghcr.io/fnatika1996/playcqrtv-api:${{ inputs.release_sha }}
 
-      - name: Record pushed image digests
+      - name: Render exact digest-pinned Compose release
         env:
           WEB_IMAGE_DIGEST: ${{ steps.build-web.outputs.digest }}
           API_IMAGE_DIGEST: ${{ steps.build-api.outputs.digest }}
         run: |
           set -euo pipefail
+          node qa/pin-compose-digests.mjs docker-compose.yml "$RUNNER_TEMP/docker-compose.release.yml" "$WEB_IMAGE_DIGEST" "$API_IMAGE_DIGEST"
+          docker compose -f "$RUNNER_TEMP/docker-compose.release.yml" config --quiet
           {
-            echo "### Built CQRTV image identities"
-            echo "- Web commit tag: ghcr.io/fnatika1996/playcqrtv-platform:$GITHUB_SHA"
-            echo "- Web digest: $WEB_IMAGE_DIGEST"
-            echo "- API commit tag: ghcr.io/fnatika1996/playcqrtv-api:$GITHUB_SHA"
-            echo "- API digest: $API_IMAGE_DIGEST"
-            echo "- Hostinger existing-project update uses the verified saved Compose latest refs."
+            echo "### Approved build identity"
+            echo "- Release commit: $GITHUB_SHA"
+            echo "- Web: ghcr.io/fnatika1996/playcqrtv-platform@$WEB_IMAGE_DIGEST"
+            echo "- API: ghcr.io/fnatika1996/playcqrtv-api@$API_IMAGE_DIGEST"
+            echo "- Both refs are immutable registry digests; no latest tag is used."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Submit Compose and verify Hostinger action and containers
-        env:
-          HOSTINGER_API_KEY: ${{ secrets.HOSTINGER_API_KEY }}
-          WEB_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-platform:latest
-          API_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-api:latest
-        run: node qa/hostinger-deploy.mjs
+      - name: Retain same-run manifest for deployment and recovery
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: cqrtv-release-compose-${{ github.run_id }}
+          path: ${{ runner.temp }}/docker-compose.release.yml
+          if-no-files-found: error
+          retention-days: 30
 
-      - name: Verify live website and API health (read-only)
-        shell: bash
+  deploy:
+    needs: build-release
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ inputs.release_sha }}
+
+      - name: Re-check exact release and backup evidence
+        env:
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          WORKFLOW_SHA: ${{ github.sha }}
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          BACKUP_SHA256: ${{ inputs.backup_sha256 }}
+          BACKUP_VERIFIED: ${{ inputs.backup_verified }}
+          PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
+          PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 3); do
-            page_status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-live.html --write-out '%{http_code}' https://playcqrtv.com/ 2>/dev/null || true)
-            icon_status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-home-icon.svg --write-out '%{http_code}' 'https://playcqrtv.com/assets/icons/cqrtv/ui/home.svg' 2>/dev/null || true)
-            api_status=$(curl --silent --show-error --max-time 4 --location --output /tmp/playcqrtv-api-health.json --write-out '%{http_code}' 'https://playcqrtv.com/api/health' 2>/dev/null || true)
-            if [ "$page_status" = "200" ] &&
-              grep -q 'Профиль игрока' /tmp/playcqrtv-live.html &&
-              ! grep -q '�' /tmp/playcqrtv-live.html &&
-              [ "$icon_status" = "200" ] &&
-              test -s /tmp/playcqrtv-home-icon.svg &&
-              [ "$api_status" = "200" ] &&
-              grep -q 'ok' /tmp/playcqrtv-api-health.json; then
-              echo "Read-only page, icon and API health checks passed."
-              exit 0
-            fi
-            echo "Health check retry $attempt/3: page=$page_status icon=$icon_status API=$api_status."
-            sleep 5
-          done
-          echo "Read-only live health verification failed."
-          exit 1
+          node --input-type=module <<'NODE'
+          import { validateReleaseEvidence } from "./qa/deployment-v2-policy.mjs";
+          validateReleaseEvidence(process.env);
+          NODE
+
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: cqrtv-release-compose-${{ github.run_id }}
+          path: ${{ runner.temp }}/cqrtv-release
+
+      - name: Prepare pinned SSH transport and transfer manifest
+        env:
+          CQRTV_SSH_HOST: ${{ vars.CQRTV_SSH_HOST }}
+          CQRTV_SSH_USER: ${{ vars.CQRTV_SSH_USER }}
+          CQRTV_SSH_KNOWN_HOSTS: ${{ vars.CQRTV_SSH_KNOWN_HOSTS }}
+          CQRTV_PROJECT_ROOT: ${{ vars.CQRTV_PROJECT_ROOT }}
+          CQRTV_SSH_PRIVATE_KEY: ${{ secrets.CQRTV_SSH_PRIVATE_KEY }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+          : "${CQRTV_SSH_HOST:?Configure the production Environment variable CQRTV_SSH_HOST}"
+          : "${CQRTV_SSH_USER:?Configure the production Environment variable CQRTV_SSH_USER}"
+          : "${CQRTV_SSH_KNOWN_HOSTS:?Pin the VPS host key in CQRTV_SSH_KNOWN_HOSTS}"
+          : "${CQRTV_PROJECT_ROOT:?Set the verified Compose project root}"
+          : "${CQRTV_SSH_PRIVATE_KEY:?Configure a restricted production SSH key}"
+          [[ "$CQRTV_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$CQRTV_SSH_USER" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$CQRTV_PROJECT_ROOT" =~ ^/[A-Za-z0-9/_-]+$ ]]
+          [[ "$RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          key_file="$RUNNER_TEMP/cqrtv-deploy-key"
+          known_hosts="$RUNNER_TEMP/cqrtv-known-hosts"
+          umask 077
+          printf '%s\n' "$CQRTV_SSH_PRIVATE_KEY" > "$key_file"
+          printf '%s\n' "$CQRTV_SSH_KNOWN_HOSTS" > "$known_hosts"
+          chmod 600 "$key_file" "$known_hosts"
+          remote_release="$CQRTV_PROJECT_ROOT/releases/$RELEASE_SHA-${{ github.run_id }}"
+          printf -v mkdir_command 'mkdir -p -- %q && chmod 700 -- %q' "$remote_release" "$remote_release"
+          ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$CQRTV_SSH_USER@$CQRTV_SSH_HOST" "$mkdir_command"
+          local_manifest="$RUNNER_TEMP/cqrtv-release/docker-compose.release.yml"
+          manifest_sha256=$(sha256sum "$local_manifest" | cut -d ' ' -f1)
+          remote_manifest="$remote_release/docker-compose.yml"
+          scp -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$local_manifest" "$CQRTV_SSH_USER@$CQRTV_SSH_HOST:$remote_manifest"
+          printf -v verify_command 'actual=$(sha256sum %q | cut -d " " -f1); test "$actual" = %q' "$remote_manifest" "$manifest_sha256"
+          ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$CQRTV_SSH_USER@$CQRTV_SSH_HOST" "$verify_command"
+
+      - name: Reconcile and apply exact Compose digests over SSH
+        env:
+          CQRTV_SSH_HOST: ${{ vars.CQRTV_SSH_HOST }}
+          CQRTV_SSH_USER: ${{ vars.CQRTV_SSH_USER }}
+          CQRTV_SSH_KNOWN_HOSTS: ${{ vars.CQRTV_SSH_KNOWN_HOSTS }}
+          CQRTV_PROJECT_ROOT: ${{ vars.CQRTV_PROJECT_ROOT }}
+          CQRTV_REMOTE_RELEASE: ${{ vars.CQRTV_PROJECT_ROOT }}/releases/${{ inputs.release_sha }}-${{ github.run_id }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          PROJECT_NAME: playcqrtv
+          WEB_IMAGE_REF: ${{ needs.build-release.outputs.web_ref }}
+          API_IMAGE_REF: ${{ needs.build-release.outputs.api_ref }}
+          PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
+          PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
+        run: |
+          set -euo pipefail
+          key_file="$RUNNER_TEMP/cqrtv-deploy-key"
+          known_hosts="$RUNNER_TEMP/cqrtv-known-hosts"
+          [[ "$CQRTV_REMOTE_RELEASE" == "$CQRTV_PROJECT_ROOT/releases/$RELEASE_SHA-"* ]]
+          printf -v remote_command 'bash -s -- %q %q %q %q %q %q %q' "$CQRTV_PROJECT_ROOT" "$CQRTV_REMOTE_RELEASE/docker-compose.yml" "$PROJECT_NAME" "$WEB_IMAGE_REF" "$API_IMAGE_REF" "$PREVIOUS_WEB_REF" "$PREVIOUS_API_REF"
+          ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$CQRTV_SSH_USER@$CQRTV_SSH_HOST" "$remote_command" < qa/deploy-compose-v2-remote.sh
+          rm -f "$key_file" "$known_hosts"
+
+      - name: Verify public routes, API health, auth/admin pages and SVG MIME
+        run: node qa/deployment-v2-smoke.mjs https://playcqrtv.com

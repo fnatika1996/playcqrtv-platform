@@ -2,7 +2,7 @@ name: Account authentication tests
 
 on:
   pull_request:
-    branches: [main, fix/account-auth-flows-2026-11-15]
+    branches: [main, fix/account-auth-flows-2026-11-15, feat/deployment-v2-2026-11-17]
     paths:
       - index.html
       - auth.html
@@ -14,6 +14,7 @@ on:
       - assets/icons/cqrtv/**
       - scripts/build-cqrtv-admin-icons.mjs
       - qa/**
+      - docs/**
       - Caddyfile
       - Dockerfile
       - assets/registration-roles.mjs
@@ -125,7 +126,12 @@ jobs:
         # Static parse only; this PR job has no production credentials or API calls.
 
       - name: Validate immutable release Compose generation (non-production)
-        run: node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs
+        run: |
+          node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs qa/deployment-v2-policy.test.mjs qa/deployment-v2-smoke.test.mjs qa/deployment-v2-inventory.test.mjs qa/deploy-compose-v2-remote.test.mjs
+          bash -n qa/deploy-compose-v2-remote.sh qa/deployment-v2-compose.test.sh
+
+      - name: Run disposable Docker Compose deployment and volume-preservation check
+        run: bash qa/deployment-v2-compose.test.sh
 
       - name: Extract and build the curated CQRTV icon pack
         run: |
