@@ -22,7 +22,7 @@ const settings = {
 const modeFor=req=>["coming_soon","maintenance"].includes(req.headers["x-qa-site-mode"])?req.headers["x-qa-site-mode"]:"open";
 const validAdmin=req=>(req.headers.cookie||"").split(";").some(cookie=>cookie.trim()==="cqrtv_qa_admin=valid");
 const json=(res,status,value)=>{res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});res.end(JSON.stringify(value));};
-http.createServer((req,res)=>{
+http.createServer(async (req,res)=>{
   const url=new URL(req.url,"http://localhost");
   if(url.pathname==="/api/site-control/gate"){
     const uri=String(req.headers["x-forwarded-uri"]||"").split("?")[0];
