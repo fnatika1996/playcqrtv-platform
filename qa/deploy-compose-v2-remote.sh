@@ -18,6 +18,12 @@ previous_api=${7:?previous API digest required}
 [[ "$previous_api" =~ ^ghcr\.io/fnatika1996/playcqrtv-api@sha256:[a-f0-9]{64}$ ]]
 [[ "$target_web" != "$previous_web" || "$target_api" != "$previous_api" ]]
 [[ -f "$manifest" && -f "$project_root/.env" ]]
+command -v stat >/dev/null
+env_mode=$(stat -c '%a' "$project_root/.env")
+if (( (8#$env_mode & 007) != 0 )); then
+  echo "Remote .env is world-readable; refusing deployment." >&2
+  exit 1
+fi
 command -v docker >/dev/null
 command -v python3 >/dev/null
 command -v flock >/dev/null
@@ -46,6 +52,10 @@ if sorted(services) != ["api", "caddy", "db", "secret-init"]:
     raise SystemExit("Compose service set mismatch; no change applied.")
 if sorted(volumes) != ["caddy_config", "caddy_data", "db_secret", "postgres_data"]:
     raise SystemExit("Compose named-volume set mismatch; no change applied.")
+init_mounts = [item for item in services.get("secret-init", {}).get("volumes", [])
+               if item.get("target") == "/run/db-secret" and item.get("type") == "volume"]
+if len(init_mounts) != 1 or init_mounts[0].get("source") != "db_secret":
+    raise SystemExit("Compose secret initialization volume mismatch; no change applied.")
 if services.get("api", {}).get("image") != expected_api:
     raise SystemExit("Compose API digest mismatch; no change applied.")
 if services.get("caddy", {}).get("image") != expected_web:
