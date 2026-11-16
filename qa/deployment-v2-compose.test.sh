@@ -107,6 +107,20 @@ test "$("${compose[@]}" ps -q caddy)" = "$web_id"
 test "$(docker exec "$db_id" psql -U staging -d staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
 cp "$scratch/compose.known-good.yml" "$scratch/compose.yml"
 
+# A failed image build must not change the running stack or its database.
+cat > "$scratch/Dockerfile.failed" <<'DOCKER'
+FROM alpine:3.21
+THIS_IS_NOT_A_VALID_DOCKERFILE_INSTRUCTION
+DOCKER
+if docker build --file "$scratch/Dockerfile.failed" --tag "cqrtv-v2-qa-invalid:${GITHUB_SHA:-local}" "$scratch" >/dev/null 2>&1; then
+  echo "The intentionally invalid Dockerfile unexpectedly built." >&2
+  exit 1
+fi
+test "$("${compose[@]}" ps -q db)" = "$db_id"
+test "$("${compose[@]}" ps -q api)" = "$api_id"
+test "$("${compose[@]}" ps -q caddy)" = "$web_id"
+test "$(docker exec "$db_id" psql -U staging -d staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
+
 # Apply candidate web and return to the exact previous disposable image.
 sed -i "s|image: $web_rollback_image|image: $web_candidate_image|" "$scratch/compose.yml"
 "${compose[@]}" up -d --no-deps --wait --wait-timeout 60 caddy
@@ -136,4 +150,4 @@ test "$(docker inspect --format '{{.Image}}' "$api_id")" = "$api_image_id_before
 test "$(docker inspect --format '{{.Image}}' "$web_id")" = "$web_image_id_before"
 test "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' "$db_id")" = "$volume_before"
 test "$(docker exec "$db_id" psql -U staging -d staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
-echo "PASS disposable loopback staging; isolated project/network/volume/credential; read-only inventory; failed pull preserves state; web deploy/rollback; repeat idempotency; PostgreSQL volume and isolated restore."
+echo "PASS disposable loopback staging; isolated project/network/volume/credential; read-only inventory; failed build/pull preserve state; web deploy/rollback; repeat idempotency; PostgreSQL volume and isolated restore."
