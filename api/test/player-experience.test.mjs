@@ -29,7 +29,7 @@ test("public page contains no fabricated stats, match results, friends, or demo 
   assert.match(html,/id="profile-role"/);
   assert.match(html,/id="profile-secondary-roles"/);
   assert.match(html,/Матчмейкинг пока недоступен/);
-  assert.match(html,/Подтверждённых матчей пока нет/);
+  assert.match(html,/История и статистика появятся после запуска игровых серверов/);
   assert.match(html,/Поиск игроков — в разработке[^>]*disabled/);
   assert.match(html,/Уведомления — в разработке[^>]*disabled/);
 });
@@ -50,7 +50,11 @@ test("public design uses the existing CQRTV hero art and responsive breakpoints"
     readFile(new URL("../../assets/public-site.css",import.meta.url),"utf8")
   ]);
   assert.match(html,/\/assets\/public-site\.css/);
-  assert.match(css,/signup-registration-banner\.png/);
+  assert.match(css,/auth\/login-hero\.jpg/);
+  assert.match(html,/class="rail-label">ПЛАТФОРМА/);
+  assert.match(html,/Команды и сообщество/);
+  assert.match(html,/id="player-profile"[^>]*hidden[\s\S]*?<\/section>[\s\S]*?<section class="home-section overview-section"/);
+  assert.match(html,/class="home-dashboard-grid"/);
   for(const width of ["1180px","1024px","760px","390px","340px"])assert.ok(css.includes(`max-width:${width}`),`missing responsive rule at ${width}`);
   assert.match(css,/prefers-reduced-motion/);
 });
@@ -59,6 +63,7 @@ test("player profile is private until a valid session exists and clears on logou
   const ids={
     "player-profile":node({hidden:true}),"guest-actions":node({hidden:false}),"member-actions":node({hidden:true}),
     "player-welcome":node({hidden:true}),"mobile-menu-toggle":node(),
+    "sidebar-profile-link":node({href:"#guest-actions"}),"mobile-menu-profile-link":node({href:"#guest-actions"}),"mobile-profile-link":node({href:"#guest-actions"}),
     "mobile-navigation":node({hidden:true,querySelector(){return firstLink},querySelectorAll(){return [firstLink,secondLink]}})
   };
   const firstLink=node(),secondLink=node();
@@ -78,12 +83,18 @@ test("player profile is private until a valid session exists and clears on logou
   assert.equal(ids["member-actions"].hidden,false);
   assert.equal(ids["player-welcome"].hidden,false);
   assert.equal(ids["player-welcome"].textContent,"С возвращением, ClutchAce");
+  assert.equal(ids["sidebar-profile-link"].href,"#player-profile");
+  assert.equal(ids["mobile-menu-profile-link"].href,"#player-profile");
+  assert.equal(ids["mobile-profile-link"].href,"#player-profile");
   assert.equal(document.body.dataset.accountState,"authenticated");
 
   notifySession(null);
   assert.equal(ids["player-profile"].hidden,true);
   assert.equal(ids["guest-actions"].hidden,false);
   assert.equal(ids["player-welcome"].hidden,true);
+  assert.equal(ids["sidebar-profile-link"].href,"#guest-actions");
+  assert.equal(ids["mobile-menu-profile-link"].href,"#guest-actions");
+  assert.equal(ids["mobile-profile-link"].href,"#guest-actions");
   assert.equal(document.body.dataset.accountState,"guest");
 
   ids["mobile-menu-toggle"].emit("click");

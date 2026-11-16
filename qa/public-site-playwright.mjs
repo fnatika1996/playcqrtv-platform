@@ -26,6 +26,11 @@ try{
     assert.match(await page.title(),/CQRTV/);
     await page.locator(".home-hero").waitFor({state:"visible"});
     await page.locator(".admin-icon use").first().waitFor({state:"attached"});
+    if(width>760){
+      for(const label of ["Главная","Играть","Турниры","Лидерборд","Статистика","Команды и сообщество","Профиль игрока"])
+        assert.equal(await page.locator(".site-rail").getByRole("link",{name:label,exact:true}).count(),1,`desktop sidebar should label ${label}`);
+      assert.equal(await page.locator("#sidebar-profile-link").getAttribute("href"),"#guest-actions");
+    }else assert.equal(await page.locator(".site-rail").isVisible(),false,"mobile must not keep a sidebar in the page flow");
     assert.equal(await page.locator("#guest-actions").isVisible(),true,`guest CTA should be available at ${width}px`);
     assert.equal(await page.locator("#player-profile").isVisible(),false,`guest must not receive player profile at ${width}px`);
     assert.equal(await page.locator("#auth-user-menu").isVisible(),false);
@@ -63,6 +68,16 @@ try{
       assert.equal(await page.locator("#profile-role").textContent(),"AWPer");
       assert.equal(await page.locator("#profile-secondary-roles").textContent(),"Rifler");
       assert.equal(await page.locator("#profile-email-verified").isVisible(),true);
+      assert.equal(await page.locator("#sidebar-profile-link").getAttribute("href"),"#player-profile");
+      assert.equal(await page.locator("#mobile-menu-profile-link").getAttribute("href"),"#player-profile");
+      assert.equal(await page.locator("#mobile-profile-link").getAttribute("href"),"#player-profile");
+      const profileTop=await page.locator("#player-profile").evaluate(element=>element.getBoundingClientRect().top+scrollY);
+      const overviewTop=await page.locator(".overview-section").evaluate(element=>element.getBoundingClientRect().top+scrollY);
+      assert.ok(profileTop<overviewTop,"authenticated profile must be placed immediately after the hero and before platform content");
+      if(width<=390){
+        const columnCount=await page.locator(".home-dashboard-grid").evaluate(element=>getComputedStyle(element).gridTemplateColumns.split(" ").length);
+        assert.equal(columnCount,2,"compact status cards should use two columns at phone widths");
+      }
       assert.equal(await page.getByText("1 246",{exact:true}).count(),0);
       await page.locator("#player-profile").scrollIntoViewIfNeeded();
       await page.screenshot({path:path.join(screenshotDir,`public-home-player-${width}.png`),fullPage:true});

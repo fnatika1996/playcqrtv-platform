@@ -149,7 +149,7 @@ jobs:
       - name: Build the website image locally (no registry push)
         run: |
           docker build --file Dockerfile --tag cqrtv-admin-qa-site .
-          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/admin/admin-icons.mjs && test -s /srv/assets/auth-header.mjs && test -s /srv/assets/player-experience.mjs && test -s /srv/assets/public-site.css && test -s /srv/assets/signup-registration-banner.png && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-sprite.svg && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" ! -name "admin-icon-sprite.svg" | wc -l)" -eq 38 && sha256sum /srv/assets/admin/admin-hero.png /srv/assets/signup-registration-banner.png'
+          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/admin/admin-icons.mjs && test -s /srv/assets/auth-header.mjs && test -s /srv/assets/player-experience.mjs && test -s /srv/assets/public-site.css && test -s /srv/assets/signup-registration-banner.png && test -s /srv/assets/auth/login-hero.jpg && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-sprite.svg && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" ! -name "admin-icon-sprite.svg" | wc -l)" -eq 38 && sha256sum /srv/assets/admin/admin-hero.png /srv/assets/signup-registration-banner.png'
 
       - name: Start isolated Caddy preview
         run: |
@@ -186,6 +186,7 @@ jobs:
           fetch /assets/public-site.css "$RUNNER_TEMP/public-site.css"
           fetch /assets/player-experience.mjs "$RUNNER_TEMP/player-experience.mjs"
           fetch /assets/signup-registration-banner.png "$RUNNER_TEMP/public-hero.png"
+          fetch /assets/auth/login-hero.jpg "$RUNNER_TEMP/public-hero-operator.jpg"
           fetch /assets/icons/cqrtv/ui/admin-icon-sprite.svg "$RUNNER_TEMP/admin-icon-sprite.svg"
           fetch /assets/icons/cqrtv/ui/mail.svg "$RUNNER_TEMP/mail.svg"
           fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
@@ -202,6 +203,7 @@ jobs:
           grep -qi '^content-type: image/png' "$RUNNER_TEMP/admin-hero.png.headers"
           grep -qi '^content-type: text/css' "$RUNNER_TEMP/public-site.css.headers"
           grep -qi '^content-type: image/png' "$RUNNER_TEMP/public-hero.png.headers"
+          grep -qi '^content-type: image/jpeg' "$RUNNER_TEMP/public-hero-operator.jpg.headers"
           grep -qi '^content-type: image/svg+xml' "$RUNNER_TEMP/admin-icon-sprite.svg.headers"
           grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/mail.svg.headers"
           grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/shield.svg.headers"

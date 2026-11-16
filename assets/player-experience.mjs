@@ -5,6 +5,9 @@ export function bindPlayerExperience(document, session) {
   const welcome = document.getElementById("player-welcome");
   const menuButton = document.getElementById("mobile-menu-toggle");
   const mobileMenu = document.getElementById("mobile-navigation");
+  const profileLinks = ["sidebar-profile-link", "mobile-menu-profile-link", "mobile-profile-link"]
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
 
   function render(user) {
     const nickname = typeof user?.nickname === "string" ? user.nickname.trim() : "";
@@ -13,6 +16,7 @@ export function bindPlayerExperience(document, session) {
     guestActions.hidden = authenticated;
     memberActions.hidden = !authenticated;
     welcome.hidden = !authenticated;
+    profileLinks.forEach(link => { link.href = authenticated ? "#player-profile" : "#guest-actions"; });
     if (authenticated) welcome.textContent = `С возвращением, ${nickname}`;
     document.body.dataset.accountState = authenticated ? "authenticated" : "guest";
   }
