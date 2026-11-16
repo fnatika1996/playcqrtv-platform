@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-project_root=\${1:?project root required}
-manifest=\${2:?release manifest required}
-project=\${3:?Compose project name required}
-target_web=\${4:?target web digest required}
-target_api=\${5:?target API digest required}
-previous_web=\${6:?previous web digest required}
-previous_api=\${7:?previous API digest required}
+project_root=${1:?project root required}
+manifest=${2:?release manifest required}
+project=${3:?Compose project name required}
+target_web=${4:?target web digest required}
+target_api=${5:?target API digest required}
+previous_web=${6:?previous web digest required}
+previous_api=${7:?previous API digest required}
 
 [[ "$project_root" =~ ^/[A-Za-z0-9/_-]+$ ]]
 [[ "$manifest" == "$project_root/releases/"* ]]
@@ -78,11 +78,11 @@ PY
 # Compare every required candidate volume to the actual existing mount before any pull/update.
 while IFS=$'\t' read -r service target expected_volume; do
   mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=$service")
-  if [[ \${#ids[@]} -ne 1 ]]; then
+  if [[ ${#ids[@]} -ne 1 ]]; then
     echo "Read-only inventory did not find exactly one existing $service container; no change applied." >&2
     exit 1
   fi
-  mounts=$(docker inspect --format '{{range .Mounts}}{{println .Name "|" .Destination "|" .Type}}{{end}}' "\${ids[0]}")
+  mounts=$(docker inspect --format '{{range .Mounts}}{{println .Name "|" .Destination "|" .Type}}{{end}}' "${ids[0]}")
   actual_volume=$(printf '%s\n' "$mounts" | awk -F'|' -v destination="$target" '$2 == destination && $3 == "volume" { print $1 }')
   if [[ "$actual_volume" != "$expected_volume" ]]; then
     echo "Candidate volume differs from existing $service mount; no change applied." >&2
@@ -94,13 +94,13 @@ done < "$volume_map"
 service_ref_and_health() {
   local service="$1" wanted_target="$2" wanted_previous="$3"
   mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=$service")
-  [[ \${#ids[@]} -eq 1 ]] || { printf 'unknown|stopped\n'; return; }
+  [[ ${#ids[@]} -eq 1 ]] || { printf 'unknown|stopped\n'; return; }
   local image_id repo_digests runtime state health ref=unknown
-  image_id=$(docker inspect --format '{{.Image}}' "\${ids[0]}")
+  image_id=$(docker inspect --format '{{.Image}}' "${ids[0]}")
   repo_digests=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image_id" 2>/dev/null || true)
-  runtime=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "\${ids[0]}")
-  state="\${runtime%%|*}"
-  health="\${runtime#*|}"
+  runtime=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${ids[0]}")
+  state="${runtime%%|*}"
+  health="${runtime#*|}"
   if grep -Fqx "$wanted_target" <<<"$repo_digests"; then ref=target
   elif grep -Fqx "$wanted_previous" <<<"$repo_digests"; then ref=previous
   fi
