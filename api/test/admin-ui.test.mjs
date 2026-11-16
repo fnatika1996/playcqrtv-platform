@@ -19,7 +19,7 @@ test("admin login UI exposes only the intended credential flow", () => {
   assert.match(login, /aria-pressed/);
   assert.match(login, /fetch\('\/api\/admin\/login'/);
   assert.match(login, /credentials:'same-origin'/);
-  assert.match(login, /location\.assign\('\/admin'\)/);
+  assert.match(login, /new URLSearchParams\(location\.search\)/);\r\n  assert.match(login, /get\('next'\)==='\/'\?'\/'\:'\/admin'/);\r\n  assert.match(login, /location\.assign\(returnTo\)/);
   assert.doesNotMatch(login, /localStorage|sessionStorage|mode=forgot|Создать аккаунт/);
   assert.match(login, /assets\/icons\/cqrtv\/ui\/shield\.svg/);
   assert.match(login, /src="\/assets\/admin\/admin-hero\.png" alt="" aria-hidden="true"/);
