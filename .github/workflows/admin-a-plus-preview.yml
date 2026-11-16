@@ -1,0 +1,55 @@
+name: CQRTV Admin A+ preview QA
+
+on:
+  push:
+    branches:
+      - design/admin-a-plus-preview-2026-11-16
+  pull_request:
+    branches:
+      - docs/admin-redesign-concepts-duotone-2026-11-16
+    paths:
+      - 'docs/admin-a-plus/**'
+      - 'docs/admin-concepts/icons/**'
+      - 'qa/admin-a-plus-*.mjs'
+      - '.github/workflows/admin-a-plus-preview.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated browser QA runner
+        run: npm install --prefix "$RUNNER_TEMP/cqrtv-a-plus" --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.64.1
+      - name: Install Chromium
+        run: "$RUNNER_TEMP/cqrtv-a-plus/node_modules/.bin/playwright install --with-deps chromium"
+      - name: Extract original CQRTV icon archive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+          mkdir -p "$RUNNER_TEMP/cqrtv-icon-archive"
+          7z x "Icon Play CQRTV.rar" -o"$RUNNER_TEMP/cqrtv-icon-archive" -y
+      - name: Audit all archived SVGs
+        run: |
+          icon_root="$RUNNER_TEMP/cqrtv-icon-archive/Icon Play CQRTV"
+          test -d "$icon_root"
+          node qa/admin-a-plus-icon-audit.mjs "$icon_root" "$RUNNER_TEMP/icon-archive-audit.json"
+      - name: Capture responsive screens and test demo interactions
+        env:
+          PLAYWRIGHT_PACKAGE: ${{ runner.temp }}/cqrtv-a-plus/node_modules/playwright
+        run: node qa/admin-a-plus-preview.mjs
+      - name: Upload owner-review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cqrtv-admin-a-plus-review
+          path: |
+            docs/admin-a-plus/qa/output/*.png
+            ${{ runner.temp }}/icon-archive-audit.json
+          if-no-files-found: warn
+          retention-days: 30
