@@ -100,6 +100,11 @@ while IFS=$'\t' read -r service target expected_volume; do
   docker volume inspect "$actual_volume" >/dev/null
 done < "$volume_map"
 
+container_state() {
+  docker inspect --format '{{json .State}}' "$1" |
+    python3 -c 'import json,sys; s=json.load(sys.stdin); print(s.get("Status","unknown")+"|"+((s.get("Health") or {}).get("Status") or "none"))'
+}
+
 service_ref_and_health() {
   local service="$1" wanted_target="$2" wanted_previous="$3"
   mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=$service")
@@ -107,7 +112,7 @@ service_ref_and_health() {
   local image_id repo_digests runtime state health ref=unknown
   image_id=$(docker inspect --format '{{.Image}}' "${ids[0]}")
   repo_digests=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image_id" 2>/dev/null || true)
-  runtime=$(docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${ids[0]}")
+  runtime=$(container_state "${ids[0]}")
   state="${runtime%%|*}"
   health="${runtime#*|}"
   if grep -Fqx "$wanted_target" <<<"$repo_digests"; then ref=target
@@ -123,7 +128,7 @@ service_ref_and_health() {
 db_health() {
   mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=db")
   [[ ${#ids[@]} -eq 1 ]] || { printf 'unknown\n'; return; }
-  docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${ids[0]}"
+  container_state "${ids[0]}"
 }
 db_container_before=$(docker ps -q --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=db")
 if [[ -z "$db_container_before" || "$(db_health)" != "running|healthy" ]]; then
