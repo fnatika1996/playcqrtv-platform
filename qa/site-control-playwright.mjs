@@ -84,7 +84,8 @@ try{
   await page.locator("#social-list .social-item").waitFor({state:"visible"});
   assert.equal(await page.getByRole("heading",{name:"Режим и публичная страница"}).isVisible(),true);
   assert.equal(await page.getByLabel("Режим сайта").isVisible(),true);
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,"admin site control must not overflow at "+width+"px");
+  const adminOverflow=await page.evaluate(()=>({page:document.documentElement.scrollWidth>innerWidth,scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,offenders:[...document.querySelectorAll("body *")].map(element=>{const rect=element.getBoundingClientRect();return{tag:element.tagName,id:element.id,className:typeof element.className==="string"?element.className:"",left:Math.round(rect.left),right:Math.round(rect.right),width:Math.round(rect.width),text:(element.innerText||"").slice(0,70)}}).filter(item=>item.id!=="shell"&&!item.className.includes("aside")&&item.right>innerWidth+1).slice(0,15)}));
+  assert.equal(adminOverflow.page,false,"admin site control must not overflow at "+width+"px: "+JSON.stringify(adminOverflow));
   if(width===1440){
    await page.getByRole("button",{name:"Изменить"}).click();
    const packagedIcon=page.getByLabel("Использовать иконку CQRTV вместо загруженной");
@@ -96,7 +97,7 @@ try{
    assert.equal(socialPayload?.iconKey,"chat");
    await page.screenshot({path:new URL("site-control-admin-desktop.png",dir).pathname,fullPage:true});
   }
-  if(width===390)await page.screenshot({path:new URL("site-control-admin-mobile.png",dir).pathname,fullPage:true});
+  if(width===390){await page.locator("#menu").click();assert.equal(await page.locator("#shell").evaluate(element=>element.classList.contains("open")),true,"mobile Site Control menu should open");await page.locator('aside a[href="#social-form"]').click();assert.equal(await page.locator("#shell").evaluate(element=>element.classList.contains("open")),false,"selecting a real section should close the mobile menu");await page.screenshot({path:new URL("site-control-admin-mobile.png",dir).pathname,fullPage:true});}
   await context.close();
  }
  console.log("PASS site control desktop/mobile, modal keyboard flow, maintenance mode, admin preview, spoofed-header denial, expired-session recovery and packaged-icon replacement.");
