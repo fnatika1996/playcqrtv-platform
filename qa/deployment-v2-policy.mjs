@@ -13,7 +13,7 @@ export function validateReleaseEvidence(input) {
   const previousWebRef=input.PREVIOUS_WEB_REF||"";
   const previousApiRef=input.PREVIOUS_API_REF||"";
   if(!/^[a-f0-9]{40}$/i.test(releaseSha)||releaseSha!==workflowSha)throw new Error("Release ref must be the exact SHA selected for this main workflow run.");
-  if(!backupVerified||!/^[a-f0-9]{64}$/i.test(backupSha)||!/^[A-Za-z0-9._:/-]{1,120}$/.test(backupReference))throw new Error("Owner must confirm a protected backup, its checksum, age/RPO and isolated restore.");
+  if(!backupVerified||!/^[a-f0-9]{64}$/i.test(backupSha)||!/^[A-Za-z0-9._-]{1,120}$/.test(backupReference))throw new Error("Owner must confirm a protected backup, its checksum, age/RPO and isolated restore.");
   if(!isDigestRef(previousWebRef,"ghcr.io/fnatika1996/playcqrtv-platform")||!isDigestRef(previousApiRef,"ghcr.io/fnatika1996/playcqrtv-api")||previousWebRef===previousApiRef)throw new Error("Previous running web and API refs must be their separate immutable RepoDigests.");
   return true;
 }
