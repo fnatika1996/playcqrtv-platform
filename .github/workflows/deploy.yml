@@ -210,7 +210,6 @@ jobs:
           CQRTV_SSH_USER: ${{ vars.CQRTV_SSH_USER }}
           CQRTV_SSH_KNOWN_HOSTS: ${{ vars.CQRTV_SSH_KNOWN_HOSTS }}
           CQRTV_PROJECT_ROOT: ${{ vars.CQRTV_PROJECT_ROOT }}
-          CQRTV_SSH_PRIVATE_KEY: ${{ secrets.CQRTV_SSH_PRIVATE_KEY }}
           CQRTV_REMOTE_RELEASE: ${{ vars.CQRTV_PROJECT_ROOT }}/releases/${{ inputs.release_sha }}-${{ github.run_id }}
           RELEASE_SHA: ${{ inputs.release_sha }}
           PROJECT_NAME: playcqrtv
