@@ -1,6 +1,9 @@
 name: CQRTV Admin A+ preview QA
 
 on:
+  push:
+    branches:
+      - design/admin-a-plus-preview-2026-11-16
   pull_request:
     branches:
       - docs/admin-redesign-concepts-duotone-2026-11-16
@@ -22,9 +25,9 @@ jobs:
         with:
           node-version: 22
       - name: Install isolated browser QA runner
-        run: npm install --no-save --package-lock=false playwright
+        run: npm install --prefix "$RUNNER_TEMP/cqrtv-a-plus" --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.64.1
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: "$RUNNER_TEMP/cqrtv-a-plus/node_modules/.bin/playwright install --with-deps chromium"
       - name: Extract original CQRTV icon archive
         run: |
           sudo apt-get update
@@ -37,6 +40,8 @@ jobs:
           test -d "$icon_root"
           node qa/admin-a-plus-icon-audit.mjs "$icon_root" "$RUNNER_TEMP/icon-archive-audit.json"
       - name: Capture responsive screens and test demo interactions
+        env:
+          PLAYWRIGHT_PACKAGE: ${{ runner.temp }}/cqrtv-a-plus/node_modules/playwright
         run: node qa/admin-a-plus-preview.mjs
       - name: Upload owner-review evidence
         if: always()
