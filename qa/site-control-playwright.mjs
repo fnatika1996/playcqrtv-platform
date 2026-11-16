@@ -74,13 +74,13 @@ try{
  assert.equal(await recovery.title(),"CQRTV — скоро","an expired session must not bypass the offline page");
  await recovery.goto(baseUrl+"/admin/login?next=%2F",{waitUntil:"domcontentloaded"});
  const failedLoginUrl=recovery.url();
- await recovery.getByLabel("Рабочий email").fill("wrong@example.test");
- await recovery.getByLabel("Пароль").fill("wrong-password");
+ await recovery.getByLabel("Рабочий email",{exact:true}).fill("wrong@example.test");
+ await recovery.getByLabel("Пароль",{exact:true}).fill("wrong-password");
  await recovery.getByRole("button",{name:"Войти в панель"}).click();
  await recovery.getByRole("alert").waitFor({state:"visible"});
  assert.equal(recovery.url(),failedLoginUrl,"failed login must stay on the login screen");
- await recovery.getByLabel("Рабочий email").fill("qa-admin@example.test");
- await recovery.getByLabel("Пароль").fill("qa-only-password");
+ await recovery.getByLabel("Рабочий email",{exact:true}).fill("qa-admin@example.test");
+ await recovery.getByLabel("Пароль",{exact:true}).fill("qa-only-password");
  await recovery.getByRole("button",{name:"Войти в панель"}).click();
  await recovery.waitForURL(url=>url.pathname==="/",{timeout:5000});
  assert.equal(new URL(recovery.url()).pathname,"/","successful login from offline-page link must return to the homepage");
@@ -99,8 +99,8 @@ try{
  await redirectPage.route("**/admin",route=>route.fulfill({status:200,contentType:"text/html",body:"<!doctype html><title>QA admin destination</title>"}));
  for(const query of rejectedNextValues){
   await redirectPage.goto(baseUrl+"/admin/login"+query,{waitUntil:"domcontentloaded"});
-  await redirectPage.getByLabel("Рабочий email").fill("qa-admin@example.test");
-  await redirectPage.getByLabel("Пароль").fill("qa-only-password");
+  await redirectPage.getByLabel("Рабочий email",{exact:true}).fill("qa-admin@example.test");
+  await redirectPage.getByLabel("Пароль",{exact:true}).fill("qa-only-password");
   await redirectPage.getByRole("button",{name:"Войти в панель"}).click();
   await redirectPage.waitForURL(url=>url.pathname==="/admin",{timeout:5000});
   assert.equal(new URL(redirectPage.url()).origin,new URL(baseUrl).origin,"untrusted next values must not navigate off-origin");
