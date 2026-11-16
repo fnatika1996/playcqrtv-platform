@@ -26,5 +26,5 @@ for id in "${ids[@]}"; do
   while IFS='|' read -r type volume destination; do
     [[ -n "$type$volume$destination" ]] || continue
     printf 'mount\t%s\t%s\t%s\t%s\n' "$full_id" "$service" "$type:${volume:-<bind>}" "$destination"
-  done < <(docker inspect --format '{{range .Mounts}}{{printf "%s|%s|%s\\n" .Type .Name .Destination}}{{end}}' "$id")
+  done < <(docker inspect --format '{{range .Mounts}}{{printf "%s|%s|%s\n" .Type .Name .Destination}}{{end}}' "$id")
 done
