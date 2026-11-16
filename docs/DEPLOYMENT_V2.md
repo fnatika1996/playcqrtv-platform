@@ -15,7 +15,14 @@ Preferred target: standard Docker Compose on the existing VPS, invoked over Open
 
 The workflow has no push trigger. Merging a PR to main runs PR/main CI only. Production release can start only from manual workflow_dispatch on main, with the exact release_sha, previous running web/API RepoDigests and backup attestation supplied.
 
-Before enabling release, the owner must create GitHub Environments release-artifacts and production, set required owner reviewers, disable administrator bypass, and store SSH credentials only in the production Environment. A YAML environment name alone does not create reviewer protection; verify the Settings rules before use.
+Before enabling release, the owner must create GitHub Environments `release-artifacts` and `production`, set required owner reviewers, disable administrator bypass, and store SSH credentials only in the production Environment. A YAML environment name alone does not create reviewer protection. Read-only GitHub Environment metadata was unavailable to this audit connection, so existence/protection are unverified.
+
+Owner UI checklist (do not paste secret values into Issue #4):
+1. Repository **Settings → Environments**: confirm both environment names exist.
+2. For each: configure required owner reviewers; enable **Prevent self-review** where available; enable **Prevent administrators from bypassing configured protection rules**; restrict deployment branches to `main`.
+3. In `production`, verify variable names below and secret name `CQRTV_SSH_PRIVATE_KEY` exist. Record only name/presence in the owner checklist; never expose values in logs or issue comments.
+4. In `release-artifacts`, verify required reviewers are configured before allowing GHCR write permission.
+5. Keep SSH private key limited to the `production` environment; pin the host key in `CQRTV_SSH_KNOWN_HOSTS`, do not generate it dynamically during deployment.
 
 Required production Environment variables:
 - CQRTV_SSH_HOST
@@ -51,9 +58,13 @@ The VPS must already have a read-only GHCR credential for image pulls and an exi
 
 ## Staging and reliability checks
 
-PR CI runs a disposable local Docker Compose stack with a unique QA project. It verifies clean startup, repeat deployment of the same manifest, stable app container IDs, and PostgreSQL named-volume/data preservation. Cleanup targets only this disposable project. Unit checks cover release SHA, missing backup attestation, mutable refs, target no-op, old-state apply, mixed/interrupted state and API rollback stop.
+PR CI uses a disposable Docker Compose project with a unique name, its own network and PostgreSQL volume, an ephemeral staging-only DB credential, and an HTTP port bound only to runner loopback. It verifies clean startup and HTTP response, repeat deployment with stable container IDs, named-volume/data preservation, a deliberately failed pull from a closed loopback port (existing containers/data remain unchanged), and PostgreSQL dump/restore into a second disposable database. It runs the new read-only inventory tool and checks its output does not contain the staging password. CI cleanup is scoped to this unique QA project and is the only place in this PR using `down --volumes`.
 
-This is not a Hostinger/VPS staging test. Before official release, configure an isolated VPS Compose project with separate volumes and credentials, then test successful deployment/repeat, bad image, unavailable registry, failed build, interruption/timeout followed by read-only reconciliation, web rollback, API rollback stop and isolated backup restore.
+Policy tests cover release SHA, missing backup attestation, mutable refs, target no-op, old-state apply, mixed/interrupted and unhealthy states, and API rollback fail-closed. This is runner-local Docker staging, not a Hostinger/VPS test; it cannot reproduce provider networking, SSH permissions, Hostinger project labels/volume names, or production credentials. No safe staging VPS/access was supplied, so those host-specific checks remain blocked. Web rollback is a new owner-approved gated release using a verified old digest and compatible manifest; actual rollback is not exercised against production. CI only verifies the fail-closed state policy; it does not mutate or restore live services.
+
+## Read-only operator inventory
+
+Run `bash qa/deployment-v2-inventory.sh <compose-project>` on an authorized host before any migration/release. It reads Compose labels, configured image refs, local RepoDigests, runtime/health state, and mounted volume names/targets; it intentionally never inspects or prints container environment, .env, or credential values. It exits non-zero if no containers match. Compare the output with the candidate manifest and owner records. The tool is included in disposable CI; it has not been run against production.
 
 ## One-time Hostinger-to-Compose handoff
 
@@ -70,9 +81,11 @@ This is a separate owner-approved maintenance-window task, not part of PR merge 
 
 - Main SHA at audit: b66d804ace3688cbaecc0fcadd1681db6cd3e2dd.
 - Latest visible production run #63 built/pushed images but stopped at unknown state; live smoke was skipped. Current running refs, container health, Site Control mode and saved Compose remain unverified by Codex.
-- Issue #4 contains owner-reported historic PostgreSQL backup restore and baseline digest checks. Their age/protection and relevance to a future release must be reconfirmed. The Hostinger backup panel had no automatic snapshot at its last owner check.
+- Owner reports a PostgreSQL backup completed yesterday (2026-11-16). This audit did not access or verify its checksum, protected storage, age/RPO or isolated restore evidence. It is not treated as absent; no replacement backup was created.
+- GitHub Environment metadata could not be read with the available read-only GitHub connection (the Environments endpoint was rejected by its endpoint allowlist). Environment existence, reviewers/bypass, variables and secret presence are unverified. The owner UI checklist above is required.
 - SSH access, server environment path, project labels and volume IDs are intentionally not guessed. No secret/token belongs in Issue #4.
-- This PR does not authorize merge or deployment. Release remains blocked until environment protection, staging proof, current read-only inventory, verified backup, exact main SHA and owner approval are present.
+- The last main auto-deploy risk remains until PR #23 is merged. Safe order: (1) pause/avoid all other main merges; review and approve PR #23 specifically; (2) merge #23 alone; (3) verify main contains the manual-only deploy workflow and inspect Actions to confirm no production run was triggered; (4) only then merge PR #21 after a separate owner sequencing approval. Do not merge #21 first: its push would still invoke the current main auto-deploy workflow. PR #22 must not be merged unchanged.
+- This PR does not authorize merge or deployment. Release remains blocked until environment protection, staging proof, current read-only inventory, verified owner-reported backup, exact main SHA and owner approval are present.
 
 References:
 - Hostinger VPS Docker Manager API: https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSDockerManagerApi.md
