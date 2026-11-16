@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>CQRTV Admin — направления концепта</title>
+  <link rel="stylesheet" href="preview.css">
+</head>
+<body>
+  <header class="chooser">
+    <div class="chooser-brand"><b>CQRTV</b><span>ADMIN · КОНЦЕПЦИИ</span></div>
+    <div class="chooser-controls">
+      <label>Направление<select id="direction" aria-label="Направление"><option value="a">A · Premium Esports</option><option value="b">B · Operations Studio</option><option value="c">C · Tactical Interface</option></select></label>
+      <label>Экран<select id="view" aria-label="Экран"><option value="dashboard">Dashboard</option><option value="users">Пользователи</option><option value="site">Управление сайтом</option><option value="login">Вход администратора</option></select></label>
+      <label class="viewport-label">Предпросмотр<select id="viewport" aria-label="Размер предпросмотра"><option value="desktop">Компьютер · 1440</option><option value="mobile">Телефон · 390</option></select></label>
+    </div>
+  </header>
+  <main>
+    <p class="concept-disclaimer">Концептуальный просмотр · без реальных данных и действий · ни одно направление пока не утверждено</p>
+    <div id="preview" class="preview" data-direction="a" data-view="dashboard" data-viewport="desktop" aria-live="polite"></div>
+    <section id="icon-audit" class="icon-audit" aria-labelledby="icon-heading">
+      <div class="audit-heading"><div><p class="overline">ОРИГИНАЛЬНЫЙ АРХИВ · 1 215 SVG</p><h2 id="icon-heading">Иконки CQRTV: исходник и цветовые роли</h2><p>Образцы собраны из Icon Play CQRTV.rar. Слева — SVG как внешний ресурс; справа — та же геометрия с двумя семантическими цветовыми токенами. Это превью реализации, а не замена иконок сайта.</p></div><button id="toggle-light" type="button" aria-pressed="false">Сравнить на светлом фоне</button></div>
+      <div class="icon-audit-grid" id="icon-grid"></div>
+      <div class="state-board" id="state-board"></div>
+      <p class="audit-footnote">Цвета в ячейке состояния задаются токенами `--icon-primary` и `--icon-secondary`. В рабочих страницах CQRTV сейчас используются внешние &lt;img&gt; и стилизуемые inline SVG; тег &lt;img&gt; не наследует `color` контейнера. Декоративные иконки помечены как скрытые от скринридера; действия имеют текстовую подпись.</p>
+    </section>
+  </main>
+  <script type="module" src="preview.js"></script>
+</body>
+</html>
