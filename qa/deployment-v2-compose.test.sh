@@ -26,6 +26,7 @@ cat > "$scratch/compose.yml" <<'YAML'
 services:
   db:
     image: postgres:17-alpine
+    networks: [qa]
     environment:
       POSTGRES_DB: staging
       POSTGRES_USER: staging
@@ -39,6 +40,7 @@ services:
       retries: 30
   api:
     image: API_IMAGE_PLACEHOLDER
+    networks: [qa]
     depends_on:
       db:
         condition: service_healthy
@@ -46,10 +48,6 @@ services:
     image: nginx:1.27-alpine
     ports:
       - "127.0.0.1:${STAGING_HTTP_PORT}:80"
-    networks: [qa]
-  api:
-    networks: [qa]
-  db:
     networks: [qa]
 volumes:
   pgdata:
