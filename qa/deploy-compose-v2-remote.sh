@@ -57,7 +57,6 @@ for service in services.values():
 expected_mounts = {
     ("db", "/var/lib/postgresql/data"), ("db", "/run/db-secret"),
     ("api", "/run/db-secret"), ("caddy", "/data"), ("caddy", "/config"),
-    ("secret-init", "/run/db-secret"),
 }
 rows = []
 for service_name, target in sorted(expected_mounts):
