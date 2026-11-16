@@ -46,3 +46,12 @@ test("site control migration defaults to open and stores only raster upload type
  assert.match(sql,/image\/png', 'image\/jpeg', 'image\/webp/);
  assert.match(sql,/ON CONFLICT \(id\) DO NOTHING/);
 });
+
+test("offline pages link to the protected admin login with a safe public return target",()=>{
+ const page=read("site-closed.html");
+ assert.match(page,/href="\/admin\/login\?next=%2F"/);
+ assert.match(page,/class="admin-access"/);
+ const login=read("admin-login.html");
+ assert.match(login,/get\('next'\)==='\/'\?'\/'\:'\/admin'/);
+ assert.match(login,/location\.assign\(returnTo\)/);
+});
