@@ -31,7 +31,10 @@ test("only the exact healthy previous state permits first apply",()=>{
   assert.equal(classifyObservedState({...args,web:healthy(webOld),api:healthy(apiOld)}),"safe-to-apply");
   assert.equal(classifyObservedState({...args,web:healthy(webNew),api:healthy(apiOld)}),"stop");
   assert.equal(classifyObservedState({...args,web:healthy(webOld),api:{...healthy(apiOld),health:"unhealthy"}}),"stop");
+  assert.equal(classifyObservedState({...args,web:{...healthy(webOld),health:"unhealthy"},api:healthy(apiOld)}),"stop");
   assert.equal(classifyObservedState({...args,web:{...healthy(webOld),running:false},api:healthy(apiOld)}),"stop");
+  assert.equal(classifyObservedState({...args,web:null,api:healthy(apiOld)}),"stop");
+  assert.equal(classifyObservedState({...args,web:healthy(webOld),api:{...healthy(apiOld),repoDigest:"unknown"}}),"stop");
 });
 
 test("API rollback remains forward-only unless compatibility is proven and owner reviews",()=>{
