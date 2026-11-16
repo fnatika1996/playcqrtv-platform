@@ -2,7 +2,7 @@ name: Account authentication tests
 
 on:
   pull_request:
-    branches: [main, fix/account-auth-flows-2026-11-15]
+    branches: [main, fix/account-auth-flows-2026-11-15, feat/public-site-phase1-2026-11-17]
     paths:
       - index.html
       - auth.html
@@ -128,7 +128,7 @@ jobs:
         # Static parse only; this PR job has no production credentials or API calls.
 
       - name: Validate immutable release Compose generation (non-production)
-        run: node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs
+        run: node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs qa/live-home-smoke.test.mjs
 
       - name: Extract and build the curated CQRTV icon pack
         run: |

@@ -40,7 +40,7 @@ function replaceService(content, service, expectedRef, replacementRef) {
   if (policies.length !== 1) fail(`Compose service ${service} must have exactly one pull_policy.`);
 
   block = block.replace(/^    image: .+\r?$/m, `    image: ${replacementRef}`);
-  block = block.replace(/^    pull_policy: .+\r?$/m, "    pull_policy: missing");
+  block = block.replace(/^    pull_policy: .+\r?$/m, "    pull_policy: always");
   return content.slice(0, start) + block + content.slice(end);
 }
 
@@ -55,7 +55,7 @@ for (const service of ["api", "caddy"]) {
   const start = headers[index].index;
   const end = headers[index + 1]?.index ?? output.length;
   const block = output.slice(start, end);
-  if (!/^    pull_policy: missing\r?$/m.test(block)) fail(`Pinned service ${service} must use pull_policy: missing.`);
+  if (!/^    pull_policy: always\r?$/m.test(block)) fail(`Pinned service ${service} must use pull_policy: always.`);
 }
 if (!output.includes(`image: ghcr.io/fnatika1996/playcqrtv-api@${apiDigest}`) ||
     !output.includes(`image: ghcr.io/fnatika1996/playcqrtv-platform@${webDigest}`)) {

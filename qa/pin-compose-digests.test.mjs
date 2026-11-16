@@ -47,8 +47,8 @@ test("rendered release and rollback manifests contain exactly pinned web/API ref
 
   assert.equal(json.services.api.image, expectedApi);
   assert.equal(json.services.caddy.image, expectedWeb);
-  assert.equal(json.services.api.pull_policy, "missing");
-  assert.equal(json.services.caddy.pull_policy, "missing");
+  assert.equal(json.services.api.pull_policy, "always");
+  assert.equal(json.services.caddy.pull_policy, "always");
   assert.equal(images.filter(image => image === expectedWeb).length, 1);
   assert.equal(images.filter(image => image === expectedApi).length, 1);
   assert.equal(images.some(image => /:latest$/.test(image)), false);
