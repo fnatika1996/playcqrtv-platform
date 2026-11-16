@@ -203,7 +203,6 @@ jobs:
           printf -v mkdir_command 'mkdir -p -- %q && chmod 700 -- %q' "$remote_release" "$remote_release"
           ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$CQRTV_SSH_USER@$CQRTV_SSH_HOST" "$mkdir_command"
           scp -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 "$RUNNER_TEMP/cqrtv-release/docker-compose.release.yml" "$CQRTV_SSH_USER@$CQRTV_SSH_HOST:$remote_release/docker-compose.yml"
-          printf 'CQRTV_REMOTE_RELEASE=%s\n' "$remote_release" >> "$GITHUB_ENV"
 
       - name: Reconcile and apply exact Compose digests over SSH
         env:
@@ -212,7 +211,7 @@ jobs:
           CQRTV_SSH_KNOWN_HOSTS: ${{ vars.CQRTV_SSH_KNOWN_HOSTS }}
           CQRTV_PROJECT_ROOT: ${{ vars.CQRTV_PROJECT_ROOT }}
           CQRTV_SSH_PRIVATE_KEY: ${{ secrets.CQRTV_SSH_PRIVATE_KEY }}
-          CQRTV_REMOTE_RELEASE: ${{ env.CQRTV_REMOTE_RELEASE }}
+          CQRTV_REMOTE_RELEASE: ${{ vars.CQRTV_PROJECT_ROOT }}/releases/${{ inputs.release_sha }}-${{ github.run_id }}
           RELEASE_SHA: ${{ inputs.release_sha }}
           PROJECT_NAME: playcqrtv
           WEB_IMAGE_REF: ${{ needs.build-release.outputs.web_ref }}
