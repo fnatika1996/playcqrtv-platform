@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="CQRTV Admin A+ — owner review concept">
+  <title>CQRTV Admin — Concept A+</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;500;600;700&family=Teko:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="a-plus.css">
+</head>
+<body>
+  <header class="review-bar" aria-label="Управление просмотром концепта">
+    <a class="review-brand" href="?view=dashboard"><span class="review-mark">C</span><span><b>CQRTV</b><small>DESIGN REVIEW / A+</small></span></a>
+    <div class="review-controls">
+      <label>Экран<select id="view-picker" aria-label="Экран концепта"><option value="dashboard">Dashboard</option><option value="users">Пользователи</option><option value="site">Site Control</option><option value="login">Вход администратора</option><option value="icons">Иконки · сравнение</option></select></label>
+      <label>Размер<select id="viewport-picker" aria-label="Размер превью"><option value="desktop">Desktop · 1440</option><option value="mobile">Mobile · 390</option></select></label>
+    </div>
+    <span class="review-note">КОНЦЕПТ · БЕЗ API / ИЗМЕНЕНИЙ</span>
+  </header>
+  <main id="app" class="app-frame" aria-live="polite"></main>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="demo-dialog" class="demo-dialog"><div class="dialog-mark" data-icon="shield"></div><h2>Только концепт</h2><p>Этот экран не подключён к CQRTV API. Данные и действия здесь демонстрационные.</p><button class="button primary" data-close-dialog>Понятно</button></dialog>
+  <section class="icon-proof-wrap" id="icon-proof" aria-labelledby="icon-proof-title">
+    <div class="proof-heading"><div><span class="eyebrow">ORIGINAL PACK · BEFORE / AFTER</span><h2 id="icon-proof-title">Два слоя. Предсказуемый цвет.</h2><p>Слева — исходный файл архива через &lt;img&gt;. Справа — та же SVG-геометрия с управляемыми ролями цвета.</p></div><button class="button secondary" id="surface-toggle" type="button" aria-pressed="false">Проверить светлый фон</button></div>
+    <div class="proof-grid" id="proof-grid"></div>
+    <div class="logout-proof"><div><span class="eyebrow">ICON SEMANTICS · SIGN OUT</span><h3>Logout: выбираем по смыслу</h3><p>Все три варианта — файлы CQRTV Icon Play. Кандидат 6 читается как выход из аккаунта; Exit остаётся отдельным действием покинуть контекст.</p></div><div class="logout-options" id="logout-options"></div></div>
+    <p class="proof-footnote">Образцы в концепте подготовлены безопасным preview-парсером. Это не production SVG pipeline и не замена asset aliases. Итоговый manifest требует отдельного review, проверки CSP и полного asset-level QA.</p>
+  </section>
+  <script src="a-plus.js" defer></script>
+</body>
+</html>
