@@ -2,7 +2,7 @@ name: Account authentication tests
 
 on:
   pull_request:
-    branches: [main, fix/account-auth-flows-2026-11-15]
+    branches: [main, fix/account-auth-flows-2026-11-15, feat/admin-dashboard-redesign-icon-pack-2026-11-15]
     paths:
       - index.html
       - auth.html
