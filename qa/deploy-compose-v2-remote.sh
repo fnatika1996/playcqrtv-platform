@@ -20,8 +20,8 @@ previous_api=${7:?previous API digest required}
 [[ -f "$manifest" && -f "$project_root/.env" ]]
 command -v stat >/dev/null
 env_mode=$(stat -c '%a' "$project_root/.env")
-if (( (8#$env_mode & 007) != 0 )); then
-  echo "Remote .env is world-readable; refusing deployment." >&2
+if (( (8#$env_mode & 077) != 0 )); then
+  echo "Remote .env is group/world-readable; refusing deployment." >&2
   exit 1
 fi
 command -v docker >/dev/null
@@ -120,6 +120,17 @@ service_ref_and_health() {
   fi
 }
 
+db_health() {
+  mapfile -t ids < <(docker ps -aq --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=db")
+  [[ ${#ids[@]} -eq 1 ]] || { printf 'unknown\n'; return; }
+  docker inspect --format '{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "${ids[0]}"
+}
+db_container_before=$(docker ps -q --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=db")
+if [[ -z "$db_container_before" || "$(db_health)" != "running|healthy" ]]; then
+  echo "Database is not the single healthy existing service; no change applied." >&2
+  exit 1
+fi
+
 api_state=$(service_ref_and_health api "$target_api" "$previous_api")
 web_state=$(service_ref_and_health caddy "$target_web" "$previous_web")
 if [[ "$api_state" == "target|healthy" && "$web_state" == "target|healthy" ]]; then
@@ -143,6 +154,11 @@ compose up -d --no-build --no-deps api caddy
 up_status=$?
 set -e
 for attempt in $(seq 1 30); do
+  db_container_after=$(docker ps -q --filter "label=com.docker.compose.project=$project" --filter "label=com.docker.compose.service=db")
+  if [[ "$db_container_after" != "$db_container_before" || "$(db_health)" != "running|healthy" ]]; then
+    echo "Database identity or health changed during app update; stop for operator review." >&2
+    exit 1
+  fi
   api_state=$(service_ref_and_health api "$target_api" "$previous_api")
   web_state=$(service_ref_and_health caddy "$target_web" "$previous_web")
   if [[ "$api_state" == "target|healthy" && "$web_state" == "target|healthy" ]]; then
