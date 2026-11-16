@@ -12,6 +12,7 @@ export function bindPlayerExperience(document, session) {
     profile.hidden = !authenticated;
     guestActions.hidden = authenticated;
     memberActions.hidden = !authenticated;
+    welcome.hidden = !authenticated;
     if (authenticated) welcome.textContent = `С возвращением, ${nickname}`;
     document.body.dataset.accountState = authenticated ? "authenticated" : "guest";
   }

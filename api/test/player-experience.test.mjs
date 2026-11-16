@@ -76,12 +76,14 @@ test("player profile is private until a valid session exists and clears on logou
   assert.equal(ids["player-profile"].hidden,false);
   assert.equal(ids["guest-actions"].hidden,true);
   assert.equal(ids["member-actions"].hidden,false);
+  assert.equal(ids["player-welcome"].hidden,false);
   assert.equal(ids["player-welcome"].textContent,"С возвращением, ClutchAce");
   assert.equal(document.body.dataset.accountState,"authenticated");
 
   notifySession(null);
   assert.equal(ids["player-profile"].hidden,true);
   assert.equal(ids["guest-actions"].hidden,false);
+  assert.equal(ids["player-welcome"].hidden,true);
   assert.equal(document.body.dataset.accountState,"guest");
 
   ids["mobile-menu-toggle"].emit("click");
