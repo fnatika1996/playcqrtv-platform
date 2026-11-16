@@ -51,4 +51,9 @@ http.createServer(async (req,res)=>{
     let credentials={};try{credentials=JSON.parse(body)}catch{}
     if(credentials.email==="qa-admin@example.test"&&credentials.password==="qa-only-password"){
       res.writeHead(200,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","Set-Cookie":"cqrtv_qa_admin=valid; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600"});
-      return res.end(JSON.stringify({me
+      return res.end(JSON.stringify({message:"QA login succeeded"}));
+    }
+    return json(res,401,{error:"Неверный email или пароль."});
+  }
+  res.writeHead(404,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end('{"error":"QA mock only"}');
+}).listen(3000,"0.0.0.0");

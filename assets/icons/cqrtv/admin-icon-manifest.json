@@ -137,4 +137,180 @@
       "key": "invite",
       "file": "invite.svg",
       "source": "Users/User-Plus-Rounded--playcqrtv.svg",
-    
+      "usedBy": [
+        "Existing public site path compatibility"
+      ]
+    },
+    {
+      "key": "mail",
+      "file": "mail.svg",
+      "source": "Messages Conversation/Letter--playcqrtv.svg",
+      "usedBy": [
+        "Admin login",
+        "Email-verification state",
+        "Site Control social icon option"
+      ]
+    },
+    {
+      "key": "lock",
+      "file": "lock.svg",
+      "source": "Security/Lock-Keyhole-Minimalistic--playcqrtv.svg",
+      "usedBy": [
+        "Admin login password field"
+      ]
+    },
+    {
+      "key": "eye",
+      "file": "eye.svg",
+      "source": "Security/Eye--playcqrtv.svg",
+      "usedBy": [
+        "Admin login password visibility"
+      ]
+    },
+    {
+      "key": "eye-closed",
+      "file": "eye-closed.svg",
+      "source": "Security/Eye-Closed--playcqrtv.svg",
+      "usedBy": [
+        "Admin login password visibility"
+      ]
+    },
+    {
+      "key": "login",
+      "file": "login.svg",
+      "source": "Arrows Action/Login--playcqrtv.svg",
+      "usedBy": [
+        "Admin login submit"
+      ]
+    },
+    {
+      "key": "logout",
+      "file": "logout.svg",
+      "source": "Arrows Action/Logout-6--playcqrtv.svg",
+      "usedBy": [
+        "Admin header logout"
+      ]
+    },
+    {
+      "key": "arrow-left",
+      "file": "arrow-left.svg",
+      "source": "Arrows/Alt-Arrow-Left--playcqrtv.svg",
+      "usedBy": [
+        "Admin login back link"
+      ]
+    },
+    {
+      "key": "search",
+      "file": "search.svg",
+      "source": "Search/Magnifer--playcqrtv.svg",
+      "usedBy": [
+        "Users search filter"
+      ]
+    },
+    {
+      "key": "user",
+      "file": "user.svg",
+      "source": "Users/User--playcqrtv.svg",
+      "usedBy": [
+        "Admin account identity"
+      ]
+    },
+    {
+      "key": "user-check",
+      "file": "user-check.svg",
+      "source": "Users/User-Check--playcqrtv.svg",
+      "usedBy": [
+        "Active account state"
+      ]
+    },
+    {
+      "key": "user-block",
+      "file": "user-block.svg",
+      "source": "Users/User-Block--playcqrtv.svg",
+      "usedBy": [
+        "Suspended account state",
+        "Suspend action"
+      ]
+    },
+    {
+      "key": "user-circle",
+      "file": "user-circle.svg",
+      "source": "Users/User-Circle--playcqrtv.svg",
+      "usedBy": [
+        "Admin identity fallback"
+      ]
+    },
+    {
+      "key": "users-group-two",
+      "file": "users-group-two.svg",
+      "source": "Users/Users-Group-Two-Rounded--playcqrtv.svg",
+      "usedBy": [
+        "Dashboard account context"
+      ]
+    },
+    {
+      "key": "shield-warning",
+      "file": "shield-warning.svg",
+      "source": "Security/Shield-Warning--playcqrtv.svg",
+      "usedBy": [
+        "Warning states"
+      ]
+    },
+    {
+      "key": "shield-user",
+      "file": "shield-user.svg",
+      "source": "Security/Shield-User--playcqrtv.svg",
+      "usedBy": [
+        "Admin session security context"
+      ]
+    },
+    {
+      "key": "lock-open",
+      "file": "lock-open.svg",
+      "source": "Security/Lock-Keyhole-Minimalistic-Unlocked--playcqrtv.svg",
+      "usedBy": [
+        "Open site mode state"
+      ]
+    },
+    {
+      "key": "upload",
+      "file": "upload.svg",
+      "source": "Arrows Action/Upload--playcqrtv.svg",
+      "usedBy": [
+        "Site Control asset upload"
+      ]
+    },
+    {
+      "key": "reorder",
+      "file": "reorder.svg",
+      "source": "Arrows Action/Reorder--playcqrtv.svg",
+      "usedBy": [
+        "Site Control social-link ordering"
+      ]
+    },
+    {
+      "key": "close",
+      "file": "close.svg",
+      "source": "Essentional UI/Close-Circle--playcqrtv.svg",
+      "usedBy": [
+        "Modal close"
+      ]
+    },
+    {
+      "key": "check-square",
+      "file": "check-square.svg",
+      "source": "Essentional UI/Check-Square--playcqrtv.svg",
+      "usedBy": [
+        "Checkbox and selected states"
+      ]
+    },
+    {
+      "key": "letter-open",
+      "file": "letter-open.svg",
+      "source": "Messages Conversation/Letter-Opened--playcqrtv.svg",
+      "usedBy": [
+        "Email-confirmed account state"
+      ]
+    }
+  ]
+}

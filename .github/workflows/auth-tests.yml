@@ -83,4 +83,162 @@ jobs:
         run: node --check assets/registration-roles.mjs
       - name: Check admin route and bootstrap syntax
         run: |
-          node --
+          node --check api/admin-routes.mjs
+          node --check api/scripts/grant-admin.mjs
+      - name: Smoke-start packaged API image with disposable PostgreSQL
+        run: |
+          docker run --detach --name cqrtv-api-image-smoke --network host \
+            --env DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/cqrtv_admin_test \
+            --env APP_ORIGIN=http://localhost \
+            cqrtv-api-package-qa >/dev/null
+          cleanup() { docker rm --force cqrtv-api-image-smoke >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail http://127.0.0.1:3000/api/health; then
+              echo
+              echo "PASS packaged API image initialized against disposable PostgreSQL and served /api/health."
+              exit 0
+            fi
+            if [ "$(docker inspect --format '{{.State.Running}}' cqrtv-api-image-smoke)" != "true" ]; then
+              docker logs cqrtv-api-image-smoke
+              exit 1
+            fi
+            sleep 1
+          done
+          docker logs cqrtv-api-image-smoke
+          exit 1
+
+  admin-browser-build-qa:
+    name: Admin browser and static image QA (non-production)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Parse deploy workflow without executing it
+        run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/deploy.yml"); puts "Deploy workflow YAML syntax is valid."'
+        # Static parse only; this PR job has no production credentials or API calls.
+
+      - name: Validate immutable release Compose generation (non-production)
+        run: node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs
+
+      - name: Extract and build the curated CQRTV icon pack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip 7zip-rar
+          mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv/ui
+          7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar"
+          node scripts/build-cqrtv-admin-icons.mjs --source "/tmp/cqrtv-icons/Icon Play CQRTV" --out assets/icons/cqrtv/ui
+          node --check scripts/build-cqrtv-admin-icons.mjs
+          node --test qa/admin-icon-pack.test.mjs
+          test -s assets/icons/cqrtv/ui/admin-icon-sprite.svg
+          test "$(find assets/icons/cqrtv/ui -maxdepth 1 -type f -name '*.svg' ! -name 'admin-icon-sprite.svg' | wc -l)" -eq 38
+
+      - name: Audit the full archive and report icon inventory
+        run: |
+          node scripts/build-cqrtv-admin-icons.mjs --source "/tmp/cqrtv-icons/Icon Play CQRTV"
+
+      - name: Build the website image locally (no registry push)
+        run: |
+          docker build --file Dockerfile --tag cqrtv-admin-qa-site .
+          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/admin/admin-icons.mjs && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-sprite.svg && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" ! -name "admin-icon-sprite.svg" | wc -l)" -eq 38 && sha256sum /srv/assets/admin/admin-hero.png'
+
+      - name: Start isolated Caddy preview
+        run: |
+          sed -e 's/^playcqrtv\.com {/http:\/\/playcqrtv.com {/' \
+              -e 's/^www\.playcqrtv\.com {/http:\/\/www.playcqrtv.com {/' \
+              Caddyfile > "$RUNNER_TEMP/Caddyfile.qa"
+          echo "127.0.0.1 playcqrtv.com" | sudo tee -a /etc/hosts
+          node qa/site-control-gate-mock.mjs > "$RUNNER_TEMP/site-control-gate.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/site-control-gate.pid"
+          for attempt in $(seq 1 20); do
+            if curl --silent --fail http://127.0.0.1:3000/api/site-control/gate >/dev/null; then break; fi
+            sleep 1
+          done
+          docker run -d --name cqrtv-admin-qa \
+            -p 127.0.0.1:8765:80 \
+            --add-host api:host-gateway \
+            -v "$RUNNER_TEMP/Caddyfile.qa:/etc/caddy/Caddyfile:ro" \
+            cqrtv-admin-qa-site
+          for attempt in $(seq 1 20); do
+            if curl --silent --fail --header 'Host: playcqrtv.com' http://127.0.0.1:8765/admin/login >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          docker logs cqrtv-admin-qa
+          exit 1
+
+      - name: Verify Caddy routes, image types and approved hero checksum
+        run: |
+          set -euo pipefail
+          base=http://127.0.0.1:8765
+          fetch() { curl --silent --show-error --fail --header 'Host: playcqrtv.com' -D "$2.headers" "$base$1" -o "$2"; }
+          fetch /admin/login "$RUNNER_TEMP/admin-login.html"
+          curl --silent --show-error --fail --header 'Host: playcqrtv.com' --header 'Cookie: cqrtv_qa_admin=valid' -D "$RUNNER_TEMP/admin.html.headers" "$base/admin" -o "$RUNNER_TEMP/admin.html"
+          fetch /assets/admin/admin-hero.png "$RUNNER_TEMP/admin-hero.png"
+          fetch /assets/icons/cqrtv/ui/admin-icon-sprite.svg "$RUNNER_TEMP/admin-icon-sprite.svg"
+          fetch /assets/icons/cqrtv/ui/mail.svg "$RUNNER_TEMP/mail.svg"
+          fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
+          fetch / "$RUNNER_TEMP/player-home.html"
+          fetch /auth.html "$RUNNER_TEMP/player-auth.html"
+          sha256sum "$RUNNER_TEMP/admin-hero.png"
+          for file in "$RUNNER_TEMP/admin-login.html.headers" "$RUNNER_TEMP/admin.html.headers" "$RUNNER_TEMP/admin-hero.png.headers" "$RUNNER_TEMP/mail.svg.headers" "$RUNNER_TEMP/shield.svg.headers"; do
+            printf '%s: ' "$(basename "$file")"
+            grep -i '^content-type:' "$file" | tr '\n' ' '
+            printf '\n'
+          done
+          grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin-login.html.headers"
+          grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin.html.headers"
+          grep -qi '^content-type: image/png' "$RUNNER_TEMP/admin-hero.png.headers"
+          grep -qi '^content-type: image/svg+xml' "$RUNNER_TEMP/admin-icon-sprite.svg.headers"
+          grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/mail.svg.headers"
+          grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/shield.svg.headers"
+          grep -q 'Панель администратора' "$RUNNER_TEMP/admin-login.html"
+          grep -q 'Обзор платформы' "$RUNNER_TEMP/admin.html"
+          grep -q 'Профиль игрока' "$RUNNER_TEMP/player-home.html"
+          grep -q '<main id="auth-card"' "$RUNNER_TEMP/player-auth.html"
+          echo '3ef86e6f3dbe7c095382bd13ae21db0a239c0a8271ae2798553740cb3efee08d  '"$RUNNER_TEMP/admin-hero.png" | sha256sum --check
+
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --prefix "$RUNNER_TEMP/cqrtv-playwright" --no-save --no-package-lock playwright@1.64.1
+          "$RUNNER_TEMP/cqrtv-playwright/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Run responsive browser review and capture screenshots
+        env:
+          CQRTV_QA_BASE_URL: http://playcqrtv.com:8765
+          PLAYWRIGHT_PACKAGE: ${{ runner.temp }}/cqrtv-playwright/node_modules/playwright
+        run: |
+          node qa/admin-playwright.mjs
+          node qa/site-control-playwright.mjs
+
+      - name: Upload non-sensitive browser screenshots
+        id: upload-screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cqrtv-admin-site-control-browser-qa
+          path: qa-artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Add screenshot artifact link to job summary
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.upload-screenshots.outputs.artifact-url }}
+        run: |
+          if [ -n "$ARTIFACT_URL" ]; then
+            echo "[Download browser screenshots]($ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No browser screenshot artifact was uploaded." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Stop isolated preview container
+        if: always()
+        run: |
+          docker rm --force cqrtv-admin-qa || true
+          if [ -f "$RUNNER_TEMP/site-control-gate.pid" ]; then kill "$(cat "$RUNNER_TEMP/site-control-gate.pid")" || true; fi
