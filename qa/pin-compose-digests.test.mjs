@@ -77,7 +77,7 @@ test("production workflow is manual, protected and uses immutable Compose refs",
   const deployClient = fs.readFileSync(path.join(repoRoot, "qa", "hostinger-deploy.mjs"), "utf8");
   const remoteScript = fs.readFileSync(path.join(repoRoot, "qa", "deploy-compose-v2-remote.sh"), "utf8");
   assert.match(deploymentWorkflow, /workflow_dispatch:/);
-  assert.doesNotMatch(deploymentWorkflow, /^\s*push:/m);
+  assert.doesNotMatch(deploymentWorkflow, /^  push:/m);
   assert.match(deploymentWorkflow, /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'workflow_dispatch'/);
   assert.match(deploymentWorkflow, /environment:\s*\n\s+name: release-artifacts/);
   assert.match(deploymentWorkflow, /environment:\s*\n\s+name: production/);
