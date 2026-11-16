@@ -47,8 +47,8 @@ test("rendered release and rollback manifests contain exactly pinned web/API ref
 
   assert.equal(json.services.api.image, expectedApi);
   assert.equal(json.services.caddy.image, expectedWeb);
-  assert.equal(json.services.api.pull_policy, "missing");
-  assert.equal(json.services.caddy.pull_policy, "missing");
+  assert.equal(json.services.api.pull_policy, "always");
+  assert.equal(json.services.caddy.pull_policy, "always");
   assert.equal(images.filter(image => image === expectedWeb).length, 1);
   assert.equal(images.filter(image => image === expectedApi).length, 1);
   assert.equal(images.some(image => /:latest$/.test(image)), false);
@@ -90,8 +90,12 @@ test("deploy workflow pushes traceable tags and uses fail-closed existing-projec
   assert.ok(deploymentWorkflow.includes("API_IMAGE_DIGEST: " + "$" + "{{ steps.build-api.outputs.digest }}"));
   assert.ok(deploymentWorkflow.includes("node qa/hostinger-deploy.mjs"));
   assert.ok(deploymentWorkflow.includes("HOSTINGER_API_KEY: " + "$" + "{{ secrets.HOSTINGER_API_KEY }}"));
-  assert.ok(deploymentWorkflow.includes("WEB_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-platform:latest"));
-  assert.ok(deploymentWorkflow.includes("API_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-api:latest"));
+  assert.ok(deploymentWorkflow.includes("WEB_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-platform@" + "$" + "{{ steps.build-web.outputs.digest }}"));
+  assert.ok(deploymentWorkflow.includes("API_IMAGE_REF: ghcr.io/fnatika1996/playcqrtv-api@" + "$" + "{{ steps.build-api.outputs.digest }}"));
+  assert.ok(deploymentWorkflow.includes("node qa/pin-compose-digests.mjs"));
+  assert.ok(deploymentWorkflow.includes("Upload immutable release Compose handoff"));
+  assert.match(composePreflight, /@sha256:\[a-f0-9\]\{64\}/);
+  assert.doesNotMatch(deploymentWorkflow, /WEB_IMAGE_REF: [^\n]*:latest|API_IMAGE_REF: [^\n]*:latest/);
   assert.ok(!deploymentWorkflow.includes("hostinger/deploy-on-vps@v2"));
   assert.doesNotMatch(deploymentWorkflow, /pull_request:/);
   assert.ok(deployClient.includes("/update"));

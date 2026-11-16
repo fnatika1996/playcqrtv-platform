@@ -8,8 +8,8 @@ import {
 } from "./hostinger-deploy.mjs";
 
 const vmId = "2150572";
-const webImageRef = "ghcr.io/fnatika1996/playcqrtv-platform:latest";
-const apiImageRef = "ghcr.io/fnatika1996/playcqrtv-api:latest";
+const webImageRef = "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "a".repeat(64);
+const apiImageRef = "ghcr.io/fnatika1996/playcqrtv-api@sha256:" + "b".repeat(64);
 const token = "test-only-token";
 const savedCompose = [
   "services:",
@@ -54,7 +54,7 @@ function containers() {
   ];
 }
 
-test("saved Compose preflight accepts only current latest refs, pull policy and protected volume bindings", () => {
+test("saved Compose preflight accepts only current digest-pinned refs, pull policy and protected volume bindings", () => {
   assert.doesNotThrow(() => validateSavedCompose(savedCompose, { webImageRef, apiImageRef }));
   assert.throws(
     () => validateSavedCompose(savedCompose.replace(webImageRef, "ghcr.io/fnatika1996/playcqrtv-platform:old"), { webImageRef, apiImageRef }),
@@ -70,7 +70,25 @@ test("saved Compose preflight accepts only current latest refs, pull policy and 
   );
 });
 
-test("preflight runs before one existing-project UPDATE, action completion and readback of latest refs", async () => {
+test("floating latest refs are rejected before any Hostinger update", async () => {
+  const calls = [];
+  await assert.rejects(
+    deployCompose({
+      token, vmId,
+      webImageRef: "ghcr.io/fnatika1996/playcqrtv-platform:latest",
+      apiImageRef: "ghcr.io/fnatika1996/playcqrtv-api:latest",
+      fetchImpl: async (url, options) => {
+        calls.push({ url: String(url), options });
+        return response({ content: savedCompose });
+      }
+    }),
+    /failed image and volume preflight/
+  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.method, "GET");
+});
+
+test("preflight runs before one existing-project UPDATE, action completion and readback of digest-pinned refs", async () => {
   const calls = [];
   let actionPolls = 0;
   const fetchImpl = async (url, options) => {
@@ -205,7 +223,7 @@ test("unknown action states, invalid IDs, and timeouts fail closed without repea
   });
 });
 
-test("documented container list schema requires expected latest refs and running health", async t => {
+test("documented container list schema requires expected digest-pinned refs and running health", async t => {
   await t.test("running refs with healthy and no-healthcheck states are ready", () => {
     assert.equal(assessExpectedContainers(containers(), { webImageRef, apiImageRef }), true);
   });

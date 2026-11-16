@@ -20,8 +20,13 @@ begin
   fail_closed unless services.keys.sort == expected_services
   fail_closed unless volumes.keys.sort == %w[caddy_config caddy_data db_secret postgres_data].sort
 
-  fail_closed unless services.dig("api", "image") == ENV["EXPECTED_API_IMAGE_REF"]
-  fail_closed unless services.dig("caddy", "image") == ENV["EXPECTED_WEB_IMAGE_REF"]
+  expected_api_ref = ENV["EXPECTED_API_IMAGE_REF"]
+  expected_web_ref = ENV["EXPECTED_WEB_IMAGE_REF"]
+  digest_ref = /\Aghcr\.io\/fnatika1996\/playcqrtv-(?:api|platform)@sha256:[a-f0-9]{64}\z/i
+  fail_closed unless expected_api_ref.is_a?(String) && expected_api_ref.match?(digest_ref) && expected_api_ref.start_with?("ghcr.io/fnatika1996/playcqrtv-api@")
+  fail_closed unless expected_web_ref.is_a?(String) && expected_web_ref.match?(digest_ref) && expected_web_ref.start_with?("ghcr.io/fnatika1996/playcqrtv-platform@")
+  fail_closed unless services.dig("api", "image") == expected_api_ref
+  fail_closed unless services.dig("caddy", "image") == expected_web_ref
   fail_closed unless services.dig("api", "pull_policy") == "always"
   fail_closed unless services.dig("caddy", "pull_policy") == "always"
 
