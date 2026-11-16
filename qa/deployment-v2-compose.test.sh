@@ -22,6 +22,19 @@ DOCKER
 api_image="cqrtv-v2-qa-api:${GITHUB_SHA:-local}"
 docker build --file "$scratch/Dockerfile.api" --tag "$api_image" "$scratch"
 
+cat > "$scratch/Dockerfile.web-rollback" <<'DOCKER'
+FROM nginx:1.27-alpine
+RUN printf 'rollback-image\\n' > /usr/share/nginx/html/index.html
+DOCKER
+cat > "$scratch/Dockerfile.web-candidate" <<'DOCKER'
+FROM nginx:1.27-alpine
+RUN printf 'candidate-image\\n' > /usr/share/nginx/html/index.html
+DOCKER
+web_rollback_image="cqrtv-v2-qa-web:rollback-${GITHUB_SHA:-local}"
+web_candidate_image="cqrtv-v2-qa-web:candidate-${GITHUB_SHA:-local}"
+docker build --file "$scratch/Dockerfile.web-rollback" --tag "$web_rollback_image" "$scratch"
+docker build --file "$scratch/Dockerfile.web-candidate" --tag "$web_candidate_image" "$scratch"
+
 cat > "$scratch/compose.yml" <<'YAML'
 services:
   db:
@@ -45,7 +58,7 @@ services:
       db:
         condition: service_healthy
   caddy:
-    image: nginx:1.27-alpine
+    image: QA_WEB_ROLLBACK_PLACEHOLDER
     ports:
       - "127.0.0.1:${STAGING_HTTP_PORT}:80"
     networks: [qa]
@@ -55,6 +68,7 @@ networks:
   qa:
 YAML
 sed -i "s|API_IMAGE_PLACEHOLDER|$api_image|" "$scratch/compose.yml"
+sed -i "s|QA_WEB_ROLLBACK_PLACEHOLDER|$web_rollback_image|" "$scratch/compose.yml"
 compose=(docker compose --project-name "$project" --file "$scratch/compose.yml")
 "${compose[@]}" up -d --wait --wait-timeout 90
 
@@ -74,7 +88,7 @@ test "$(docker exec "$db_id" psql -U staging -d restored_staging -Atc 'SELECT ma
 
 # A failed registry pull must leave all currently running containers/data untouched.
 cp "$scratch/compose.yml" "$scratch/compose.known-good.yml"
-sed -i 's|image: nginx:1.27-alpine|image: 127.0.0.1:1/cqrtv/unavailable:qa|' "$scratch/compose.yml"
+sed -i "s|image: $web_rollback_image|image: 127.0.0.1:1/cqrtv/unavailable:qa|" "$scratch/compose.yml"
 if "${compose[@]}" pull caddy >/dev/null 2>&1; then
   echo "The intentionally unavailable local registry unexpectedly returned an image." >&2
   exit 1
@@ -84,6 +98,25 @@ test "$("${compose[@]}" ps -q api)" = "$api_id"
 test "$("${compose[@]}" ps -q caddy)" = "$web_id"
 test "$(docker exec "$db_id" psql -U staging -d staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
 cp "$scratch/compose.known-good.yml" "$scratch/compose.yml"
+
+# Apply a candidate web image, then roll back to the exact prior staging image.
+sed -i "s|image: $web_rollback_image|image: $web_candidate_image|" "$scratch/compose.yml"
+"${compose[@]}" up -d --no-deps --wait --wait-timeout 60 caddy
+candidate_web_id=$("${compose[@]}" ps -q caddy)
+test -n "$candidate_web_id" && test "$candidate_web_id" != "$web_id"
+test "$("${compose[@]}" ps -q db)" = "$db_id"
+test "$("${compose[@]}" ps -q api)" = "$api_id"
+grep -q "candidate-image" <(curl --silent --show-error --fail "http://127.0.0.1:$STAGING_HTTP_PORT/")
+
+sed -i "s|image: $web_candidate_image|image: $web_rollback_image|" "$scratch/compose.yml"
+"${compose[@]}" up -d --no-deps --wait --wait-timeout 60 caddy
+rollback_web_id=$("${compose[@]}" ps -q caddy)
+test -n "$rollback_web_id" && test "$rollback_web_id" != "$candidate_web_id"
+test "$("${compose[@]}" ps -q db)" = "$db_id"
+test "$("${compose[@]}" ps -q api)" = "$api_id"
+grep -q "rollback-image" <(curl --silent --show-error --fail "http://127.0.0.1:$STAGING_HTTP_PORT/")
+test "$(docker exec "$db_id" psql -U staging -d staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
+web_id=$rollback_web_id
 
 api_image_id_before=$(docker inspect --format '{{.Image}}' "$api_id")
 web_image_id_before=$(docker inspect --format '{{.Image}}' "$web_id")
@@ -96,7 +129,7 @@ test "$(docker inspect --format '{{.Image}}' "$api_id")" = "$api_image_id_before
 test "$(docker inspect --format '{{.Image}}' "$web_id")" = "$web_image_id_before"
 test "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' "$db_id")" = "$volume_before"
 test "$(docker exec "$db_id" psql -U staging -d staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
-echo "PASS isolated loopback staging port/project/network/volume/credential; read-only inventory; clean/repeat deploy; failed pull preserves containers/data; PostgreSQL volume and isolated logical backup restore."
+echo "PASS isolated loopback staging port/project/network/volume/credential; read-only inventory; clean/repeat deploy; failed pull preserves containers/data; web apply/rollback preserves DB/API; PostgreSQL volume and isolated logical backup restore."
 project\t'"$project" <<<"$inventory_output"
 grep -Fq $(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' "$db_id")
 test -n "$volume_before"
