@@ -8,7 +8,7 @@ This checklist applies to the approved public-site Phase 1 change in PR #21. PR 
 - The workflow builds and pushes web and API images, records their build digests, then calls the Hostinger existing-project update endpoint.
 - Hostinger's `/update` request contains no replacement Compose document. The client first reads the saved project Compose, checks it, and only then submits the update. The saved Compose must already use the exact digest refs emitted by that workflow run.
 - The current source Compose declares named volume `postgres_data` for PostgreSQL. It also declares Caddy and database-secret volumes. A named volume is persistence configuration, not proof of a tested backup.
-- The workflow's previous homepage smoke condition expected `Профиль игрока`; that is not a stable signal for the Phase 1 landing page. The replacement check accepts either the approved Phase 1 homepage or the established shared Coming Soon/Maintenance page.
+- The workflow's previous homepage smoke condition expected `Профиль игрока`; that is not a stable signal for the Phase 1 landing page. The replacement check accepts either the approved Phase 1 homepage or the established shared Coming Soon/Maintenance page. The latest production workflow run visible to Codex is run #63 (`b66d804`): image build/push passed, Hostinger action polling returned `unknown state`, and live smoke was skipped. It does not establish current container or site health.
 - The workflow performs a read-only `/api/health` check and checks the home icon's HTTP status and MIME type.
 
 ## Release checklist
@@ -25,7 +25,7 @@ This checklist applies to the approved public-site Phase 1 change in PR #21. PR 
 
 ## Unverified host state — owner read-only checks required
 
-The connected GitHub tools do not expose Hostinger project/container/backup state. Therefore the following are unknown and must be checked by an authorized owner in Hostinger before release:
+The connected GitHub tools do not expose Hostinger project/container/backup state. Issue #4 records owner-confirmed historic facts: the running web/API baseline digests were read from Hostinger before the later deployments, and a 2026-11-15 PostgreSQL custom-format dump was restored successfully in isolated PostgreSQL. These do not establish the current post-run-#63 refs/health or that the dump remains available, protected, and fresh. Issue #4 also records that the Hostinger VPS backup panel had no automatic snapshots at the last owner check. Therefore the following remain unknown and must be checked by an authorized owner in Hostinger before release:
 
 - last Hostinger deploy action and its result;
 - actual running web/API image refs and container health;
