@@ -80,20 +80,24 @@ function makeLoginControls(){
   const form=node({elements,addEventListener(type,listener){listeners.set(type,listener)}});
   const signup=node({href:"/#signup-dialog"}),back=node({href:"/"});
   const links=node({before(element){this.inserted=element}});
-  const visibility=node({type:"button",attributes:{"aria-label":"Показать пароль","aria-pressed":"false"}});
+  const visibilityIcon=node({dataset:{src:"/assets/icons/cqrtv/ui/eye.svg"}});
+  const visibility=node({type:"button",attributes:{"aria-label":"Показать пароль","aria-pressed":"false"},querySelector(selector){return selector===".admin-icon"?null:visibilityIcon}});
   const hero=node({hidden:true});
   const nodes={"#form":form,"#status":node(),"#title":node(),"#desc":node(),"#submit":node({type:"submit"}),"#emailrow":node(),"#passwordrow":node(),"#tokenrow":node({hidden:true}),"#signup":signup,"#auth-back":back,".links":links,".login-hero":hero,"#password-visibility":visibility,"#password-input":password};
   const document={title:"",body:node({classList:{add(name){this[name]=true}}}),querySelector(selector){return nodes[selector]??node()},getElementById(id){return nodes["#"+id]??node()},createElement(){return node()}};
   const context=vm.createContext({document,location:{search:"?mode=login",href:""},URLSearchParams,fetch:async()=>{throw Error("login UI test must not call API")},setTimeout,console});
   vm.runInContext(script,context);
-  return {nodes,document,password,visibility,form,links,back,formListeners:listeners};
+  return {nodes,document,password,visibility,visibilityIcon,form,links,back,formListeners:listeners};
 }
 test("login micro-UX keeps auth semantics and provides approved controls",()=>{
   assert.match(html,/<a id="auth-back" href="\/" aria-label="CQRTV">← CQRTV<\/a>/);
   assert.match(html,/back\.classList\.add\("login-back"\)/);
   assert.match(html,/<input id="email-input" name="email" type="email" autocomplete="email" placeholder="example@email.com" required>/);
   assert.match(html,/<input id="password-input" name="password" type="password" minlength="12" maxlength="128" autocomplete="current-password" placeholder="Введите пароль" required>/);
-  assert.match(html,/<button id="submit" type="submit"><svg aria-hidden="true"/);
+  assert.match(html,/<button id="submit" type="submit"><span class="pack-icon" data-src="\/assets\/icons\/cqrtv\/ui\/login\.svg"/);
+  assert.match(html,/<script type="module" src="\/assets\/admin\/admin-icons\.mjs"><\/script>/);
+  assert.match(html,/data-src="\/assets\/icons\/cqrtv\/ui\/mail\.svg"/);
+  assert.match(html,/data-src="\/assets\/icons\/cqrtv\/ui\/lock\.svg"/);
   assert.match(html,/href="\/rules\.html"/);
   assert.match(html,/href="\/privacy\.html"/);
   assert.match(html,/signup\.href="\/#signup-dialog"/);
@@ -114,11 +118,13 @@ test("password visibility toggles without submitting or losing its value",()=>{
   assert.equal(page.password.value,"SafePass123!");
   assert.equal(page.visibility.getAttribute("aria-label"),"Скрыть пароль");
   assert.equal(page.visibility.getAttribute("aria-pressed"),"true");
+  assert.equal(page.visibilityIcon.dataset.src,"/assets/icons/cqrtv/ui/eye-closed.svg");
   page.visibility.listeners.get("click")();
   assert.equal(page.password.type,"password");
   assert.equal(page.password.value,"SafePass123!");
   assert.equal(page.visibility.getAttribute("aria-label"),"Показать пароль");
   assert.equal(page.visibility.getAttribute("aria-pressed"),"false");
+  assert.equal(page.visibilityIcon.dataset.src,"/assets/icons/cqrtv/ui/eye.svg");
   assert.equal(page.formListeners.size,1,"the existing auth submit handler stays attached and eye clicks do not dispatch it");
 });
 test("login-only links are inserted with safe routes and no API side effects",()=>{

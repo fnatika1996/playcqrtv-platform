@@ -5,8 +5,79 @@
   --admin-line:#34373d;--admin-text:#f3f3f2;--admin-muted:#a2a6ad;
   --admin-orange:#ff7629;--admin-orange-soft:#302219;
   --admin-info:#76bfff;--admin-success:#79d9a5;--admin-warning:#f5c26b;--admin-danger:#ff8e82;
+  --icon-primary:#ff7629;--icon-secondary:#f4eee8;
   --admin-radius:14px;--admin-shadow:0 20px 55px #0005;
 }
+
+/* Approved Concept A+: command-center composition shared across real admin screens. */
+.admin-app .admin-icon{display:inline-block;width:1.25em;height:1.25em;flex:none;vertical-align:middle;color:var(--admin-orange)}
+.admin-app .nav button,.admin-app .nav-link{--icon-primary:#a7aab1;--icon-secondary:#ece9e4}
+.admin-app .nav button:hover,.admin-app .nav-link:hover{--icon-primary:#ffad75;--icon-secondary:#fff8f1}
+.admin-app .nav button.active,.admin-app .nav-link[aria-current=page]{--icon-primary:#ff9858;--icon-secondary:#fff0e4}
+.admin-app .nav button:disabled{--icon-primary:#70747c;--icon-secondary:#8d929b}
+.admin-app .verified,.admin-app .active-status{--icon-primary:var(--admin-success);--icon-secondary:#eafff1}
+.admin-app .unverified{--icon-primary:var(--admin-warning);--icon-secondary:#fff0cf}
+.admin-app .suspended-status{--icon-primary:var(--admin-danger);--icon-secondary:#ffe7e2}
+.admin-app .command-hero,.admin-app .control-hero{position:relative;isolation:isolate;display:flex;align-items:center;min-height:222px;margin:0 0 25px;overflow:hidden;border:1px solid #ffffff17;border-radius:18px;background:linear-gradient(105deg,#191a1d 0%,#191a1d 46%,#1c1714 100%);box-shadow:0 20px 46px #0003}
+.admin-app .command-hero:after,.admin-app .control-hero:after{position:absolute;z-index:-1;inset:0;content:"";background:linear-gradient(90deg,#17191de8 0%,#17191dbd 42%,#17191d1a 100%)}
+.admin-app .command-copy,.admin-app .control-hero>div{position:relative;z-index:1;width:min(62%,660px);padding:27px 32px}
+.admin-app .command-kicker,.admin-app .section-kicker{color:#ff9a60;font-size:9px;font-weight:700;letter-spacing:.18em}
+.admin-app .command-hero h2,.admin-app .control-hero h1{max-width:600px;margin:8px 0 7px;font:600 clamp(32px,3.2vw,46px)/.93 Teko,sans-serif;letter-spacing:.01em}
+.admin-app .command-hero p{max-width:470px;margin:0;color:#b8bac0;font-size:11px;line-height:1.75}
+.admin-app .command-art,.admin-app .control-hero>img{position:absolute;z-index:-2;top:0;right:0;width:65%;height:100%;object-fit:cover;object-position:center 37%;opacity:.74;mask-image:linear-gradient(90deg,transparent 0%,#000 34%);}
+.admin-app .command-action{display:inline-flex;align-items:center;gap:9px;min-height:42px;margin-top:18px;padding:0 15px;border:1px solid #ff99565c;border-radius:10px;background:linear-gradient(100deg,#ff8c3c,#ff7629);box-shadow:0 9px 26px #ff762927;color:#21130a;font-size:11px;font-weight:700;cursor:pointer}
+.admin-app .command-action .admin-icon{color:#23140c;--icon-primary:#23140c;--icon-secondary:#6d3518}
+.admin-app .section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 13px}
+.admin-app .section-heading h2{margin:4px 0 0;font:600 28px/1 Teko,sans-serif}
+.admin-app .live-label{display:inline-flex;align-items:center;gap:8px;color:#9fa3aa;font-size:10px}
+.admin-app .live-label i{width:7px;height:7px;border-radius:50%;background:#7bd59c;box-shadow:0 0 11px #7bd59c70}
+.admin-app .command-hero+.section-heading+.stats{margin-bottom:20px}
+.admin-app .stat .admin-icon{width:27px;height:27px;padding:4px;border:1px solid #ff76293b;border-radius:8px;background:#ff762910}
+.admin-app .control-hero{min-height:190px;margin-bottom:20px}
+.admin-app .control-hero>div{width:min(67%,680px);padding:23px 28px}
+.admin-app .control-hero .lead{max-width:535px;margin:5px 0 0;font-size:11px}
+.admin-app .control-hero>img{width:56%;object-position:center 42%;opacity:.62}
+.admin-app .control-hero+.section-heading{margin-bottom:14px}
+.admin-app .control-hero+.section-heading+.layout .panel{border-radius:15px;background:linear-gradient(150deg,#1b1d21,#151619)}
+.admin-app .control-hero+.section-heading+.layout .panel h2{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid #ffffff12}
+.admin-app .section-icon{width:23px;height:23px;padding:3px;border-radius:7px;background:#ff762915}
+.admin-app .card .admin-icon{color:var(--admin-orange)}
+.admin-app .login-form,.admin-app .form{position:relative}
+.admin-app .eye .admin-icon{width:18px;height:18px}
+.admin-app .back .admin-icon{width:17px;height:17px}
+.admin-app .submit .admin-icon{width:19px;height:19px;color:#24150c;--icon-primary:#24150c;--icon-secondary:#70401f}
+@media(max-width:760px){
+ .admin-app .command-hero{min-height:210px;margin-bottom:20px}
+ .admin-app .command-copy{width:78%;padding:22px 20px}
+ .admin-app .command-art{width:78%;opacity:.46;object-position:65% center;mask-image:linear-gradient(90deg,transparent,#000 47%)}
+ .admin-app .command-hero h2{font-size:36px}
+ .admin-app .section-heading{align-items:flex-end}
+ .admin-app .live-label{font-size:8px;white-space:nowrap}
+ .admin-app .control-hero{min-height:180px}
+ .admin-app .control-hero>div{width:84%;padding:20px}
+ .admin-app .control-hero>img{width:76%;opacity:.38}
+}
+@media(max-width:390px){
+ .admin-app .command-hero{min-height:198px}
+ .admin-app .command-copy{width:94%;padding:18px 16px}
+ .admin-app .command-art{width:100%;opacity:.31}
+ .admin-app .command-hero h2{font-size:32px}
+ .admin-app .command-hero p{max-width:270px;font-size:10px}
+ .admin-app .command-action{min-height:40px;margin-top:13px}
+ .admin-app .section-heading h2{font-size:25px}
+ .admin-app .control-hero{min-height:195px}
+ .admin-app .control-hero>div{width:100%;padding:18px 15px}
+ .admin-app .control-hero>img{width:100%;opacity:.28}
+ .admin-app .control-hero h1{font-size:38px}
+ .admin-app .control-hero .lead{max-width:300px}
+ .admin-app .section-heading{gap:6px}
+ .admin-app .live-label{max-width:none;text-align:right;font-size:8px}
+ .admin-app .profile{gap:7px}
+ .admin-app .logout{width:40px;min-width:40px;padding:0;justify-content:center}
+ .admin-app .logout-label{display:none}
+ .admin-app .logout .admin-icon{width:18px;height:18px}
+}
+@media(prefers-reduced-motion:reduce){.admin-app *{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
 body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#ff762914,transparent 38%),var(--admin-bg);color:var(--admin-text);font:13px/1.55 "Lexend Deca",sans-serif}
 .admin-app *{box-sizing:border-box}
 .admin-app :where(button,a,input,select,textarea){font:inherit}
@@ -239,3 +310,5 @@ body.admin-app{min-height:100vh;background:radial-gradient(ellipse at 75% -15%,#
 @media(max-width:440px){
   .admin-app .topbar>strong{min-width:0;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;font-size:20px}
 }
+
+@media(max-width:390px){.admin-app .intro h1{font-size:clamp(30px,8.5vw,36px);overflow-wrap:normal;hyphens:auto}}

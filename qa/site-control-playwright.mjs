@@ -18,6 +18,10 @@ try{
   assert.equal(await page.title(),"CQRTV — скоро");
   assert.equal(await page.getByRole("heading",{name:"CQRTV скоро откроется"}).isVisible(),true);
   assert.equal(await page.getByRole("button",{name:"Что такое CQRTV?"}).isVisible(),true);
+  const adminLink=page.getByRole("link",{name:"Вход для администратора"});
+  assert.equal(await adminLink.isVisible(),true,"coming-soon page should expose the standard protected admin login");
+  assert.equal(await adminLink.getAttribute("href"),"/admin/login?next=%2F");
+  if(width===390){await adminLink.click();assert.equal(new URL(page.url()).pathname,"/admin/login");assert.equal(new URL(page.url()).searchParams.get("next"),"/");assert.equal(await page.title(),"Вход администратора · CQRTV");await page.goBack();}
   const apiStatuses=await page.evaluate(async()=>{const me=await fetch("/api/auth/me",{cache:"no-store"});const register=await fetch("/api/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});return [me.status,register.status]});
   assert.deepEqual(apiStatuses,[503,503],"direct API requests must stay closed even when the browser spoofs an open mode header");
   const social=page.getByRole("link",{name:"Telegram QA"});await social.waitFor({state:"visible"});assert.equal(await social.getAttribute("href"),"https://t.me/cqrtv");
@@ -45,11 +49,19 @@ try{
  await maintenancePage.goto(baseUrl+"/",{waitUntil:"domcontentloaded"});
  await maintenancePage.getByRole("heading",{name:"CQRTV на обслуживании"}).waitFor({state:"visible"});
  assert.equal(await maintenancePage.getByText("Выполняются плановые технические работы.").isVisible(),true);
+ const maintenanceAdminLink=maintenancePage.getByRole("link",{name:"Вход для администратора"});
+ assert.equal(await maintenanceAdminLink.isVisible(),true,"maintenance page should also expose protected admin login");
+ assert.equal(await maintenanceAdminLink.getAttribute("href"),"/admin/login?next=%2F");
  await maintenanceContext.close();
  const recoveryContext=await browser.newContext({viewport:{width:390,height:844},extraHTTPHeaders:{"X-QA-Site-Mode":"maintenance","X-CQRTV-Site-Mode":"open","X-Forwarded-Uri":"/"}});
  const recovery=await recoveryContext.newPage();
- const loginResponse=await recovery.goto(baseUrl+"/admin/login",{waitUntil:"domcontentloaded"});
- assert.equal(loginResponse?.status(),200,"admin login page must stay reachable without a session while the site is closed");
+ const offlineResponse=await recovery.goto(baseUrl+"/",{waitUntil:"domcontentloaded"});
+ assert.equal(offlineResponse?.status(),200);
+ assert.equal(await recovery.title(),"CQRTV — скоро","an anonymous visitor should continue to see the closed page");
+ await recovery.getByRole("link",{name:"Вход для администратора"}).click();
+ assert.equal(new URL(recovery.url()).pathname,"/admin/login","the offline link should open the standard admin login");
+ assert.equal(new URL(recovery.url()).searchParams.get("next"),"/","the link should request only the safe public homepage return");
+ assert.equal(await recovery.title(),"Вход администратора · CQRTV","admin login remains reachable while the site is closed");
  const unavailableLogin=await recovery.evaluate(async()=>{const response=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json","X-QA-DB-Down":"yes"},body:"{}"});return response.status});
  assert.equal(unavailableLogin,503,"admin login API fails closed while the test database is unavailable");
  const spoofedAdmin=await recovery.goto(baseUrl+"/admin/site-control",{waitUntil:"domcontentloaded"});
@@ -58,12 +70,34 @@ try{
  const expiredAdmin=await recovery.goto(baseUrl+"/admin/site-control",{waitUntil:"domcontentloaded"});
  assert.equal(expiredAdmin?.status(),401,"an expired admin session must not unlock the control panel");
  await recoveryContext.addCookies([{name:"cqrtv_qa_admin",value:"valid",domain:"playcqrtv.com",path:"/"}]);
- const loginAgain=await recovery.goto(baseUrl+"/admin/login",{waitUntil:"domcontentloaded"});
- assert.equal(loginAgain?.status(),200,"login recovery page remains reachable after an expired session");
- const preview=await recovery.goto(baseUrl+"/",{waitUntil:"domcontentloaded"});
- assert.equal(preview?.status(),200);
- assert.notEqual(await recovery.title(),"CQRTV — скоро","a validated admin session should bypass the closed page");
+ await recovery.goto(baseUrl+"/admin/login?next=%2F",{waitUntil:"domcontentloaded"});
+ const failedLoginUrl=recovery.url();
+ await recovery.getByLabel("Рабочий email",{exact:true}).fill("wrong@example.test");
+ await recovery.getByLabel("Пароль",{exact:true}).fill("wrong-password");
+ await recovery.getByRole("button",{name:"Войти в панель"}).click();
+ await recovery.getByRole("alert").waitFor({state:"visible"});
+ assert.equal(recovery.url(),failedLoginUrl,"failed login must stay on the login screen");
+ await recovery.getByLabel("Рабочий email",{exact:true}).fill("qa-admin@example.test");
+ await recovery.getByLabel("Пароль",{exact:true}).fill("qa-only-password");
+ await recovery.getByRole("button",{name:"Войти в панель"}).click();
+ await recovery.waitForURL(url=>url.pathname==="/",{timeout:5000});
+ assert.equal(await recovery.title(),"CQRTV - CS2 Matchmaking","successful login from the offline page returns to the public homepage");
+ const validCookie=(await recoveryContext.cookies()).find(cookie=>cookie.name==="cqrtv_qa_admin");
+ assert.equal(validCookie?.value,"valid","successful mock login should set the expected admin session cookie");
  await recoveryContext.close();
+ const rejectedNextValues=["","?next=https%3A%2F%2Fevil.example","?next=%2F%2Fevil.example","?next=%252F%252Fevil.example","?next=javascript%3Aalert%281%29","?next=%5C%5Cevil.example","?next=%2Fadmin"];
+ const redirectContext=await browser.newContext({viewport:{width:390,height:844}});
+ const redirectPage=await redirectContext.newPage();
+ await redirectPage.route("**/admin",route=>route.fulfill({status:200,contentType:"text/html",body:"<!doctype html><title>QA admin destination</title>"}));
+ for(const query of rejectedNextValues){
+  await redirectPage.goto(baseUrl+"/admin/login"+query,{waitUntil:"domcontentloaded"});
+  await redirectPage.getByLabel("Рабочий email",{exact:true}).fill("qa-admin@example.test");
+  await redirectPage.getByLabel("Пароль",{exact:true}).fill("qa-only-password");
+  await redirectPage.getByRole("button",{name:"Войти в панель"}).click();
+  await redirectPage.waitForURL(url=>url.pathname==="/admin",{timeout:5000});
+  assert.equal(new URL(redirectPage.url()).origin,new URL(baseUrl).origin,"untrusted next values must not navigate off-origin");
+ }
+ await redirectContext.close();
  for(const width of [1440,760,390,320]){
   const context=await browser.newContext({viewport:{width,height:900}});
   await context.addCookies([{name:"cqrtv_qa_admin",value:"valid",domain:"playcqrtv.com",path:"/"}]);
@@ -82,7 +116,7 @@ try{
   const response=await page.goto(baseUrl+"/admin/site-control",{waitUntil:"domcontentloaded"});
   assert.equal(response?.status(),200);
   await page.locator("#social-list .social-item").waitFor({state:"visible"});
-  assert.equal(await page.getByRole("heading",{name:"Режим и публичная страница"}).isVisible(),true);
+  assert.equal(await page.getByRole("heading",{name:"Управление сайтом"}).isVisible(),true);
   assert.equal(await page.getByLabel("Режим сайта").isVisible(),true);
   const adminOverflow=await page.evaluate(()=>({page:document.documentElement.scrollWidth>innerWidth,scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,offenders:[...document.querySelectorAll("body *")].map(element=>{const rect=element.getBoundingClientRect();return{tag:element.tagName,id:element.id,className:typeof element.className==="string"?element.className:"",left:Math.round(rect.left),right:Math.round(rect.right),width:Math.round(rect.width),text:(element.innerText||"").slice(0,70)}}).filter(item=>item.id!=="shell"&&!item.className.includes("aside")&&item.right>innerWidth+1).slice(0,15)}));
   assert.equal(adminOverflow.page,false,"admin site control must not overflow at "+width+"px: "+JSON.stringify(adminOverflow));
@@ -92,7 +126,7 @@ try{
    assert.equal(await packagedIcon.isChecked(),false,"an existing uploaded icon is initially selected");
    await packagedIcon.check();
    await page.getByRole("button",{name:"Сохранить ссылку"}).click();
-   await page.waitForFunction(()=>document.querySelector("#social-list img")?.getAttribute("src")==="/assets/icons/cqrtv/ui/chat.svg");
+   await page.waitForFunction(()=>document.querySelector("#social-list .admin-icon use")?.getAttribute("href")==="/assets/icons/cqrtv/ui/admin-icon-sprite.svg#chat");
    assert.equal(socialPayload?.iconAssetId,null,"switching an existing social link to a packaged icon must clear its prior uploaded asset");
    assert.equal(socialPayload?.iconKey,"chat");
    await page.screenshot({path:new URL("site-control-admin-desktop.png",dir).pathname,fullPage:true});

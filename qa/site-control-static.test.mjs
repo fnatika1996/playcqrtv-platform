@@ -40,6 +40,15 @@ test("Caddy preserves health/API, login recovery and authenticated admin preview
  assert.ok(caddy.includes("rewrite @site_closed /site-closed.html"));
 });
 
+test("closed public page links to the existing admin login with a strict public return target",()=>{
+ const page=read("site-closed.html"),login=read("admin-login.html");
+ assert.match(page,/href="\/admin\/login\?next=%2F"/);
+ assert.match(page,/class="admin-access"/);
+ assert.match(login,/get\('next'\)==='\/'\?'\/'\:'\/admin'/);
+ assert.match(login,/location\.assign\(returnTo\)/);
+ assert.match(login,/admin-icons\.mjs/);
+});
+
 test("site control migration defaults to open and stores only raster upload types",()=>{
  const sql=read("api/migrations/002_site_control.sql");
  assert.match(sql,/'open'/);

@@ -36,7 +36,8 @@ jobs:
           mkdir -p /tmp/cqrtv-icons assets/icons/cqrtv/ui
           7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar"
           node scripts/build-cqrtv-admin-icons.mjs --source "/tmp/cqrtv-icons/Icon Play CQRTV" --out assets/icons/cqrtv/ui
-          test "$(find assets/icons/cqrtv/ui -maxdepth 1 -type f -name '*.svg' | wc -l)" -eq 38
+          test -s assets/icons/cqrtv/ui/admin-icon-sprite.svg
+          test "$(find assets/icons/cqrtv/ui -maxdepth 1 -type f -name '*.svg' ! -name 'admin-icon-sprite.svg' | wc -l)" -eq 38
           test -s assets/icons/cqrtv/ui/admin-icon-map.json
 
       - name: Build and publish website image
@@ -56,7 +57,7 @@ jobs:
           set -euo pipefail
           image="ghcr.io/fnatika1996/playcqrtv-platform@${WEB_IMAGE_DIGEST}"
           docker pull "$image"
-          docker run --rm --entrypoint sh "$image" -c 'for icon in home mail lock eye eye-closed login logout arrow-left; do test -s "/srv/assets/icons/cqrtv/ui/$icon.svg" || exit 1; done; test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" | wc -l)" -eq 38 && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json'
+          docker run --rm --entrypoint sh "$image" -c 'for icon in home mail lock eye eye-closed login logout arrow-left; do test -s "/srv/assets/icons/cqrtv/ui/$icon.svg" || exit 1; done; test -s /srv/assets/icons/cqrtv/ui/admin-icon-sprite.svg && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" ! -name "admin-icon-sprite.svg" | wc -l)" -eq 38 && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json'
       - name: Build and publish authentication API
         id: build-api
         uses: docker/build-push-action@v6

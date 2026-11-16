@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 
 const playwrightRoot = process.env.PLAYWRIGHT_PACKAGE;
@@ -7,7 +9,7 @@ if (!playwrightRoot) throw new Error("PLAYWRIGHT_PACKAGE must point to the pinne
 const { chromium } = await import(pathToFileURL(`${playwrightRoot}/index.mjs`).href);
 const baseUrl = process.env.CQRTV_QA_BASE_URL || "http://playcqrtv.com:8765";
 const widths = [1440, 1024, 760, 390, 375, 320];
-const screenshotDir = new URL("../qa-artifacts/", import.meta.url);
+const screenshotDir = fileURLToPath(new URL("../qa-artifacts/", import.meta.url));
 await mkdir(screenshotDir, { recursive: true });
 
 const browser = await chromium.launch({
@@ -24,7 +26,7 @@ try {
     const response = await page.goto(`${baseUrl}/admin/login`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `admin login must load at ${width}px`);
     assert.equal(await page.title(), "Вход администратора · CQRTV", `admin login document should parse its title at ${width}px`);
-    await page.screenshot({ path: new URL(`admin-login-${width}.png`, screenshotDir).pathname, fullPage: true });
+    await page.screenshot({ path: path.join(screenshotDir, `admin-login-${width}.png`), fullPage: true });
     const heroCount = await page.locator(".hero img").count();
     assert.equal(heroCount, 1, `expected the admin hero on ${page.url()} at ${width}px; document title: ${await page.title()}`);
     await page.locator(".hero img").evaluate(image => image.decode());
@@ -67,6 +69,15 @@ try {
       await page.locator("#eye").click();
       assert.equal(await page.getByLabel("Пароль", { exact: true }).getAttribute("type"), "password");
       assert.equal(loginPosts, 0, "eye toggle must not submit credentials");
+      await page.goto(`${baseUrl}/auth.html`, { waitUntil: "domcontentloaded" });
+      await page.locator("#password-visibility use").waitFor({ state: "attached" });
+      assert.ok(await page.locator(".auth-input-wrap .admin-icon use").count() >= 3, "public login email/password controls should use the CQRTV icon pack");
+      await page.locator("#password-visibility").click();
+      assert.equal(await page.locator("#password-input").getAttribute("type"), "text", "public password visibility must continue working");
+      assert.match(await page.locator("#password-visibility use").getAttribute("href"), /admin-icon-sprite\.svg#eye-closed$/);
+      await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+      await page.locator(".icon-btn .admin-icon use").first().waitFor({ state: "attached" });
+      assert.equal(await page.locator(".pack-icon[data-src]").count(), 0, "public navigation placeholders should hydrate into the shared SVG sprite");
     }
     await page.close();
     console.log(`PASS admin login viewport ${width}px`);
@@ -119,12 +130,23 @@ try {
     console.log(`Dashboard document ${width}px: URL=${page.url()} title=${await page.title()} emailCount=${await page.locator("#admin-email").count()} body=${(await page.locator("body").innerText()).slice(0,240).replaceAll("\n", " | ")}`);
     await page.locator("#admin-email").waitFor({ state: "attached" });
     assert.equal((await page.locator("#admin-email").innerText()).includes("example.test"), true);
+    await page.locator("#logout use").waitFor({ state: "attached" });
+    const iconProof = await page.locator("#logout .admin-icon").evaluate(icon => ({
+      href: icon.querySelector("use")?.getAttribute("href"),
+      primary: getComputedStyle(icon).getPropertyValue("--icon-primary").trim(),
+      secondary: getComputedStyle(icon).getPropertyValue("--icon-secondary").trim(),
+      filter: getComputedStyle(icon).filter
+    }));
+    assert.match(iconProof.href, /admin-icon-sprite\.svg#logout$/);
+    assert.ok(iconProof.primary && iconProof.secondary && iconProof.primary !== iconProof.secondary, "both icon color tokens should remain independently configurable");
+    assert.equal(iconProof.filter, "none", "duotone rendering should not depend on whole-icon filters");
+    assert.ok(await page.locator("svg.admin-icon use").count() >= 12, "the shared archive sprite should render throughout the admin shell");
     await page.getByText("3", { exact: true }).first().waitFor({ state: "visible" });
     const dashboardOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     assert.equal(dashboardOverflow, false, `dashboard has horizontal page overflow at ${width}px`);
 
     if (width === 1440 || width === 390 || width === 320) {
-      await page.screenshot({ path: new URL(`admin-dashboard-${width}-overview.png`, screenshotDir).pathname, fullPage: true });
+      await page.screenshot({ path: path.join(screenshotDir, `admin-dashboard-${width}-overview.png`), fullPage: true });
     }
     if (width <= 760) {
       await page.locator("#menu").click();
@@ -135,7 +157,7 @@ try {
     await page.locator('[data-view="users"]').click();
     await page.locator("#users").getByText("Rifler QA", { exact: true }).waitFor({ state: "visible" });
     if (width === 1440 || width === 390 || width === 320) {
-      await page.screenshot({ path: new URL(`admin-dashboard-${width}-users.png`, screenshotDir).pathname, fullPage: true });
+      await page.screenshot({ path: path.join(screenshotDir, `admin-dashboard-${width}-users.png`), fullPage: true });
     }
     if (width <= 390) {
       const table = await page.locator("#users-view .table-wrap").evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));

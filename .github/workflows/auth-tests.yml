@@ -11,6 +11,8 @@ on:
       - admin.html
       - admin-login.html
       - assets/admin/**
+      - assets/icons/cqrtv/**
+      - scripts/build-cqrtv-admin-icons.mjs
       - qa/**
       - Caddyfile
       - Dockerfile
@@ -134,7 +136,8 @@ jobs:
           node scripts/build-cqrtv-admin-icons.mjs --source "/tmp/cqrtv-icons/Icon Play CQRTV" --out assets/icons/cqrtv/ui
           node --check scripts/build-cqrtv-admin-icons.mjs
           node --test qa/admin-icon-pack.test.mjs
-          test "$(find assets/icons/cqrtv/ui -maxdepth 1 -type f -name '*.svg' | wc -l)" -eq 38
+          test -s assets/icons/cqrtv/ui/admin-icon-sprite.svg
+          test "$(find assets/icons/cqrtv/ui -maxdepth 1 -type f -name '*.svg' ! -name 'admin-icon-sprite.svg' | wc -l)" -eq 38
 
       - name: Audit the full archive and report icon inventory
         run: |
@@ -143,7 +146,7 @@ jobs:
       - name: Build the website image locally (no registry push)
         run: |
           docker build --file Dockerfile --tag cqrtv-admin-qa-site .
-          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" | wc -l)" -eq 38 && sha256sum /srv/assets/admin/admin-hero.png'
+          docker run --rm --entrypoint sh cqrtv-admin-qa-site -eu -c 'test -s /srv/admin.html && test -s /srv/admin-login.html && test -s /srv/site-control-admin.html && test -s /srv/assets/admin/admin-system.css && test -s /srv/assets/admin/admin-icons.mjs && test -s /srv/assets/icons/cqrtv/admin-icon-manifest.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-map.json && test -s /srv/assets/icons/cqrtv/ui/admin-icon-sprite.svg && test "$(find /srv/assets/icons/cqrtv/ui -maxdepth 1 -type f -name "*.svg" ! -name "admin-icon-sprite.svg" | wc -l)" -eq 38 && sha256sum /srv/assets/admin/admin-hero.png'
 
       - name: Start isolated Caddy preview
         run: |
@@ -177,6 +180,7 @@ jobs:
           fetch /admin/login "$RUNNER_TEMP/admin-login.html"
           curl --silent --show-error --fail --header 'Host: playcqrtv.com' --header 'Cookie: cqrtv_qa_admin=valid' -D "$RUNNER_TEMP/admin.html.headers" "$base/admin" -o "$RUNNER_TEMP/admin.html"
           fetch /assets/admin/admin-hero.png "$RUNNER_TEMP/admin-hero.png"
+          fetch /assets/icons/cqrtv/ui/admin-icon-sprite.svg "$RUNNER_TEMP/admin-icon-sprite.svg"
           fetch /assets/icons/cqrtv/ui/mail.svg "$RUNNER_TEMP/mail.svg"
           fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
           fetch / "$RUNNER_TEMP/player-home.html"
@@ -190,6 +194,7 @@ jobs:
           grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin-login.html.headers"
           grep -qi '^content-type: text/html' "$RUNNER_TEMP/admin.html.headers"
           grep -qi '^content-type: image/png' "$RUNNER_TEMP/admin-hero.png.headers"
+          grep -qi '^content-type: image/svg+xml' "$RUNNER_TEMP/admin-icon-sprite.svg.headers"
           grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/mail.svg.headers"
           grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/shield.svg.headers"
           grep -q 'Панель администратора' "$RUNNER_TEMP/admin-login.html"

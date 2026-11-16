@@ -186,7 +186,7 @@
     {
       "key": "logout",
       "file": "logout.svg",
-      "source": "Arrows Action/Logout--playcqrtv.svg",
+      "source": "Arrows Action/Logout-6--playcqrtv.svg",
       "usedBy": [
         "Admin header logout"
       ]

@@ -24,7 +24,7 @@ h1{max-width:650px;margin:23px 0 6px;font:600 clamp(48px,10vw,82px)/.86 Teko,san
 .actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:28px}
 button{font:inherit;cursor:pointer}.about{min-height:48px;padding:0 19px;border:1px solid var(--orange);border-radius:9px;background:var(--orange);color:#1a130f;font-weight:700;box-shadow:0 8px 24px #ff762922}.about:hover{background:#ff8b44}
 .links{display:flex;flex-wrap:wrap;gap:9px;margin-top:30px;padding-top:23px;border-top:1px solid var(--line)}.social{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:8px 13px;border:1px solid #383a40;border-radius:9px;background:#202227;color:#ddd;text-decoration:none;font-size:12px;transition:border-color .15s,background .15s}.social:hover{border-color:#ff7629;background:#25272c}.social img{width:18px;height:18px;object-fit:contain}
-.foot{margin:24px 0 0;color:#777d85;font-size:11px}
+.foot{margin:24px 0 0;color:#777d85;font-size:11px}.admin-access{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;margin-top:12px;padding:0 14px;border:1px solid #383a40;border-radius:9px;background:#202227;color:#c7c9cd;text-decoration:none;font-size:12px;transition:border-color .15s,background .15s}.admin-access:hover{border-color:#ff7629;background:#25272c}.admin-access img{width:16px;height:16px;object-fit:contain}
 .backdrop{position:fixed;inset:0;z-index:5;display:grid;place-items:center;padding:18px;background:#050506d9}.backdrop[hidden]{display:none}.dialog{width:min(100%,580px);max-height:min(82vh,760px);overflow:auto;padding:25px;border:1px solid #414349;border-radius:16px;background:#17191d;box-shadow:0 24px 80px #000b}.dialog-head{display:flex;align-items:flex-start;gap:14px}.dialog h2{flex:1;margin:0;font:600 36px/.95 Teko,sans-serif}.close{width:44px;height:44px;flex:none;border:1px solid var(--line);border-radius:9px;background:#202227;color:#eee;font-size:22px}.dialog-body{white-space:pre-wrap;color:#c0c2c6;line-height:1.8;margin:14px 0 0}
 :focus-visible{outline:2px solid var(--orange2);outline-offset:3px}
 @media(max-width:600px){.scene{padding:16px}.card{padding:25px 20px;border-radius:16px}h1{font-size:58px}.description{font-size:13px}.actions{margin-top:23px}.about{width:100%}.links{gap:8px}.social{flex:1 1 calc(50% - 8px);justify-content:center}.dialog{padding:20px}.dialog h2{font-size:32px}}
@@ -42,7 +42,7 @@ button{font:inherit;cursor:pointer}.about{min-height:48px;padding:0 19px;border:
 <div id="countdown" class="countdown" aria-live="off" hidden></div>
 <div class="actions"><button id="about-button" class="about" type="button" aria-haspopup="dialog" aria-controls="about-dialog">Что такое CQRTV?</button></div>
 <nav id="social-links" class="links" aria-label="Социальные сети"></nav>
-<p class="foot">CQRTV · CS2 matchmaking</p>
+<p class="foot">CQRTV · CS2 matchmaking<br><a class="admin-access" href="/admin/login?next=%2F"><img src="/assets/icons/cqrtv/ui/login.svg" alt="" aria-hidden="true">Вход для администратора</a></p>
 </section>
 </main>
 <div id="backdrop" class="backdrop" hidden>
@@ -64,4 +64,4 @@ function addSocial(item){const a=document.createElement('a');a.className='social
 async function load(){try{const response=await fetch('/api/site-control/public',{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw new Error('settings unavailable');const data=await response.json();const maintenance=data.mode==='maintenance';text(statusText,maintenance?data.maintenanceStatusLabel:data.statusLabel);text(heading,maintenance?data.maintenanceHeading:data.heading);text(subtitle,maintenance?data.maintenanceSubtitle:data.subtitle);text(description,maintenance?data.maintenanceDescription:data.description);text(aboutButton,data.aboutButtonLabel);text(aboutTitle,data.aboutTitle);text(aboutBody,data.aboutBody);scene.classList.toggle('animated',Boolean(data.animationEnabled)&&!matchMedia('(prefers-reduced-motion: reduce)').matches);if(data.backgroundAssetId)card.style.backgroundImage='linear-gradient(145deg,#1b1d20d9,#141517e8),url("/api/site-control/media/'+encodeURIComponent(data.backgroundAssetId)+'")';startCountdown(data);links.replaceChildren();(Array.isArray(data.socialLinks)?data.socialLinks:[]).forEach(addSocial)}catch{scene.classList.remove('animated')}}
 load();
 </script>
-</body></html>
+<script type="module" src="/assets/admin/admin-icons.mjs"></script></body></html>

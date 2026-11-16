@@ -30,10 +30,50 @@ function inside(file, root) {
 function regexEscape(value) {
   return value.replace(/[.*+?^$()|[\]\\]/g, "\\$&");
 }
-function safeSvg(xml, source) {
-  const unsafe = /<script\b|<foreignObject\b|<iframe\b|<object\b|<embed\b|<!ENTITY\b|<\?xml-stylesheet\b|@import\b|url\(\s*["']?(?:https?:|\/\/)|\bon[a-z]+\s*=|(?:href|xlink:href)\s*=\s*["'](?:https?:|javascript:|data:|\/\/)/i;
-  if (unsafe.test(xml)) throw new Error("Unsafe SVG content in " + source);
-  if (!/<svg(?:\s|>)/i.test(xml)) throw new Error("Invalid SVG source: " + source);
+function safeSvg(xml, source, key) {
+  if (/<!DOCTYPE|<!ENTITY|<\?xml-stylesheet|<script\b|<foreignObject\b|<iframe\b|<object\b|<embed\b|<style\b|\bon[a-z]+\s*=|javascript:|data:/i.test(xml)) throw new Error("Unsafe SVG content in " + source);
+  const allowedTags = new Set(["svg", "g", "path", "circle", "ellipse", "line", "polyline", "polygon", "rect", "defs", "linearGradient", "radialGradient", "stop", "clipPath", "mask", "title", "desc"]);
+  const allowedAttrs = new Set(["xmlns", "viewBox", "fill", "fill-rule", "fill-opacity", "clip-rule", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-opacity", "opacity", "transform", "d", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "rx", "ry", "width", "height", "points", "offset", "stop-color", "stop-opacity", "gradientUnits", "gradientTransform", "spreadMethod", "clipPathUnits", "maskUnits", "maskContentUnits", "id", "clip-path", "mask"]);
+  const colors = [...new Set([...xml.matchAll(/(?:fill|stroke|stop-color)\s*=\s*["'](#[\da-f]{3,8})["']/gi)].map(match => match[1].toLowerCase()))];
+  let clean = xml.replace(/<!--[\s\S]*?-->|<\?xml[^>]*\?>/gi, "").replace(/<\/?[A-Za-z][^>]*>/g, tag => {
+    if (/^<\//.test(tag)) return tag;
+    const name = /^<([A-Za-z][\w:-]*)/.exec(tag)?.[1];
+    if (!name || !allowedTags.has(name)) throw new Error("Unsupported SVG element in " + source + ": " + (name || "unknown"));
+    let rest = tag.slice(name.length + 1, -1).replace(/\/\s*$/, "");
+    const parsed = [];
+    while (rest.trim()) {
+      const match = /^\s+([A-Za-z][\w:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(rest);
+      if (!match) throw new Error("Malformed or unsupported SVG attribute in " + source);
+      const attr = match[1], value = match[2] ?? match[3] ?? "";
+      if (!allowedAttrs.has(attr) || /[<>\u0000-\u001f]/.test(value) || /&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[\da-f]+;)/i.test(value)) throw new Error("Unsafe SVG attribute in " + source + ": " + attr);
+      parsed.push([attr, value]); rest = rest.slice(match[0].length);
+    }
+    if (name === "svg") {
+      const box = parsed.find(([attr]) => attr === "viewBox");
+      if (!box || !/^[-\d.\s]+$/.test(box[1])) throw new Error("SVG must have a numeric viewBox: " + source);
+    }
+    for (const [attr, value] of parsed) {
+      let next = value;
+      if (attr === "id") next = key + "-" + value.replace(/[^\w-]/g, "");
+      if (attr === "clip-path" || attr === "mask") {
+        const ref = /^url\(#([\w-]+)\)$/.exec(value);
+        if (!ref) throw new Error("External SVG reference rejected in " + source);
+        next = `url(#${key}-${ref[1]})`;
+      }
+      if (attr === "fill" || attr === "stroke" || attr === "stop-color") {
+        if (/^#[\da-f]{3,8}$/i.test(value)) next = colors.indexOf(value.toLowerCase()) === 0
+          ? "var(--icon-primary,#ff7629)"
+          : "var(--icon-secondary,#f3f3f2)";
+        else if (/^url\(#([\w-]+)\)$/.test(value)) next = value.replace(/^url\(#([\w-]+)\)$/, (_, id) => `url(#${key}-${id})`);
+        else if (!/^(?:none|currentColor|transparent|inherit)$/i.test(value)) throw new Error("Unsupported SVG paint value in " + source);
+      }
+      const safeValue = next.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+      parsed[parsed.findIndex(item => item[0] === attr)][1] = safeValue;
+    }
+    return `<${name}${parsed.map(([a, v]) => ` ${a}="${v}"`).join("")}${/\/\s*>$/.test(tag) ? "/>" : ">"}`;
+  });
+  if (!/^\s*<svg\b/i.test(clean) || !/<\/svg>\s*$/i.test(clean)) throw new Error("Invalid SVG source: " + source);
+  return clean;
 }
 const sourceFiles = walk(sourceRoot);
 const svgFiles = sourceFiles.filter(file => file.toLowerCase().endsWith(".svg"));
@@ -56,7 +96,7 @@ for (const icon of manifest.icons) {
   const source = path.resolve(sourceRoot, ...sourceParts);
   if (!inside(source, sourceRoot) || !fs.existsSync(source) || !fs.lstatSync(source).isFile()) throw new Error("Missing or non-file icon source: " + icon.source);
   const xml = fs.readFileSync(source, "utf8");
-  safeSvg(xml, icon.source);
+  const sanitized = safeSvg(xml, icon.source, icon.key);
   if (selected.has(icon.file)) throw new Error("Duplicate output alias: " + icon.file);
   selected.add(icon.file);
   const key = regexEscape(icon.key);
@@ -67,10 +107,19 @@ for (const icon of manifest.icons) {
   )) usedByCode.add(icon.file);
   if (outputDir) {
     fs.mkdirSync(outputDir, { recursive: true });
-    fs.copyFileSync(source, path.join(outputDir, icon.file));
+    fs.writeFileSync(path.join(outputDir, icon.file), sanitized);
   }
 }
 if (outputDir) {
+  const symbols = manifest.icons.map(icon => {
+    const file = path.join(outputDir, icon.file);
+    const xml = fs.readFileSync(file, "utf8");
+    const viewBox = /\bviewBox="([^"]+)"/i.exec(xml)?.[1];
+    if (!viewBox) throw new Error("Sanitized icon missing viewBox: " + icon.file);
+    const body = xml.replace(/^\s*<svg\b[^>]*>/i, "").replace(/<\/svg>\s*$/i, "");
+    return `<symbol id="${icon.key}" viewBox="${viewBox}">${body}</symbol>`;
+  }).join("");
+  fs.writeFileSync(path.join(outputDir, "admin-icon-sprite.svg"), `<svg xmlns="http://www.w3.org/2000/svg">${symbols}</svg>\n`);
   const map = {
     version: manifest.version,
     icons: manifest.icons.map(({ key, file, usedBy }) => ({ key, file, usedBy }))

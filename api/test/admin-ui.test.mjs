@@ -19,10 +19,12 @@ test("admin login UI exposes only the intended credential flow", () => {
   assert.match(login, /aria-pressed/);
   assert.match(login, /fetch\('\/api\/admin\/login'/);
   assert.match(login, /credentials:'same-origin'/);
-  assert.match(login, /location\.assign\('\/admin'\)/);
+  assert.match(login, /get\('next'\)==='\/'\?'\/'\:'\/admin'/);
+  assert.match(login, /location\.assign\(returnTo\)/);
   assert.doesNotMatch(login, /localStorage|sessionStorage|mode=forgot|Создать аккаунт/);
   assert.match(login, /assets\/icons\/cqrtv\/ui\/shield\.svg/);
   assert.match(login, /src="\/assets\/admin\/admin-hero\.png" alt="" aria-hidden="true"/);
+  assert.doesNotMatch(login, /filter:\s*(?:brightness|grayscale|saturate)/i, "icon colors must not depend on destructive CSS filters");
   assert.doesNotMatch(login, /assets\/auth\/login-hero\.jpg/);
   assert.deepEqual([...adminHero.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
   const width = adminHero.readUInt32BE(16);
@@ -79,7 +81,7 @@ test("deploy maps the selected archive glyphs explicitly and verifies the bundle
     ["Security/Eye--playcqrtv.svg", "eye.svg"],
     ["Security/Eye-Closed--playcqrtv.svg", "eye-closed.svg"],
     ["Arrows Action/Login--playcqrtv.svg", "login.svg"],
-    ["Arrows Action/Logout--playcqrtv.svg", "logout.svg"],
+    ["Arrows Action/Logout-6--playcqrtv.svg", "logout.svg"],
     ["Arrows/Alt-Arrow-Left--playcqrtv.svg", "arrow-left.svg"]
   ];
   for (const [source, file] of mappings) {
@@ -91,5 +93,6 @@ test("deploy maps the selected archive glyphs explicitly and verifies the bundle
   assert.match(testWorkflow, /node --test qa\/admin-icon-pack\.test\.mjs/);
   assert.match(testWorkflow, /--include='\*\.svg'/);
   assert.match(testWorkflow, /<script\|<foreignObject\|href=/);
+  assert.match(deployWorkflow, /admin-icon-sprite\.svg/);
 });
 

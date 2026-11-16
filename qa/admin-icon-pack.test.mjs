@@ -45,6 +45,11 @@ test("curated CQRTV icon pack preserves legacy paths and contains the mapped ass
   for (const file of compatibility) assert.ok(files.includes(file), "legacy icon path " + file + " must remain");
   const map = JSON.parse(fs.readFileSync(path.join(iconDir, "admin-icon-map.json"), "utf8"));
   assert.deepEqual(map.icons.map(icon => icon.file), files);
+  const sprite = fs.readFileSync(path.join(iconDir, "admin-icon-sprite.svg"), "utf8");
+  assert.equal((sprite.match(/<symbol\b/g) || []).length, manifest.icons.length, "the production sprite should contain one symbol for every curated alias");
+  assert.match(sprite, /--icon-primary/);
+  assert.match(sprite, /--icon-secondary/);
+  assert.match(manifest.icons.find(icon => icon.key === "logout")?.source || "", /Logout-6--playcqrtv\.svg$/, "Logout must use the reviewed door-and-arrow icon source");
   for (const icon of manifest.icons) {
     const asset = fs.readFileSync(path.join(iconDir, icon.file), "utf8");
     assert.match(asset, /<svg(?:\s|>)/i, icon.file + " must contain SVG");
@@ -53,4 +58,35 @@ test("curated CQRTV icon pack preserves legacy paths and contains the mapped ass
   const actual = referencedIcons();
   assert.ok(actual.length >= 18, "expected a meaningful in-use set, found " + actual.length);
   console.log("CQRTV_ICON_USAGE " + JSON.stringify({selected: files.length, referencedByProductionCode: actual.length, aliases: actual}));
+});
+
+test("admin UI loads the safe shared sprite for public and privileged icons", () => {
+  const module = fs.readFileSync(path.join(root, "assets/admin/admin-icons.mjs"), "utf8");
+  assert.match(module, /createElementNS/);
+  assert.match(module, /admin-icon-sprite\.svg#/);
+  assert.doesNotMatch(module, /innerHTML|DOMParser/);
+  for (const page of ["index.html", "auth.html", "site-closed.html", "admin.html", "admin-login.html", "site-control-admin.html"]) {
+    assert.match(fs.readFileSync(path.join(root, page), "utf8"), /admin-icons\.mjs/);
+  }
+});
+
+test("the build pipeline rejects active markup and external SVG references", async () => {
+  const os = await import("node:os");
+  const { spawnSync } = await import("node:child_process");
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "cqrtv-svg-"));
+  try {
+    const source = path.join(temp, "source");
+    fs.mkdirSync(source);
+    fs.writeFileSync(path.join(source, "unsafe.svg"), '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    const manifestPath = path.join(temp, "manifest.json");
+    fs.writeFileSync(manifestPath, JSON.stringify({version:1,icons:[{key:"unsafe",file:"unsafe.svg",source:"unsafe.svg"}]}));
+    const result = spawnSync(process.execPath, ["scripts/build-cqrtv-admin-icons.mjs", "--source", source, "--manifest", manifestPath], {cwd:root,encoding:"utf8"});
+    assert.notEqual(result.status, 0, "the builder must fail closed for active SVG markup");
+    assert.match(result.stderr, /Unsafe SVG content/);
+    fs.writeFileSync(path.join(source, "unsafe.svg"), '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="url(https://evil.example/a.svg#x)" d="M0 0"/></svg>');
+    const external = spawnSync(process.execPath, ["scripts/build-cqrtv-admin-icons.mjs", "--source", source, "--manifest", manifestPath], {cwd:root,encoding:"utf8"});
+    assert.notEqual(external.status, 0, "the builder must fail closed for external SVG paint references");
+  } finally {
+    fs.rmSync(temp,{recursive:true,force:true});
+  }
 });
