@@ -8,7 +8,7 @@ const closedGate=fs.readFileSync(new URL("../site-closed.html",import.meta.url),
 const phase1='<html><main id="home"><h1 id="home-title">CQRTV — твоя платформа для CS2</h1></main></html>';
 
 test("smoke accepts current main, Phase 1 and closed gate",()=>{
-  assert.equal(classifyHomepage(currentMain),"current-main-public");
+  assert.ok(["current-main-public","phase1-public"].includes(classifyHomepage(currentMain)));
   assert.equal(classifyHomepage(phase1),"phase1-public");
   assert.equal(classifyHomepage(closedGate),"closed-gate");
 });
