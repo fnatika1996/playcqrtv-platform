@@ -73,6 +73,11 @@ test("confirmed baseline digests render as a separate fail-closed rollback manif
 });
 
 
+test("release manifest transfer is verified against its SHA-256",()=>{
+  assert.match(deploymentWorkflow,/manifest_sha256=\$\(sha256sum/);
+  assert.match(deploymentWorkflow,/sha256sum %q/);
+});
+
 test("release workflow third-party actions are pinned to immutable commit SHAs",()=>{
   const uses=[...deploymentWorkflow.matchAll(/^\s+uses:\s+([^\s]+)$/gm)].map(match=>match[1]);
   assert.ok(uses.length>0);
