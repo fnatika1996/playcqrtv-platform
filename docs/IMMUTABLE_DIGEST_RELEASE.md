@@ -1,6 +1,6 @@
 # CQRTV Immutable Digest Release and Rollback
 
-This document records the digest-pinned deployment design implemented in PR #11. It does not authorize or execute a release.
+This document records the digest-pinned deployment design from PR #11 and the Phase 1 release pre-flight in PR #22. It does not authorize or execute a release.
 
 ## Confirmed baseline
 
@@ -15,7 +15,7 @@ The owner also reported an isolated restore test for the PostgreSQL logical dump
 
 `docker-compose.yml` keeps the verified baseline images pinned by digest and sets application image pull policy to `missing`. This is a safe default if the base file is used directly; it cannot silently resolve to `:latest`.
 
-After each future image build-and-push, Buildx must provide its registry manifest digest. A generator renders one complete Compose document by replacing both baseline refs with the exact new web/API registry digests. It rejects a missing or malformed digest and emits application services with `pull_policy: missing`. The generated document must pass:
+After each future image build-and-push, Buildx must provide its registry manifest digest. A generator renders one complete Compose document by replacing both baseline refs with the exact new web/API registry digests. It rejects a missing or malformed digest and emits application services with `pull_policy: always`, matching the existing Hostinger update procedure. The generated document must pass:
 
 ```sh
 docker compose -f docker-compose.release.yml config --quiet
@@ -28,13 +28,13 @@ The effective file must list exactly one immutable registry ref for web and API 
 
 The historical Hostinger action sends POST /docker with a GitHub Compose URL; the documented operation creates a project and replaces an existing project with the same name. PR #11 does not use that path.
 
-For the temporary launch flow, Buildx publishes each new web/API image with both a mutable :latest tag and a commit-SHA tag. The workflow records the actual Buildx digests for traceability. Before changing the running project, the runtime client performs a read-only GET of the existing playcqrtv project contents. A Ruby safe-YAML preflight rejects missing or unexpected content, checks both service images are the expected :latest refs with pull_policy: always, and verifies the expected service/volume bindings (postgres_data, db_secret, caddy_data, caddy_config). It does not print saved Compose content or the separate project environment. A mismatch fails before any POST.
+For the temporary launch flow, Buildx publishes each new web/API image with both a mutable :latest tag and a commit-SHA tag. The workflow records the actual Buildx digests for traceability. Before changing the running project, the runtime client performs a read-only GET of the existing playcqrtv project contents. A Ruby safe-YAML preflight rejects missing or unexpected content, requires both service images to be exact `@sha256:` refs from the current build outputs with `pull_policy: always`, and verifies the expected service/volume bindings (postgres_data, db_secret, caddy_data, caddy_config). It does not print saved Compose content or the separate project environment. A mismatch fails before any POST.
 
-Only after that preflight does the workflow call Hostinger's POST /docker/playcqrtv/update endpoint. It polls the returned action resource to a recognized success state, then checks the read-only container list for the expected refs and running health. It never retries UPDATE, automatically replaces the project, or rolls back after a partial failure. Unknown action states fail closed. The post-update public page, icon and API checks are GET-only.
+Only after that preflight does the workflow call Hostinger's POST /docker/playcqrtv/update endpoint. If saved refs do not match the current build digests, the workflow stops before POST; it does not edit the Hostinger saved Compose. On a matching preflight, it polls the returned action resource to a recognized success state, then checks the read-only container list for the exact digest refs and running health. It never retries UPDATE, automatically replaces the project, or rolls back after a partial failure. Unknown action states fail closed. The post-update public page, icon and API checks are GET-only.
 
 Hostinger documents the project update operation as pulling latest images and recreating containers while preserving data volumes. This API behavior has not been exercised on the live project. The actual saved Compose, image refs and volume bindings have not been inspected by Codex; PR CI uses synthetic mock responses only.
 
-The tracked docker-compose.yml in this branch retains the verified baseline digest refs and remains useful for characterization/rollback planning. The existing-project update does not submit that file; it uses the saved Hostinger Compose. Therefore the saved config preflight is a hard gate, and :latest remains mutable rather than a rollback identity. The commit-SHA tags and Buildx digest outputs are recorded for traceability.
+The tracked `docker-compose.yml` retains the owner-reported baseline digest refs and remains useful for characterization/rollback planning. The workflow now generates and stores a per-run digest-pinned Compose handoff artifact from Buildx outputs. The existing-project update does not submit that file; it uses the saved Hostinger Compose. An authorized operator must align the saved Compose with the exact artifact refs before the update can pass preflight. The build still publishes `:latest` and commit-SHA tags for compatibility/traceability, but neither is used by the Hostinger image check or container verification.
 
 Official references:
 
@@ -46,7 +46,7 @@ Official references:
 ## Pre-merge and release sequence
 
 1. Confirm the exact approved PR/head and green PR-only CI.
-2. Owner verifies the saved Hostinger project Compose through the read-only UI/API view and confirms :latest web/API refs, pull_policy: always, and the expected volume bindings. The deploy workflow repeats this check at runtime and stops before UPDATE if it fails.
+2. Owner verifies the saved Hostinger project Compose through the read-only UI/API view and confirms the exact web/API `@sha256:` refs from that release run, `pull_policy: always`, and the expected volume bindings. The deploy workflow repeats this check at runtime and stops before UPDATE if it fails.
 3. Immediately before any separately approved merge, owner confirms a fresh, verified, protected PostgreSQL backup and protected volume backups, with acceptable RPO. No backup command is run by CI.
 4. Owner separately approves the exact PR/head, knowing that merging to main triggers the production workflow. Do not invoke workflow_dispatch without separate explicit authorization.
 5. After deployment, record commit-SHA tags and Buildx digests, action ID/state, container refs/state, and read-only site/API health.
@@ -54,7 +54,7 @@ Official references:
 
 ## Fail-closed rollback
 
-The current UPDATE workflow is not an automated rollback mechanism. :latest is mutable, and the update endpoint uses the saved project Compose rather than accepting an arbitrary rollback manifest. Commit-SHA tags and baseline digests are traceability/recovery references only; no automatic rollback is performed.
+The current UPDATE workflow is not an automated rollback mechanism. It uses the saved project Compose rather than accepting an arbitrary rollback manifest, and it never edits that saved file. A rollback requires an owner-approved saved Compose update to the previously recorded immutable digests, preserving the volume bindings; no automatic rollback is performed.
 
 On a failed action, unexpected refs, unhealthy service, or failed smoke check: stop further deployments, record the action ID and expected/observed refs, preserve database and volumes, and escalate to the owner. Do not retry UPDATE blindly or call the create/replace endpoint as an automatic fallback. A separately approved recovery procedure must establish an exact ref and a volume-preserving method before it is used.
 
