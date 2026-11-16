@@ -45,11 +45,15 @@ try {
     await page.goto(target, { waitUntil:'domcontentloaded' });
     await page.locator('#icon-grid .icon-sample').nth(0).waitFor({ state:'attached' });
     await page.waitForFunction(() => document.querySelectorAll('#icon-grid svg').length === 20 && document.querySelectorAll('#state-board svg').length === 49);
+    await page.waitForFunction(() => document.querySelectorAll('#preview [data-ui-icon]').length === 0);
+    await page.waitForFunction(() => Array.from(document.images).every(image=>image.complete));
     const checks = await page.evaluate(() => ({
       direction:document.querySelector('#preview').dataset.direction,
       view:document.querySelector('#preview').dataset.view,
       viewport:document.querySelector('#preview').dataset.viewport,
       broken:Array.from(document.images).filter(image => !image.complete || !image.naturalWidth).map(image=>image.src),
+      unresolvedUiIcons:document.querySelectorAll('#preview [data-ui-icon]').length,
+      duotoneUiIcon:Array.from(document.querySelectorAll('#preview .cq-icon-svg')).some(svg=>new Set(Array.from(svg.querySelectorAll('*')).map(node=>getComputedStyle(node).fill)).size>1),
       previewWidth:document.querySelector('#preview').clientWidth,
       previewScrollWidth:document.querySelector('#preview').scrollWidth,
       bodyWidth:document.body.scrollWidth,
@@ -60,6 +64,8 @@ try {
     assert.equal(checks.view,view,`Wrong view for ${direction}/${view}/${context.name}`);
     assert.equal(checks.viewport,context.media,`Wrong viewport mode for ${direction}/${view}/${context.name}`);
     assert.deepEqual(checks.broken,[],`Broken icon image at ${direction}/${view}/${context.name}`);
+    assert.equal(checks.unresolvedUiIcons,0,`Unresolved CQRTV pack icon at ${direction}/${view}/${context.name}`);
+    assert.equal(checks.duotoneUiIcon,true,`Concept did not display two icon color roles at ${direction}/${view}/${context.name}`);
     assert(checks.previewScrollWidth <= checks.previewWidth,`Horizontal overflow inside preview at ${direction}/${view}/${context.name}`);
     assert(checks.bodyWidth <= checks.viewportWidth,`Horizontal page overflow at ${direction}/${view}/${context.name}`);
     assert.equal(checks.fakeKpis,false,'KPI value must not contain mock data.');

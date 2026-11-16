@@ -28,7 +28,7 @@ const iconTitles = {
   eye: ['Показать пароль', 'Eye--playcqrtv.svg'], close: ['Закрыть / отмена', 'Close-Circle--playcqrtv.svg']
 };
 
-function icon(key, extra = '') { return `<img class="tiny-icon ${extra}" src="icons/${iconFiles[key] || `${key}.svg`}" alt="" aria-hidden="true">`; }
+function icon(key, extra = '') { return `<span class="cq-icon ${extra}" data-ui-icon="${key}" aria-hidden="true"></span>`; }
 function mark() { return `<div class="brand-emblem" aria-hidden="true">C</div>`; }
 function directionName(id) { return ({ a:'Premium Esports / Command Center', b:'Modern Operations Studio', c:'Futuristic Tactical Interface' })[id]; }
 function nav(view) {
@@ -64,6 +64,7 @@ function render() {
   preview.dataset.viewport = viewportSelect.value;
   const page = viewSelect.value;
   preview.innerHTML = page === 'login' ? login() : appFrame(page, page === 'users' ? users() : page === 'site' ? site() : dashboard());
+  hydrateUiIcons(preview).catch(error => console.error('Concept icon unavailable:',error));
   preview.querySelectorAll('[data-page]').forEach(link => link.addEventListener('click', event => {
     event.preventDefault(); viewSelect.value = link.dataset.page; history.replaceState(null,'',`?direction=${directionSelect.value}&view=${viewSelect.value}&viewport=${viewportSelect.value}`); render();
   }));
@@ -90,6 +91,18 @@ async function loadOriginalSvg(key) {
   const svg = parsed.documentElement;
   if (svg.localName !== 'svg' || parsed.querySelector('parsererror')) throw new Error(`Invalid SVG source: ${key}`);
   return { raw:`icons/${iconFiles[key]}`, normalized:xml.replaceAll('#000000','var(--icon-primary)').replaceAll('#737374','var(--icon-secondary)') };
+}
+async function hydrateUiIcons(root) {
+  const nodes = Array.from(root.querySelectorAll('[data-ui-icon]'));
+  await Promise.all(nodes.map(async placeholder => {
+    const key = placeholder.dataset.uiIcon;
+    const source = await loadOriginalSvg(key);
+    const parsed = new DOMParser().parseFromString(source.normalized,'image/svg+xml');
+    const svg = parsed.documentElement;
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.setAttribute('class','cq-icon-svg'); svg.setAttribute('aria-hidden','true'); svg.setAttribute('focusable','false');
+    placeholder.replaceWith(document.importNode(svg,true));
+  }));
 }
 const stateNames = [['normal','Обычное'],['active','Активное'],['hover','Наведение'],['disabled','Отключено'],['success','Успех'],['warning','Предупреждение'],['error','Ошибка']];
 async function mountIconAudit() {
