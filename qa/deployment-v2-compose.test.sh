@@ -55,6 +55,10 @@ test -n "$db_id" && test -n "$api_id" && test -n "$web_id"
 volume_before=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' "$db_id")
 test -n "$volume_before"
 docker exec "$db_id" psql -U staging -d staging -v ON_ERROR_STOP=1 -c 'CREATE TABLE release_probe (id integer primary key, marker text); INSERT INTO release_probe VALUES (1, '\''preserve-me'\'');' >/dev/null
+docker exec "$db_id" pg_dump -U staging -d staging -Fc -f /tmp/cqrtv-qa-backup.dump
+docker exec "$db_id" createdb -U staging restored_staging
+docker exec "$db_id" pg_restore --no-owner -U staging -d restored_staging /tmp/cqrtv-qa-backup.dump
+test "$(docker exec "$db_id" psql -U staging -d restored_staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
 api_image_id_before=$(docker inspect --format '{{.Image}}' "$api_id")
 web_image_id_before=$(docker inspect --format '{{.Image}}' "$web_id")
 
@@ -66,4 +70,4 @@ test "$(docker inspect --format '{{.Image}}' "$api_id")" = "$api_image_id_before
 test "$(docker inspect --format '{{.Image}}' "$web_id")" = "$web_image_id_before"
 test "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' "$db_id")" = "$volume_before"
 test "$(docker exec "$db_id" psql -U staging -d staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
-echo "PASS disposable Docker Compose start, repeat idempotency and PostgreSQL volume/data preservation."
+echo "PASS disposable Compose start, repeat idempotency, PostgreSQL volume preservation and isolated logical backup restore."
