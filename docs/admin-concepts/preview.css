@@ -38,3 +38,11 @@
 .cq-icon-svg{display:block;width:100%;height:100%;overflow:visible}
 .nav a.selected{--icon-primary:#ff9a58;--icon-secondary:#fff1e7}
 .preview[data-direction="b"][data-viewport="mobile"] .metric-grid{grid-template-columns:1fr}
+/* Inline CQRTV pack icons replace <img>; keep their intrinsic SVG viewBox from expanding grid/flex tracks. */
+.cq-icon-svg{display:block;width:18px;height:18px;flex:none;overflow:visible}
+.hero-mark .cq-icon-svg{width:42px;height:42px}
+.metric-top .cq-icon-svg{width:22px;height:22px}
+.status-tile>.cq-icon-svg{width:20px;height:20px}
+.mode-card-head .cq-icon-svg{width:24px;height:24px}
+.login-submit .cq-icon-svg{width:17px;height:17px}
+@media(max-width:620px){.hero-mark .cq-icon-svg{width:30px;height:30px}}
