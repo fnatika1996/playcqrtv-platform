@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 
 const playwrightRoot = process.env.PLAYWRIGHT_PACKAGE;
@@ -7,7 +9,7 @@ if (!playwrightRoot) throw new Error("PLAYWRIGHT_PACKAGE must point to the pinne
 const { chromium } = await import(pathToFileURL(`${playwrightRoot}/index.mjs`).href);
 const baseUrl = process.env.CQRTV_QA_BASE_URL || "http://playcqrtv.com:8765";
 const widths = [1440, 1024, 760, 390, 375, 320];
-const screenshotDir = new URL("../qa-artifacts/", import.meta.url);
+const screenshotDir = fileURLToPath(new URL("../qa-artifacts/", import.meta.url));
 await mkdir(screenshotDir, { recursive: true });
 
 const browser = await chromium.launch({
@@ -24,7 +26,7 @@ try {
     const response = await page.goto(`${baseUrl}/admin/login`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `admin login must load at ${width}px`);
     assert.equal(await page.title(), "Вход администратора · CQRTV", `admin login document should parse its title at ${width}px`);
-    await page.screenshot({ path: new URL(`admin-login-${width}.png`, screenshotDir).pathname, fullPage: true });
+    await page.screenshot({ path: path.join(screenshotDir, `admin-login-${width}.png`), fullPage: true });
     const heroCount = await page.locator(".hero img").count();
     assert.equal(heroCount, 1, `expected the admin hero on ${page.url()} at ${width}px; document title: ${await page.title()}`);
     await page.locator(".hero img").evaluate(image => image.decode());
@@ -46,143 +48,4 @@ try {
     assert.equal(hero.loaded, true);
     assert.equal(hero.fit, "cover");
     assert.equal(hero.height, width <= 760 ? 148 : Math.min(200, Math.max(142, Math.round(width * 0.22))));
-    const loginOverflow = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > window.innerWidth, viewport: window.innerWidth, html: {scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth}, body: {scrollWidth:document.body.scrollWidth,clientWidth:document.body.clientWidth,scrollX:document.body.scrollLeft}, offenders: [...document.querySelectorAll("body *")].map(element => { const rect=element.getBoundingClientRect(); return { tag: element.tagName, className: element.className?.baseVal || element.className, id: element.id, left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width), text: element.children.length ? "" : element.textContent.trim().slice(0,60) }; }).filter(element => element.left < -1 || element.right > window.innerWidth + 1).slice(0, 12) }));
-    assert.equal(loginOverflow.overflow, false, `login page has horizontal overflow at ${width}px: ${JSON.stringify(loginOverflow)}`);
-    if (width === 390) {
-      await page.keyboard.press("Tab");
-      assert.equal(await page.evaluate(() => document.activeElement.matches(".back")), true, "first keyboard focus should reach the back link");
-      await page.keyboard.press("Tab");
-      await page.keyboard.press("Tab");
-      await page.keyboard.press("Tab");
-      const focusVisible = await page.locator("#eye").evaluate(button => ({
-        focused: button.matches(":focus-visible"),
-        outlineWidth: getComputedStyle(button).outlineWidth
-      }));
-      assert.equal(focusVisible.focused, true, "password toggle should show keyboard focus");
-      assert.equal(focusVisible.outlineWidth, "2px");
-      await page.getByLabel("Пароль", { exact: true }).fill("qa-only-not-a-real-password");
-      await page.locator("#eye").click();
-      assert.equal(await page.getByLabel("Пароль", { exact: true }).getAttribute("type"), "text");
-      assert.equal(await page.locator("#eye").getAttribute("aria-pressed"), "true");
-      await page.locator("#eye").click();
-      assert.equal(await page.getByLabel("Пароль", { exact: true }).getAttribute("type"), "password");
-      assert.equal(loginPosts, 0, "eye toggle must not submit credentials");
-    }
-    await page.close();
-    console.log(`PASS admin login viewport ${width}px`);
-  }
-
-  for (const width of widths) {
-    const context = await browser.newContext({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
-    await context.addCookies([{ name: "cqrtv_qa_admin", value: "valid", domain: "playcqrtv.com", path: "/" }]);
-    const page = await context.newPage();
-    let suspendCalls = 0;
-    let logoutCalls = 0;
-    page.on("request", request => { if (new URL(request.url()).pathname.startsWith("/api/admin")) console.log(`Dashboard request ${request.method()} ${new URL(request.url()).pathname}`); });
-    page.on("response", response => { if (new URL(response.url()).pathname.startsWith("/api/admin")) console.log(`Dashboard response ${response.status()} ${new URL(response.url()).pathname}`); });
-    page.on("pageerror", error => console.log(`Dashboard page error ${error.message}`));
-    await page.route("**/*", async route => {
-      const request = route.request();
-      const url = new URL(request.url());
-      if (!url.pathname.startsWith("/api/admin/")) return route.continue();
-      let data;
-      if (url.pathname === "/api/admin/me") {
-        data = { user: { id: 9001, nickname: "QA Operator", emailMasked: "q•••@example.test" }, csrfToken: "qa-csrf-token" };
-      } else if (url.pathname === "/api/admin/stats") {
-        data = { total_users: 3, verified_users: 2, suspended_users: 1 };
-      } else if (url.pathname === "/api/admin/users") {
-        data = {
-          users: [
-            { id: 9101, nickname: "Rifler QA", email: "qa-player@example.test", country: "US", primary_role: "rifler", secondary_roles: ["awper"], created_at: "2026-11-15T12:00:00Z", email_verified: true, account_status: "active" },
-            { id: 9102, nickname: "Support QA", email: "qa-support@example.test", country: "SE", primary_role: "support", secondary_roles: [], created_at: "2026-11-14T12:00:00Z", email_verified: false, account_status: "suspended" }
-          ],
-          pagination: { limit: 20, offset: 0, total: 2 }
-        };
-      } else if (url.pathname === "/api/admin/audit") {
-        data = { events: [{ id: 1, action: "suspend", reason: "QA fixture review", created_at: "2026-11-15T12:00:00Z", actor_user_id: 9001, actor_nickname: "QA Operator", target_user_id: 9102, target_nickname: "Support QA" }], pagination: { limit: 20, offset: 0, total: 1 } };
-      } else if (url.pathname.endsWith("/suspend") && request.method() === "POST") {
-        suspendCalls++;
-        data = { message: "Тестовая блокировка подтверждена.", changed: true, status: "suspended" };
-      } else if (url.pathname === "/api/admin/logout" && request.method() === "POST") {
-        logoutCalls++;
-        data = { message: "Вы вышли." };
-      } else {
-        return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "Unknown QA mock route" }) });
-      }
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(data) });
-    });
-
-    const response = await page.goto(`${baseUrl}/admin`, { waitUntil: "domcontentloaded" });
-    assert.equal(response?.status(), 200, `admin dashboard must load at ${width}px`);
-    assert.equal(await page.title(), "Администрирование · CQRTV", "admin dashboard title/head must parse cleanly");
-    assert.equal(await page.locator("#shell").count(), 1, "admin dashboard body should be parsed");
-    console.log(`Dashboard document ${width}px: URL=${page.url()} title=${await page.title()} emailCount=${await page.locator("#admin-email").count()} body=${(await page.locator("body").innerText()).slice(0,240).replaceAll("\n", " | ")}`);
-    await page.locator("#admin-email").waitFor({ state: "attached" });
-    assert.equal((await page.locator("#admin-email").innerText()).includes("example.test"), true);
-    await page.getByText("3", { exact: true }).first().waitFor({ state: "visible" });
-    const dashboardOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-    assert.equal(dashboardOverflow, false, `dashboard has horizontal page overflow at ${width}px`);
-
-    if (width === 1440 || width === 390 || width === 320) {
-      await page.screenshot({ path: new URL(`admin-dashboard-${width}-overview.png`, screenshotDir).pathname, fullPage: true });
-    }
-    if (width <= 760) {
-      await page.locator("#menu").click();
-      assert.equal(await page.locator("#shell").evaluate(element => element.classList.contains("open")), true);
-      assert.equal(await page.locator("#menu").getAttribute("aria-expanded"), "true");
-    }
-
-    await page.locator('[data-view="users"]').click();
-    await page.locator("#users").getByText("Rifler QA", { exact: true }).waitFor({ state: "visible" });
-    if (width === 1440 || width === 390 || width === 320) {
-      await page.screenshot({ path: new URL(`admin-dashboard-${width}-users.png`, screenshotDir).pathname, fullPage: true });
-    }
-    if (width <= 390) {
-      const table = await page.locator("#users-view .table-wrap").evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
-      assert.ok(table.scrollWidth >= table.clientWidth, "mobile user table should remain in its own horizontal scroll container");
-    }
-
-    if (width === 390) {
-      const waitForUsersQuery = params => page.waitForResponse(response => {
-        const url = new URL(response.url());
-        return url.pathname === "/api/admin/users" && Object.entries(params).every(([key, value]) => url.searchParams.get(key) === value);
-      });
-      let filteredRequest = waitForUsersQuery({ q: "Support" });
-      await page.locator("#search").fill("Support");
-      await filteredRequest;
-      filteredRequest = waitForUsersQuery({ q: "Support", status: "suspended" });
-      await page.locator("#status-filter").selectOption("suspended");
-      await filteredRequest;
-      filteredRequest = waitForUsersQuery({ q: "Support", status: "suspended", email_verified: "true" });
-      await page.locator("#verified-filter").selectOption("true");
-      await filteredRequest;
-      filteredRequest = waitForUsersQuery({ q: "Support", status: "suspended", email_verified: "true", country: "US" });
-      await page.locator("#country-filter").fill("us");
-      await page.locator("#country-filter").press("Tab");
-      await filteredRequest;
-
-      await page.locator("#menu").click();
-      await page.locator('[data-view="audit"]').click();
-      await page.getByText("QA fixture review", { exact: true }).waitFor({ state: "visible" });
-      await page.locator("#menu").click();
-      await page.locator('[data-view="users"]').click();
-      await page.locator('#users button[data-action="suspend"]').first().click();
-      await page.locator("#reason").waitFor({ state: "visible" });
-      assert.equal(await page.evaluate(() => document.activeElement.id), "reason", "confirmation modal should move keyboard focus to its reason field");
-      await page.keyboard.press("Escape");
-      await page.locator("#modal").waitFor({ state: "hidden" });
-      await page.locator('#users button[data-action="suspend"]').first().click();
-      await page.locator("#reason").fill("QA-only reason");
-      await page.locator("#confirm").click();
-      await page.locator("#modal").waitFor({ state: "hidden" });
-      assert.equal(suspendCalls, 1, "confirm button should call only the mock API");
-      await page.locator("#logout").click();
-      await page.waitForURL("**/admin/login");
-      assert.equal(logoutCalls, 1, "logout should call only the mock API");
-    }
-    await context.close();
-    console.log(`PASS admin dashboard viewport ${width}px`);
-  }
-} finally {
-  await browser.close();
-}
+    const loginOverflow = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > window.innerWidth, viewport: window.innerWidth, html: {scrollWidth:doc

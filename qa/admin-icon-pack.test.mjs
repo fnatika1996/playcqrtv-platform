@@ -45,6 +45,11 @@ test("curated CQRTV icon pack preserves legacy paths and contains the mapped ass
   for (const file of compatibility) assert.ok(files.includes(file), "legacy icon path " + file + " must remain");
   const map = JSON.parse(fs.readFileSync(path.join(iconDir, "admin-icon-map.json"), "utf8"));
   assert.deepEqual(map.icons.map(icon => icon.file), files);
+  const sprite = fs.readFileSync(path.join(iconDir, "admin-icon-sprite.svg"), "utf8");
+  assert.equal((sprite.match(/<symbol\b/g) || []).length, manifest.icons.length, "the production sprite should contain one symbol for every curated alias");
+  assert.match(sprite, /--icon-primary/);
+  assert.match(sprite, /--icon-secondary/);
+  assert.match(manifest.icons.find(icon => icon.key === "logout")?.source || "", /Logout-6--playcqrtv\.svg$/, "Logout must use the reviewed door-and-arrow icon source");
   for (const icon of manifest.icons) {
     const asset = fs.readFileSync(path.join(iconDir, icon.file), "utf8");
     assert.match(asset, /<svg(?:\s|>)/i, icon.file + " must contain SVG");
@@ -52,5 +57,4 @@ test("curated CQRTV icon pack preserves legacy paths and contains the mapped ass
   }
   const actual = referencedIcons();
   assert.ok(actual.length >= 18, "expected a meaningful in-use set, found " + actual.length);
-  console.log("CQRTV_ICON_USAGE " + JSON.stringify({selected: files.length, referencedByProductionCode: actual.length, aliases: actual}));
-});
+  console.log("CQRTV_ICON_USAGE " + JSON.stringify({selected: files.length, referencedByPro

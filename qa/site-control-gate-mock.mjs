@@ -22,7 +22,7 @@ const settings = {
 const modeFor=req=>["coming_soon","maintenance"].includes(req.headers["x-qa-site-mode"])?req.headers["x-qa-site-mode"]:"open";
 const validAdmin=req=>(req.headers.cookie||"").split(";").some(cookie=>cookie.trim()==="cqrtv_qa_admin=valid");
 const json=(res,status,value)=>{res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"});res.end(JSON.stringify(value));};
-http.createServer((req,res)=>{
+http.createServer(async (req,res)=>{
   const url=new URL(req.url,"http://localhost");
   if(url.pathname==="/api/site-control/gate"){
     const uri=String(req.headers["x-forwarded-uri"]||"").split("?")[0];
@@ -47,7 +47,8 @@ http.createServer((req,res)=>{
   }
   if(url.pathname==="/api/admin/login"){
     if(req.headers["x-qa-db-down"]==="yes")return json(res,503,{error:"database unavailable"});
-    return json(res,401,{error:"no QA admin"});
-  }
-  res.writeHead(404,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end('{"error":"QA mock only"}');
-}).listen(3000,"0.0.0.0");
+    let body="";for await(const chunk of req)body+=chunk;
+    let credentials={};try{credentials=JSON.parse(body)}catch{}
+    if(credentials.email==="qa-admin@example.test"&&credentials.password==="qa-only-password"){
+      res.writeHead(200,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","Set-Cookie":"cqrtv_qa_admin=valid; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600"});
+      return res.end(JSON.stringify({me
