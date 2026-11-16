@@ -126,7 +126,7 @@ jobs:
 
       - name: Validate immutable release Compose generation (non-production)
         run: |
-          node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs qa/deployment-v2-policy.test.mjs qa/deployment-v2-smoke.test.mjs qa/deployment-v2-inventory.test.mjs
+          node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs qa/deployment-v2-policy.test.mjs qa/deployment-v2-smoke.test.mjs qa/deployment-v2-inventory.test.mjs qa/deploy-compose-v2-remote.test.mjs
           bash -n qa/deploy-compose-v2-remote.sh qa/deployment-v2-compose.test.sh
 
       - name: Run disposable Docker Compose deployment and volume-preservation check
