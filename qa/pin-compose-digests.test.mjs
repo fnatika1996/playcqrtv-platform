@@ -73,6 +73,12 @@ test("confirmed baseline digests render as a separate fail-closed rollback manif
 });
 
 
+test("release workflow third-party actions are pinned to immutable commit SHAs",()=>{
+  const uses=[...deploymentWorkflow.matchAll(/^\\s+uses:\\s+([^\\s]+)$/gm)].map(match=>match[1]);
+  assert.ok(uses.length>0);
+  assert.ok(uses.every(ref=>/@[a-f0-9]{40}$/.test(ref)),uses.join("\\n"));
+});
+
 test("production workflow is manual, protected and uses immutable Compose refs", () => {
   const deployClient = fs.readFileSync(path.join(repoRoot, "qa", "hostinger-deploy.mjs"), "utf8");
   const remoteScript = fs.readFileSync(path.join(repoRoot, "qa", "deploy-compose-v2-remote.sh"), "utf8");
