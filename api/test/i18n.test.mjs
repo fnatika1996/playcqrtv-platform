@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
 const read = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
@@ -9,6 +12,8 @@ const match = moduleSource.match(/const dictionaries = (\{[\s\S]*?\});\nconst ui
 assert.ok(match, "localization dictionaries are embedded in the first-party module");
 const dictionaries = JSON.parse(match[1]);
 const locales = ["ru", "en", "ro"];
+const projectRoot = new URL("../../", import.meta.url);
+const projectRootPath = fileURLToPath(projectRoot);
 
 test("all locale dictionaries have complete matching keys", () => {
   for (const locale of locales) assert.ok(dictionaries[locale], `missing locale ${locale}`);
@@ -41,18 +46,49 @@ test("every static visible text node on routed pages has an authored translation
   assert.deepEqual(missing, [], "static Russian UI text must be present in the authored dictionary");
 });
 
-test("dynamic API messages used by account and admin UI are translated", async () => {
-  const serverFiles = ["api/server.mjs","api/admin-routes.mjs","api/site-control.mjs"];
-  const missing = [];
-  for (const path of serverFiles) {
-    const source = await read(path);
-    missing.push(...inspectRawSourceLiterals(source, path));
-  }
-  assert.deepEqual(missing, [], "fixed server messages must map to localized UI messages");
+test("all app-owned JavaScript source modules are discovered and linted", async () => {
+  const { files, errors } = await lintAppSourceTree(projectRootPath);
+  assert.ok(files.includes("assets/auth-header.mjs"), "existing browser modules are included");
+  assert.ok(files.includes("assets/admin/admin-icons.mjs"), "nested browser modules are included");
+  assert.ok(files.includes("api/password-policy.mjs"), "server validation messages are included");
+  assert.ok(files.includes("api/server.mjs"), "API and email modules are included");
+  assert.deepEqual(errors, [], "all discovered app modules must use localized keys or frozen legacy literals");
 });
 
-
-const projectRoot = new URL("../../", import.meta.url);
+const sourceModuleExclusions = new Set([
+  "assets/i18n.mjs", // translation catalogs/runtime are checked through catalog and binding tests
+  "api/scripts/grant-admin.mjs", // owner-only bootstrap CLI, not a user interface
+  "scripts/build-cqrtv-admin-icons.mjs" // build-time asset tooling
+]);
+const ignoredSourceDirectories = new Set([".git", "node_modules", "qa", "ops"]);
+async function discoverAppSourceModules(root = projectRootPath) {
+  const found = [];
+  async function walk(directory) {
+    let entries;
+    try { entries = await readdir(join(root, directory), { withFileTypes: true }); }
+    catch (error) { if (error.code === "ENOENT") return; throw error; }
+    for (const entry of entries) {
+      const path = [directory, entry.name].filter(Boolean).join("/").replaceAll("\\", "/");
+      if (entry.isDirectory()) {
+        if (ignoredSourceDirectories.has(entry.name) || path === "api/test") continue;
+        await walk(path);
+      } else if (entry.isFile() && /\\.(?:mjs|js)$/i.test(entry.name) && !sourceModuleExclusions.has(path)) {
+        found.push(path);
+      }
+    }
+  }
+  await walk("");
+  return found.sort();
+}
+async function lintAppSourceTree(root, catalogs = dictionaries) {
+  const files = await discoverAppSourceModules(root);
+  const errors = [];
+  for (const path of files) {
+    const source = await readFile(join(root, path), "utf8");
+    errors.push(...inspectRawSourceLiterals(source, path, catalogs, true));
+  }
+  return { files, errors };
+}
 function selectRootHtmlEntrypoints(entries) {
   return entries.filter((entry) => entry.isFile() && entry.name.endsWith(".html"))
     .map((entry) => entry.name).sort();
@@ -196,15 +232,39 @@ test("locale catalogs preserve interpolation parameters", () => {
   }
 });
 
-test("fixed client UI literals and semantic references are covered", async () => {
-  const clientFiles=["assets/auth-header.mjs","assets/player-experience.mjs","assets/player-profile.mjs","assets/registration-roles.mjs","assets/admin/admin-icons.mjs"];
-  const allValues=new Set(Object.values(dictionaries).flatMap((catalog)=>Object.values(catalog)));
-  const missing=[];
-  for(const path of clientFiles){
-    const source=await read(path);
-    missing.push(...inspectRawSourceLiterals(source, path));
+test("new app modules imported by a route are discovered and must localize every UI node", async () => {
+  const root = await mkdtemp(join(tmpdir(), "cqrtv-i18n-source-"));
+  try {
+    const modulePath = "assets/features/future-feature.mjs";
+    const moduleFile = join(root, modulePath);
+    await (await import("node:fs/promises")).mkdir(join(root, "assets/features"), { recursive: true });
+    await writeFile(join(root, "index.html"), '<!doctype html><script type="module" src="/assets/features/future-feature.mjs"></script>');
+    await writeFile(moduleFile, 'export const title = "Future dashboard";');
+    const route = await readFile(join(root, "index.html"), "utf8");
+    assert.match(route, /src="\\/assets\\/features\\/future-feature\\.mjs"/, "fixture route imports the previously unlisted module");
+    let result = await lintAppSourceTree(root);
+    assert.ok(result.files.includes(modulePath), "recursive app-source discovery finds nested new modules");
+    assert.ok(result.errors.some((item) => item.includes("new raw source literal")), "a newly imported raw label fails through the production discovery and lint path");
+
+    const fixtureCatalogs = Object.fromEntries(locales.map(locale => [locale, {
+      ...dictionaries[locale],
+      "fixture.future.title": locale === "ru" ? "Будущая панель" : locale === "en" ? "Future dashboard" : "Panou viitor",
+      "fixture.future.email": locale === "ru" ? "Введите email" : locale === "en" ? "Enter email" : "Introdu adresa de e-mail"
+    }]));
+    await writeFile(moduleFile, 'export const title = window.CQRTVI18n.t("fixture.future.title");');
+    result = await lintAppSourceTree(root, fixtureCatalogs);
+    assert.deepEqual(result.errors, [], "semantic-key module with authored translations passes through the same lint path");
+
+    await writeFile(moduleFile, 'export function mount(root) { root.innerHTML = \'<section><h2 data-i18n="fixture.future.title">Будущая панель</h2><input placeholder="Введите email" data-i18n-placeholder="fixture.future.email"></section>\'; }');
+    result = await lintAppSourceTree(root, fixtureCatalogs);
+    assert.deepEqual(result.errors, [], "dynamically authored markup passes when each text and attribute has a valid binding");
+
+    await writeFile(moduleFile, 'export function mount(root) { root.innerHTML = \'<section><h2 data-i18n="fixture.future.title">Будущая панель</h2><p>Future raw copy</p></section>\'; }');
+    result = await lintAppSourceTree(root, fixtureCatalogs);
+    assert.ok(result.errors.some((item) => item.includes("unbound UI text")), "unbound sibling markup in a new module fails");
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
-  assert.deepEqual(missing,[],"client fixed UI literals must have authored translations and every semantic reference must resolve");
 });
 
 test("inline page scripts use catalogued fixed UI text and known translation references", async () => {
