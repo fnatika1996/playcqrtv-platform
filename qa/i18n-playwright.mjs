@@ -97,7 +97,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
     await dialog.waitFor({state:"visible",timeout:5000});
     const dialogText=await dialog.innerText();
     assert.ok(dialogText.length>0,"synthetic admin confirmation dialog is rendered");
-    if(locale!=="ru")assert.ok(!/[\\u0400-\\u04ff]/.test(dialogText),`admin confirmation remains Russian in ${locale}: ${dialogText}`);
+    if(locale!=="ru")assert.ok(!/[\u0400-\u04ff]/.test(dialogText),`admin confirmation remains Russian in ${locale}: ${dialogText}`);
     await page.locator("#cancel").click();
     assert.ok(await page.locator("#modal").evaluate(element=>element.classList.contains("hidden")),"cancel closes the synthetic confirmation dialog without an API mutation");
   }
@@ -133,7 +133,7 @@ try {
     await page.waitForFunction(()=>{const failure=document.querySelector("#verify-failure"),message=document.querySelector("#verify-error-message")?.textContent||"";return failure&&!failure.hidden&&message&&message!=="Ссылка недействительна или устарела."},{timeout:10000});
     const verifyState=await page.evaluate(()=>({lang:document.documentElement.lang,text:document.querySelector("#verify-error-message")?.textContent||"",switcher:!!document.querySelector("[data-cqrtv-language-switcher] select")}));
     assert.equal(verifyState.lang,"en","auth link locale overrides prior preference");
-    assert.ok(verifyState.text&&!/[\\u0400-\\u04ff]/.test(verifyState.text),"network error is visible and localized");
+    assert.ok(verifyState.text&&!/[\u0400-\u04ff]/.test(verifyState.text),"network error is visible and localized");
     assert.ok(verifyState.switcher,"language switcher remains available during API network error");
     await page.unroute("**/api/auth/verify");
     await page.route("**/api/site-control/public",route=>route.abort("failed"));
