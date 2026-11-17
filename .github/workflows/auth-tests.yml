@@ -119,6 +119,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -127,6 +129,15 @@ jobs:
       - name: Parse deploy workflow without executing it
         run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/deploy.yml"); puts "Deploy workflow YAML syntax is valid."'
         # Static parse only; this PR job has no production credentials or API calls.
+
+      - name: Build pre-change homepage image from PR base (local QA only)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/cqrtv-home-before"
+          git archive "$BASE_SHA" | tar -x -C "$RUNNER_TEMP/cqrtv-home-before"
+          docker build --file "$RUNNER_TEMP/cqrtv-home-before/Dockerfile" --tag cqrtv-home-before-qa "$RUNNER_TEMP/cqrtv-home-before"
+
 
       - name: Validate immutable release Compose generation (non-production)
         run: |
@@ -184,6 +195,20 @@ jobs:
           docker logs cqrtv-admin-qa
           exit 1
 
+      - name: Start isolated PR-base homepage preview (non-production)
+        run: |
+          docker run -d --name cqrtv-home-before-qa \
+            -p 127.0.0.1:8764:80 \
+            --add-host api:host-gateway \
+            -v "$RUNNER_TEMP/Caddyfile.qa:/etc/caddy/Caddyfile:ro" \
+            cqrtv-home-before-qa
+          for attempt in $(seq 1 20); do
+            if curl --silent --fail --header 'Host: playcqrtv.com' http://127.0.0.1:8764/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          docker logs cqrtv-home-before-qa
+          exit 1
+
       - name: Verify Caddy routes, image types and approved hero checksum
         run: |
           set -euo pipefail
@@ -230,6 +255,7 @@ jobs:
       - name: Run responsive browser review and capture screenshots
         env:
           CQRTV_QA_BASE_URL: http://playcqrtv.com:8765
+          CQRTV_QA_BEFORE_URL: http://playcqrtv.com:8764
           PLAYWRIGHT_PACKAGE: ${{ runner.temp }}/cqrtv-playwright/node_modules/playwright
         run: |
           node qa/admin-playwright.mjs
@@ -260,5 +286,5 @@ jobs:
       - name: Stop isolated preview container
         if: always()
         run: |
-          docker rm --force cqrtv-admin-qa || true
+          docker rm --force cqrtv-admin-qa cqrtv-home-before-qa || true
           if [ -f "$RUNNER_TEMP/site-control-gate.pid" ]; then kill "$(cat "$RUNNER_TEMP/site-control-gate.pid")" || true; fi
