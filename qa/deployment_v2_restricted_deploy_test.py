@@ -238,9 +238,10 @@ class DeploymentFlowTests(unittest.TestCase):
             "volumes": {key: {"name": value} for key, value in agent.VOLUME_NAMES.items()},
         }
         self.previous = {
-            "api": {"repo_digests": [self.payload["previous_api_ref"]]},
-            "caddy": {"repo_digests": [self.payload["previous_web_ref"]]},
-            "db": {"id": "db-container-1"},
+            "api": {"repo_digests": [self.payload["previous_api_ref"]], "configured_image": self.payload["previous_api_ref"]},
+            "caddy": {"repo_digests": [self.payload["previous_web_ref"]], "configured_image": self.payload["previous_web_ref"]},
+            "db": {"id": "db-container-1", "configured_image": "postgres:17-alpine"},
+            "secret-init": {"configured_image": "alpine:3.21"},
         }
         self.target = {
             "api": {"repo_digests": [self.payload["api_image_ref"]]},
