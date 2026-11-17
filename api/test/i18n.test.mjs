@@ -116,12 +116,9 @@ function inspectRawSourceLiterals(source, path, catalogs = dictionaries, allowEm
     const rawValue = literal[2];
     const phrase = rawValue.trim();
     if (!phrase || phrase.length >= 1000 || !/\p{L}/u.test(phrase)) continue;
-    if (allowEmbeddedMarkup) {
-      const keys = [...phrase.matchAll(/data-i18n(?:-[\w-]+)?="([\w.-]+)"/g)].map((match) => match[1]);
-      if (keys.length) {
-        for (const key of keys) if (!Object.values(catalogs).every((catalog) => Object.hasOwn(catalog, key))) errors.push(path + ": unknown embedded translation key " + key);
-        continue;
-      }
+    if (allowEmbeddedMarkup && /<[a-z][\\w:-]*(?:\\s|>)/i.test(phrase)) {
+      errors.push(...inspectMarkup(phrase, path, catalogs, legacyHtmlBaseline));
+      continue;
     }
     const semanticKey = Object.values(catalogs).every((catalog) => Object.hasOwn(catalog, phrase));
     if (!semanticKey && !baseline.includes(rawValue)) errors.push(path + ": new raw source literal “" + phrase + "”; use a semantic translation key or add a reviewed non-human exemption");
@@ -176,6 +173,16 @@ test("future UI source literals require semantic keys", () => {
   }
   const semantic = inspectRawSourceLiterals('const heading = t("fixture.panel.title");', "assets/future-panel.mjs", catalogs);
   assert.deepEqual(semantic, [], "new UI text using a stable semantic key with three authored translations should pass");
+  const semanticMarkup = inspectRawSourceLiterals(
+    'container.innerHTML = \'<h2 data-i18n="fixture.panel.title">Панель пользователя</h2><input placeholder="Enter email" data-i18n-placeholder="fixture.email.placeholder">\';',
+    "inline:future-panel.html", { ...catalogs, ru: { ...catalogs.ru, "fixture.email.placeholder": "Введите email" }, en: { ...catalogs.en, "fixture.email.placeholder": "Enter email" }, ro: { ...catalogs.ro, "fixture.email.placeholder": "Introdu adresa de e-mail" } }, true
+  );
+  assert.deepEqual(semanticMarkup, [], "fully bound dynamic text and attributes should pass");
+  const mixedMarkup = inspectRawSourceLiterals(
+    'container.innerHTML = \'<h2 data-i18n="fixture.panel.title">Панель пользователя</h2><p>Future dashboard</p>\';',
+    "inline:future-panel.html", catalogs, true
+  );
+  assert.ok(mixedMarkup.some((item) => item.includes("unbound UI text")), "new unbound text inside dynamic HTML must fail");
   const unknown = inspectRawSourceLiterals('const heading = t("fixture.panel.unknown");', "assets/future-panel.mjs", catalogs);
   assert.ok(unknown.some((item) => item.includes("unknown translation key")), "unknown semantic references must fail CI");
 });
