@@ -10,6 +10,12 @@ CQRTV UI supports Russian (ru), English (en), and Romanian (ro). Translation is 
 - Keep interpolation placeholders identical across locales. Use Intl.DateTimeFormat, Intl.NumberFormat, and Intl.PluralRules for locale-sensitive values.
 - Never translate user-authored nicknames, social labels, URLs, custom announcements, or freeform admin content. Mark a custom-data subtree with data-i18n-ignore when it could otherwise be interpreted as UI.
 
+## Legacy compatibility boundary
+
+The current server and browser still contain legacy UI strings that are recognized by the RU source text they historically used. Those unchanged literals are frozen in `docs/i18n-legacy-html-baseline.json` by exact file and exact value. The baseline is a compatibility inventory, not an authoring pattern: CI rejects any new string literal in the covered source modules or inline scripts, even if the same raw text is added to the catalog. New user-facing copy must use a stable semantic key and an authored RU/EN/RO catalog entry, with `t(key, params, fallback)` or an explicit `data-i18n*` binding. Dynamic HTML is inspected for each bound text node and translatable attribute; one bound element does not exempt unbound siblings.
+
+The only reason to extend the source-literal inventory is a reviewed non-human code value (for example, an API route, SQL fragment, CSS selector, or event name). Such an entry must be demonstrably non-visible UI. Existing legacy raw-text translation is compatibility behavior while those older call sites remain; it is not the contract for new components. The runtime emits `cqrtv:i18nmissing` and can log missing translations in local/debug QA.
+
 ## CI contract
 
 The account CI discovers every root HTML entrypoint automatically and checks its locale metadata, localization runtime import, static UI text, and accessible/translatable attributes. It checks dictionary key parity, interpolation parameters, fixed client/server messages, semantic key references, and browser-rendered text. A new raw human-readable label without catalog coverage fails CI. A newly added semantic binding with no RU/EN/RO catalog entries also fails CI. The regression test covers both a rejected raw addition and an accepted fully translated new-page fixture.
