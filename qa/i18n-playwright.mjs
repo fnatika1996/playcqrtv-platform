@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readdir } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 const playwrightRoot = process.env.PLAYWRIGHT_PACKAGE;
@@ -12,7 +12,7 @@ if (base.protocol !== "http:" || !base.port || base.port !== "8765") {
 }
 const artifactDir = new URL("../qa-artifacts/", import.meta.url);
 await mkdir(artifactDir, { recursive: true });
-const routes = ["/","/profile.html","/auth.html","/rules.html","/privacy.html","/site-closed.html","/admin-login.html","/admin.html","/site-control-admin.html"];
+const routes=(await readdir(new URL("../",import.meta.url),{withFileTypes:true})).filter(entry=>entry.isFile()&&entry.name.endsWith(".html")).map(entry=>entry.name==="index.html"?"/":`/${entry.name}`).sort();
 const locales = ["ru","en","ro"];
 const browser = await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
 const failures=[];
