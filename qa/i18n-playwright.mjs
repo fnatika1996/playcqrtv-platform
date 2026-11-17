@@ -60,7 +60,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
     while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement?.closest(`${ignored},script,style,noscript`))continue;const value=node.nodeValue?.trim();if(value)texts.push(value)}
     const attributes=[];
     for(const element of document.querySelectorAll('[placeholder],[title],[aria-label],[alt]')){if(element.closest(ignored))continue;for(const attr of ['placeholder','title','aria-label','alt']){const value=element.getAttribute(attr);if(value)attributes.push(value)}}
-    return {title:document.title,scrollWidth:document.documentElement.scrollWidth,width:innerWidth,texts,attributes};
+    return {title:document.title,description:document.querySelector('meta[name="description"]')?.content||null,scrollWidth:document.documentElement.scrollWidth,width:innerWidth,texts,attributes};
   });
   assert.ok(state.title,`localized title missing on ${route}`);
   assert.ok(state.scrollWidth<=state.width+1,`horizontal overflow at ${width}px on ${route}: ${state.scrollWidth}`);
