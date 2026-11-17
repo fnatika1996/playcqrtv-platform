@@ -29,11 +29,14 @@ test("every static visible text node on routed pages has an authored translation
     html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
       .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
       .replace(/<!--[\s\S]*?-->/g, " ");
-    for (const node of html.matchAll(/>([^<>]+)</g)) {
-      const source = node[1].replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
-      if (/[\u0400-\u04ff]/.test(source) && !Object.hasOwn(dictionaries.ru, source)) missing.push(`${path}: ${source}`);
-    }
-  }
+    for (const node of html.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>([^<>]+)</gi)) {
+      const attrs=node[2]||"";
+      const source=node[3].replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim();
+      if(!/[\u0400-\u04ff]/.test(source))continue;
+      const key=attrs.match(/\bdata-i18n="([^"]+)"/i)?.[1];
+      if(key){for(const locale of locales)if(!Object.hasOwn(dictionaries[locale]||{},key))missing.push(path+": "+locale+" "+key);}
+      else if(!Object.hasOwn(dictionaries.ru,source))missing.push(path+": "+source);
+    }  }
   assert.deepEqual(missing, [], "static Russian UI text must be present in the authored dictionary");
 });
 
