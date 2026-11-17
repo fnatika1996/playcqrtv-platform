@@ -1,3 +1,4 @@
+const dateLocale=()=>window.CQRTVI18n?.locale==="en"?"en-US":window.CQRTVI18n?.locale==="ro"?"ro-RO":"ru-RU";
 const roleLabels={rifler:"Rifler",entry:"Entry",support:"Support",awper:"AWPer",igl:"IGL",lurker:"Lurker",anchor:"Anchor",flex:"Flex"};
 function countryFlag(code){const value=String(code||"").toUpperCase();if(!/^[A-Z]{2}$/.test(value))return "—";return [...value].map(letter=>String.fromCodePoint(letter.charCodeAt(0)+127397)).join("")}
 export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
@@ -36,7 +37,7 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
       if(!response.ok||!data?.user){current.textContent="Не удалось проверить аккаунт. Войдите ещё раз.";return}
       user=data.user;input.value=user.nickname;current.textContent="Сейчас установлен ник: "+user.nickname;checked=true;
       const availableAt=user.nickname_available_at?new Date(user.nickname_available_at):null;
-      if(availableAt&&availableAt>Date.now()){status.textContent="Бесплатная смена будет доступна "+availableAt.toLocaleDateString("ru-RU")+".";blocked=true}
+      if(availableAt&&availableAt>Date.now()){status.textContent="Бесплатная смена будет доступна "+availableAt.toLocaleDateString(dateLocale())+".";blocked=true}
       else{status.textContent="Бесплатная смена доступна.";blocked=false}
     }catch{current.textContent="Не удалось загрузить аккаунт. Попробуйте ещё раз."}
     finally{input.disabled=!checked;save.disabled=blocked}
@@ -57,8 +58,8 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
         byId("profile-nickname").textContent=data.nickname;byId("profile-avatar-letter").textContent=initial;
         byId("header-user-nickname").textContent=data.nickname;byId("header-avatar-initial").textContent=initial;
         current.textContent="Сейчас установлен ник: "+data.nickname;
-        if(data.nicknameAvailableAt)status.textContent="Ник изменён. Бесплатная смена будет доступна "+new Date(data.nicknameAvailableAt).toLocaleDateString("ru-RU")+".";
-      }else if(data.nicknameAvailableAt){status.textContent=(data.error||"Никнейм пока нельзя изменить.")+" Следующая смена: "+new Date(data.nicknameAvailableAt).toLocaleDateString("ru-RU")+".";blocked=true}
+        if(data.nicknameAvailableAt)status.textContent="Ник изменён. Бесплатная смена будет доступна "+new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())+".";
+      }else if(data.nicknameAvailableAt){status.textContent=(data.error||"Никнейм пока нельзя изменить.")+" Следующая смена: "+new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())+".";blocked=true}
       else blocked=false;
     }catch{status.textContent="Не удалось связаться с сервером. Попробуйте позже.";blocked=false}
     finally{save.disabled=blocked}
