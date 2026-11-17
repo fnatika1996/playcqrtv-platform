@@ -86,7 +86,18 @@ function inspectMarkup(html, path, catalogs = dictionaries, baseline = legacyHtm
       for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
     } else if (!Object.hasOwn(catalogs.ru || {}, text) || !baseline.pages?.[path]?.text?.includes(text)) errors.push(`${path}: unbound UI text “${text}”`);
   }
-  for (const meta of source.matchAll(/<meta\b([^>]*)>/gi)) {\n    const attrs = Object.fromEntries([...meta[1].matchAll(/([\w:-]+)="([^"]*)"/g)].map((item) => [item[1], item[2]]));\n    if (attrs.name?.toLowerCase() !== "description") continue;\n    const key = attrs["data-i18n-content"];\n    const content = decodeHtml(attrs.content || "").trim();\n    if (key) {\n      for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, key)) errors.push(`${path}: missing ${locale} meta translation for ${key}`);\n    } else if (!Object.hasOwn(catalogs.ru || {}, content) || !baseline.pages?.[path]?.metaDescription?.includes(content)) {\n      errors.push(`${path}: unbound meta description “${content}”`);\n    }\n  }\n  for (const match of source.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>/gi)) {
+  for (const meta of source.matchAll(/<meta\b([^>]*)>/gi)) {
+    const attrs = Object.fromEntries([...meta[1].matchAll(/([\w:-]+)="([^"]*)"/g)].map((item) => [item[1], item[2]]));
+    if (attrs.name?.toLowerCase() !== "description") continue;
+    const key = attrs["data-i18n-content"];
+    const content = decodeHtml(attrs.content || "").trim();
+    if (key) {
+      for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, key)) errors.push(`${path}: missing ${locale} meta translation for ${key}`);
+    } else if (!Object.hasOwn(catalogs.ru || {}, content) || !baseline.pages?.[path]?.metaDescription?.includes(content)) {
+      errors.push(`${path}: unbound meta description “${content}”`);
+    }
+  }
+  for (const match of source.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>/gi)) {
     const attrs = match[2] || "";
     const values = Object.fromEntries([...attrs.matchAll(/([\w:-]+)="([^"]*)"/g)].map((item) => [item[1], item[2]]));
     for (const attr of ["aria-label", "title", "placeholder", "alt"]) {
