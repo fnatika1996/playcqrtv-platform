@@ -204,6 +204,7 @@ label_secret_id=$("${label_compose[@]}" ps -q secret-init)
 test -n "$label_api_id_before" && test -n "$label_caddy_id_before" && test -n "$label_db_id" && test -n "$label_secret_id"
 label_base_api=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_api_id_before")
 label_base_db=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_db_id")
+echo "Observed Compose config_files before: api=$label_base_api db=$label_base_db ids=$label_api_id_before/$label_db_id"
 test "$label_base_api" = "$label_dir/docker-compose.yml"
 test "$label_base_db" = "$label_dir/docker-compose.yml"
 
