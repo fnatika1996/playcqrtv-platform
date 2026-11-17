@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project_name": "cqrtv-v2-staging",
+  "project_root": "/opt/cqrtv-v2-staging",
+  "compose_file": "/opt/cqrtv-v2-staging/docker-compose.yml",
+  "compose_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "allowed_signers": "/etc/cqrtv-v2-staging/allowed_signers",
+  "state_file": "/var/lib/cqrtv-v2-staging/state.json",
+  "volume_names": {
+    "postgres_data": "cqrtv-v2-staging_postgres_data",
+    "db_secret": "cqrtv-v2-staging_db_secret",
+    "caddy_data": "cqrtv-v2-staging_caddy_data",
+    "caddy_config": "cqrtv-v2-staging_caddy_config"
+  }
+}

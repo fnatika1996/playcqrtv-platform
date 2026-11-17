@@ -1,0 +1,78 @@
+name: cqrtv-v2-staging
+
+services:
+  api:
+    image: cqrtv-v2-staging-api:latest
+    container_name: cqrtv-v2-staging-api
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      secret-init:
+        condition: service_completed_successfully
+    volumes:
+      - db_secret:/run/db-secret:ro
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /run/db-secret/staging.marker"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    networks: [cqrtv-v2-staging-net]
+
+  caddy:
+    image: cqrtv-v2-staging-web:latest
+    container_name: cqrtv-v2-staging-web
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18080:80"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [cqrtv-v2-staging-net]
+
+  db:
+    image: postgres:17-alpine
+    container_name: cqrtv-v2-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cqrtv_staging
+      POSTGRES_USER: cqrtv_stage
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD:?synthetic staging password required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - db_secret:/run/db-secret:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cqrtv_stage -d cqrtv_staging"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [cqrtv-v2-staging-net]
+
+  secret-init:
+    image: alpine:3.21
+    container_name: cqrtv-v2-staging-secret-init
+    restart: "no"
+    command: ["/bin/sh", "-ec", "printf 'SYNTHETIC-STAGING-ONLY\n' > /run/db-secret/staging.marker; chmod 0444 /run/db-secret/staging.marker"]
+    volumes:
+      - db_secret:/run/db-secret
+    networks: [cqrtv-v2-staging-net]
+
+networks:
+  cqrtv-v2-staging-net:
+    name: cqrtv-v2-staging-net
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: cqrtv-v2-staging_postgres_data
+  db_secret:
+    name: cqrtv-v2-staging_db_secret
+  caddy_data:
+    name: cqrtv-v2-staging_caddy_data
+  caddy_config:
+    name: cqrtv-v2-staging_caddy_config
