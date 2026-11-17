@@ -90,9 +90,9 @@ function makeLoginControls(){
   return {nodes,document,password,visibility,visibilityIcon,form,links,back,formListeners:listeners};
 }
 test("login micro-UX keeps auth semantics and provides approved controls",()=>{
-  assert.match(html,/<a id="auth-back" href="\/" aria-label="CQRTV">← CQRTV<\/a>/);
+  assert.match(html,/<a id="auth-back" href="\/" aria-label="Вернуться на сайт" data-i18n-aria-label="common.nav.back" data-i18n="common.nav.back">← Назад<\/a>/);
   assert.match(html,/back\.classList\.add\("login-back"\)/);
-  assert.match(html,/<input id="email-input" name="email" type="email" autocomplete="email" placeholder="example@email.com" required>/);
+  assert.match(html,/<input id="email-input" name="email" type="email" autocomplete="email" placeholder="player@example.com" data-i18n-placeholder="common.email.placeholder" required>/);
   assert.match(html,/<input id="password-input" name="password" type="password" minlength="12" maxlength="128" autocomplete="current-password" placeholder="Введите пароль" required>/);
   assert.match(html,/<button id="submit" type="submit"><span class="pack-icon" data-src="\/assets\/icons\/cqrtv\/ui\/login\.svg"/);
   assert.match(html,/<script type="module" src="\/assets\/admin\/admin-icons\.mjs"><\/script>/);
@@ -134,7 +134,7 @@ test("login-only links are inserted with safe routes and no API side effects",()
   assert.match(page.links.inserted.innerHTML,/Забыли пароль\?/);
   assert.equal(page.nodes["#signup"].href,"/#signup-dialog");
   assert.equal(page.back.classList["login-back"],true);
-  assert.equal(page.back.getAttribute("aria-label"),"На главную — CQRTV");
+  assert.equal(page.back.getAttribute("aria-label"),"На главную");
   assert.match(page.back.innerHTML,/На главную/);
   assert.match(page.nodes["#signup"].innerHTML,/Нет аккаунта\?/);
   assert.equal(page.nodes[".login-hero"].hidden,false);
