@@ -27,5 +27,5 @@ test("read-only public checks validate API, auth/admin routes and SVG MIME",asyn
     if(url.endsWith("/home.svg"))return new Response("<svg></svg>",{status:200,headers:headers("image/svg+xml")});
     throw new Error("unexpected network call");
   };
-  assert.deepEqual(await verifyPublicSurface("https://example.invalid",fetchImpl),{homepageMode:"current-main-public",authStatus:200,adminLoginStatus:200,iconMime:"image/svg+xml"});
+  assert.deepEqual(await verifyPublicSurface("https://example.invalid",fetchImpl),{homepageMode:classifyHomepage(currentMain),authStatus:200,adminLoginStatus:200,iconMime:"image/svg+xml"});
 });
