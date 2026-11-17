@@ -42,6 +42,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
   const errors=[];
   page.on("pageerror",error=>errors.push(error.message));
   const adminRequests=(route==="/admin.html"||route==="/site-control-admin.html")?await installSyntheticAdminFixture(page):null;
+  if(adminRequests)await page.context().addCookies([{name:"cqrtv_qa_admin",value:"valid",domain:base.hostname,path:"/",httpOnly:true,sameSite:"Lax"}]);
   const adminReady=adminRequests?page.waitForResponse(response=>new URL(response.url()).pathname==="/api/admin/me",{timeout:10000}):null;
   await page.setViewportSize({width,height});
   await page.goto(new URL(route,base).href,{waitUntil:"domcontentloaded",timeout:30000});
