@@ -13,6 +13,23 @@ const widths=[1440,1024,760,390,375,320];
 const browser=await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
 const player={nickname:"ClutchAce",country:"MD",primary_role:"awper",secondary_roles:["rifler"],nickname_available_at:null};
 try{
+  const beforeBaseUrl=process.env.CQRTV_QA_BEFORE_URL;
+  if(!beforeBaseUrl)throw new Error("CQRTV_QA_BEFORE_URL must point to an isolated baseline built from the PR base.");
+  for(const width of [1440,390]){
+    const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});
+    await context.route("**/api/**",async route=>{
+      const body=route.request().url().endsWith("/api/auth/me")?{user:null}:{};
+      await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(body)});
+    });
+    const page=await context.newPage();
+    const response=await page.goto(beforeBaseUrl,{waitUntil:"domcontentloaded"});
+    assert.equal(response?.status(),200,`baseline homepage should load at ${width}px`);
+    assert.match(await page.title(),/CQRTV/);
+    await page.waitForTimeout(300);
+    await page.screenshot({path:path.join(screenshotDir,`home-v31-before-${width}.png`),fullPage:true});
+    await context.close();
+    console.log(`PASS baseline homepage screenshot at ${width}px`);
+  }
   for(const width of widths){
     const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});
     let user=null,registerPosts=0,logoutPosts=0,meCalls=0;
