@@ -124,6 +124,8 @@ test("a future raw UI literal is rejected while a semantically keyed new page pa
     en: { "fixture.dashboard.title": "New competitive dashboard" },
     ro: { "fixture.dashboard.title": "Panou competitiv nou" }
   };
+  const catalogOnlyRaw = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1>New competitive dashboard</h1></main></body></html>", "future-page.html", catalogs, { pages: {} });
+  assert.ok(catalogOnlyRaw.some((item) => item.includes("unbound UI text")), "adding an untranslated literal to the legacy-key catalog cannot bypass semantic binding");
   const semantic = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1 data-i18n=\"fixture.dashboard.title\">Новая соревновательная панель</h1></main></body></html>", "future-page.html", catalogs);
   // Validate fixture catalog parity through the same key contract as production catalogs.
   for (const locale of locales) assert.equal(typeof catalogs[locale]["fixture.dashboard.title"], "string");
