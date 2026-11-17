@@ -221,8 +221,10 @@ test "$label_after_caddy" = "$expected_label_files"
 test "$("${label_compose[@]}" ps -q db)" = "$label_db_id"
 test "$("${label_compose[@]}" ps -aq secret-init)" = "$label_secret_id"
 label_db_mounts=$(docker inspect --format '{{range .Mounts}}{{.Name}}:{{.Destination}};{{end}}' "$label_db_id")
+echo "Observed protected DB mount identities: $label_db_mounts"
 [[ "$label_db_mounts" == *"$label_project_db_secret:/run/db-secret;"* ]]
 [[ "$label_db_mounts" == *"$label_project_postgres_data:/var/lib/postgresql/data;"* ]]
+echo "Observed protected container IDs after selected up: db=$("${label_compose[@]}" ps -q db) secret-init=$("${label_compose[@]}" ps -aq secret-init)"
 label_api_target_id=$label_api_id_after
 label_caddy_target_id=$label_caddy_id_after
 
