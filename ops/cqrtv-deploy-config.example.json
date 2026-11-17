@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project_name": "playcqrtv",
+  "project_root": "/docker/playcqrtv",
+  "compose_file": "/docker/playcqrtv/docker-compose.yml",
+  "compose_sha256": "REPLACE_WITH_REVIEWED_64_HEX_SHA256",
+  "allowed_signers": "/etc/cqrtv-deploy/allowed_signers",
+  "state_file": "/var/lib/cqrtv-deploy/state.json",
+  "volume_names": {
+    "postgres_data": "playcqrtv_postgres_data",
+    "db_secret": "playcqrtv_db_secret",
+    "caddy_data": "playcqrtv_caddy_data",
+    "caddy_config": "playcqrtv_caddy_config"
+  }
+}

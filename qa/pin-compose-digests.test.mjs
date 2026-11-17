@@ -73,9 +73,14 @@ test("confirmed baseline digests render as a separate fail-closed rollback manif
 });
 
 
-test("release manifest transfer is verified against its SHA-256",()=>{
-  assert.match(deploymentWorkflow,/manifest_sha256=\$\(sha256sum/);
-  assert.match(deploymentWorkflow,/sha256sum %q/);
+test("release request binds the exact manifest hash and is signed before restricted SSH", () => {
+  const requestBuilder = fs.readFileSync(path.join(repoRoot, "qa", "create-deploy-request.mjs"), "utf8");
+  assert.match(requestBuilder, /createHash\("sha256"\)\.update\(manifest\)\.digest\("hex"\)/);
+  assert.match(requestBuilder, /lstatSync\(manifestPath\)/);
+  assert.match(deploymentWorkflow, /ssh-keygen -Y sign/);
+  assert.match(deploymentWorkflow, /CQRTV-DEPLOY-REQUEST-V1/);
+  assert.match(deploymentWorkflow, /\|\s*ssh -i/);
+  assert.doesNotMatch(deploymentWorkflow, /\bscp\b|bash -s|sha256sum %q|manifest_sha256=\$\(sha256sum/);
 });
 
 test("release workflow third-party actions are pinned to immutable commit SHAs",()=>{
@@ -95,7 +100,11 @@ test("production workflow is manual, protected and uses immutable Compose refs",
   assert.match(deploymentWorkflow, /steps\.build-web\.outputs\.digest/);
   assert.match(deploymentWorkflow, /steps\.build-api\.outputs\.digest/);
   assert.match(deploymentWorkflow, /docker-compose\.release\.yml/);
-  assert.match(deploymentWorkflow, /Reconcile and apply exact Compose digests over SSH/);
+  assert.match(deploymentWorkflow, /Create signed release request and use restricted SSH command/);
+  assert.match(deploymentWorkflow, /CQRTV_RELEASE_SIGNING_KEY/);
+  assert.match(deploymentWorkflow, /CQRTV_PROJECT_ROOT/);
+  assert.match(remoteScript, /Direct deployment is disabled/);
+  assert.doesNotMatch(remoteScript, /docker compose|bash -s|eval /);
   assert.doesNotMatch(deploymentWorkflow, /HOSTINGER_API_KEY|qa\/hostinger-deploy\.mjs|playcqrtv-platform:latest|playcqrtv-api:latest/);
   assert.doesNotMatch(remoteScript, /docker compose down\s+-v|docker rm\s+-f/);
   assert.ok(deployClient.includes("Do not retry UPDATE"), "legacy Hostinger client remains covered but is not wired to production workflow");
