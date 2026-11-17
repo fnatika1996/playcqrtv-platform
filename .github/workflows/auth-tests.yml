@@ -5,6 +5,9 @@ on:
     branches: [main, fix/account-auth-flows-2026-11-15, feat/deployment-v2-2026-11-17, feat/public-site-phase1-2026-11-17]
     paths:
       - index.html
+      - profile.html
+      - assets/player-profile.css
+      - assets/player-profile.mjs
       - auth.html
       - site-closed.html
       - site-control-admin.html
@@ -83,6 +86,8 @@ jobs:
 
       - name: Check API syntax
         run: node --check api/server.mjs
+      - name: Check player profile module syntax
+        run: node --check assets/player-profile.mjs
       - name: Check registration role module syntax
         run: node --check assets/registration-roles.mjs
       - name: Check admin route and bootstrap syntax
@@ -225,6 +230,9 @@ jobs:
           fetch /assets/icons/cqrtv/ui/mail.svg "$RUNNER_TEMP/mail.svg"
           fetch /assets/icons/cqrtv/ui/shield.svg "$RUNNER_TEMP/shield.svg"
           fetch / "$RUNNER_TEMP/player-home.html"
+          fetch /profile.html "$RUNNER_TEMP/player-profile.html"
+          fetch /assets/player-profile.css "$RUNNER_TEMP/player-profile.css"
+          fetch /assets/player-profile.mjs "$RUNNER_TEMP/player-profile.mjs"
           fetch /auth.html "$RUNNER_TEMP/player-auth.html"
           sha256sum "$RUNNER_TEMP/admin-hero.png"
           for file in "$RUNNER_TEMP/admin-login.html.headers" "$RUNNER_TEMP/admin.html.headers" "$RUNNER_TEMP/admin-hero.png.headers" "$RUNNER_TEMP/mail.svg.headers" "$RUNNER_TEMP/shield.svg.headers"; do
@@ -261,6 +269,8 @@ jobs:
           node qa/admin-playwright.mjs
           node qa/site-control-playwright.mjs
           node qa/public-site-playwright.mjs
+          node qa/profile-playwright.mjs
+          node qa/profile-playwright.mjs
 
       - name: Upload non-sensitive browser screenshots
         id: upload-screenshots

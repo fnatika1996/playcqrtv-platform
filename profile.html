@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101113">
+  <title>Мой профиль — CQRTV</title>
+  <meta name="description" content="Профиль игрока CQRTV: игровая роль, страна и доступные разделы аккаунта.">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;500;600;700;800&family=Teko:wght@500;600;700&display=swap');
+  </style>
+  <link rel="stylesheet" href="/assets/player-profile.css">
+  <script type="module" src="/assets/admin/admin-icons.mjs"></script>
+  <script type="module">
+    import { bindAuthHeader } from "/assets/auth-header.mjs";
+    import { bindPlayerProfile } from "/assets/player-profile.mjs";
+    const session=bindAuthHeader(document);
+    bindPlayerProfile(document,session);
+  </script>
+</head>
+<body class="player-profile-page">
+  <header class="profile-topbar">
+    <button id="profile-menu-toggle" class="profile-menu-toggle" type="button" aria-label="Открыть меню" aria-controls="profile-mobile-navigation" aria-expanded="false"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/reorder.svg" aria-hidden="true"></span></button>
+    <a class="profile-brand" href="/" aria-label="CQRTV — главная"><span class="profile-brand-mark">C</span><span class="profile-brand-name">CQ<span>R</span>TV</span></a>
+    <nav class="profile-topnav" aria-label="Основная навигация">
+      <a href="/">Главная</a>
+      <a href="/#play">Матчмейкинг</a>
+      <a href="/#tournaments">Турниры</a>
+      <a href="/#leaderboard">Лидерборд</a>
+    </nav>
+    <div class="profile-top-actions">
+      <button id="profile-search" class="profile-icon-button" type="button" aria-label="Поиск — скоро" title="Поиск — скоро" disabled><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/search.svg" aria-hidden="true"></span></button>
+      <button id="profile-notifications" class="profile-icon-button" type="button" aria-label="Уведомления — скоро" title="Уведомления — скоро" disabled><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/bell.svg" aria-hidden="true"></span></button>
+      <a id="signup-open" class="profile-auth-action" href="/#signup-dialog" hidden>Создать аккаунт</a>
+      <a id="login-link" class="profile-auth-action" href="/auth.html" hidden>Войти</a>
+      <span id="auth-header-status" class="profile-auth-status" role="status" aria-live="polite">Проверяем аккаунт…</span>
+      <div id="auth-user-menu" class="profile-user-menu" hidden>
+        <a class="profile-header-avatar" href="/profile.html" aria-label="Открыть мой профиль"><span id="header-avatar-initial" aria-hidden="true"></span></a>
+        <span id="header-user-nickname" class="profile-header-nickname"></span>
+        <button id="logout-btn" class="profile-logout-button" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/logout.svg" aria-hidden="true"></span>Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <nav id="profile-mobile-navigation" class="profile-mobile-navigation" aria-label="Мобильное меню" hidden>
+    <a href="/">Главная</a>
+    <a href="/#play">Матчмейкинг</a>
+    <a href="/#tournaments">Турниры</a>
+    <a href="/#leaderboard">Лидерборд</a>
+    <a href="#overview">Мой профиль</a>
+    <a href="#settings">Настройки</a>
+  </nav>
+
+  <div class="profile-app-shell">
+    <aside class="profile-sidebar" aria-label="Навигация по профилю">
+      <span class="profile-sidebar-label">АККАУНТ</span>
+      <nav>
+        <a class="profile-sidebar-link is-current" href="#overview" data-profile-section aria-current="page"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span><span>Мой профиль</span></a>
+        <a class="profile-sidebar-link" href="#stats" data-profile-section><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chart.svg" aria-hidden="true"></span><span>Статистика</span></a>
+        <a class="profile-sidebar-link" href="#matches" data-profile-section><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span><span>Матчи</span></a>
+        <a class="profile-sidebar-link" href="#achievements" data-profile-section><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/cup.svg" aria-hidden="true"></span><span>Достижения</span></a>
+        <span class="profile-sidebar-link is-disabled" aria-disabled="true"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/shield-user.svg" aria-hidden="true"></span><span>Инвентарь</span><small>Скоро</small></span>
+        <a class="profile-sidebar-link" href="#settings" data-profile-section><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/edit.svg" aria-hidden="true"></span><span>Настройки</span></a>
+      </nav>
+      <div class="profile-sidebar-foot"><span class="profile-sidebar-dot" aria-hidden="true"></span>Профиль игрока</div>
+    </aside>
+
+    <main class="profile-main">
+      <div id="profile-loading" class="profile-loading" role="status" aria-live="polite">Загружаем профиль…</div>
+
+      <section id="profile-guest" class="profile-guest-card" hidden aria-labelledby="profile-guest-title">
+        <span class="profile-empty-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span></span>
+        <span class="profile-eyebrow">CQRTV PLAYER PROFILE</span>
+        <h1 id="profile-guest-title">Войдите, чтобы открыть профиль</h1>
+        <p id="profile-guest-description">Данные профиля доступны только владельцу аккаунта CQRTV.</p>
+        <a id="profile-guest-login" class="profile-primary-action" href="/auth.html"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/login.svg" aria-hidden="true"></span>Войти в аккаунт</a>
+      </section>
+
+      <div id="profile-content" hidden>
+        <section id="overview" class="profile-identity-card" aria-labelledby="profile-title">
+          <div class="profile-banner-sweep" aria-hidden="true"></div>
+          <div class="profile-identity-main">
+            <div class="profile-avatar" aria-hidden="true"><span id="profile-avatar-letter"></span></div>
+            <div class="profile-identity-copy">
+              <span class="profile-eyebrow">ПРОФИЛЬ ИГРОКА</span>
+              <h1 id="profile-title"><span id="profile-nickname"></span><span id="profile-email-verified" class="profile-verified-badge" role="img" aria-label="Аккаунт подтверждён" title="Аккаунт подтверждён" hidden>✓</span></h1>
+              <div class="profile-identity-meta">
+                <span class="profile-country"><span id="profile-country-flag" aria-label="Флаг страны">—</span><span id="profile-country-code"></span></span>
+                <span class="profile-role-pill"><span id="profile-role"></span></span>
+                <span id="profile-secondary-roles" class="profile-secondary-roles"></span>
+              </div>
+            </div>
+            <button id="profile-edit-btn" class="profile-secondary-action" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/edit.svg" aria-hidden="true"></span>Редактировать профиль</button>
+          </div>
+        </section>
+
+        <nav class="profile-tabs" aria-label="Разделы профиля">
+          <a class="profile-tab is-current" href="#overview" data-profile-section aria-current="page">Обзор</a>
+          <a class="profile-tab" href="#stats" data-profile-section>Статистика</a>
+          <a class="profile-tab" href="#matches" data-profile-section>Матчи</a>
+          <a class="profile-tab" href="#achievements" data-profile-section>Достижения</a>
+        </nav>
+
+        <div class="profile-content-grid profile-primary-grid">
+          <section class="profile-panel elo-panel" aria-labelledby="elo-heading">
+            <div class="profile-panel-heading">
+              <div><span class="profile-panel-kicker">РЕЙТИНГ</span><h2 id="elo-heading">Рейтинг (ELO)</h2></div>
+              <span class="profile-panel-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/ranking.svg" aria-hidden="true"></span></span>
+            </div>
+            <div class="elo-empty-state">
+              <span class="elo-empty-mark" aria-hidden="true"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/ranking.svg" aria-hidden="true"></span></span>
+              <p>Рейтинг появится после запуска матчмейкинга</p>
+            </div>
+          </section>
+
+          <section id="stats" class="profile-panel stats-panel" aria-labelledby="stats-heading">
+            <div class="profile-panel-heading">
+              <div><span class="profile-panel-kicker">ПОКАЗАТЕЛИ</span><h2 id="stats-heading">Основная статистика</h2></div>
+              <span class="profile-panel-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chart.svg" aria-hidden="true"></span></span>
+            </div>
+            <div class="profile-stat-grid">
+              <div class="profile-stat"><span>Матчи</span><strong>—</strong></div>
+              <div class="profile-stat"><span>Победы</span><strong>—</strong></div>
+              <div class="profile-stat"><span>K/D</span><strong>—</strong></div>
+              <div class="profile-stat"><span>Винрейт</span><strong>—</strong></div>
+            </div>
+            <p class="profile-panel-note">Статистика появится после первых матчей.</p>
+          </section>
+        </div>
+
+        <div class="profile-content-grid profile-secondary-grid">
+          <section id="matches" class="profile-panel matches-panel" aria-labelledby="matches-heading">
+            <div class="profile-panel-heading">
+              <div><span class="profile-panel-kicker">ИСТОРИЯ</span><h2 id="matches-heading">Последние матчи</h2></div>
+              <span class="profile-panel-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span></span>
+            </div>
+            <div class="profile-empty-row">
+              <span class="profile-empty-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span></span>
+              <div><h3>Матчей пока нет</h3><p>После запуска матчмейкинга здесь появится история игр.</p></div>
+            </div>
+          </section>
+
+          <section class="profile-panel about-panel" aria-labelledby="about-heading">
+            <div class="profile-panel-heading">
+              <div><span class="profile-panel-kicker">ИГРОК</span><h2 id="about-heading">О себе</h2></div>
+              <span class="profile-panel-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span></span>
+            </div>
+            <dl class="profile-about-list">
+              <div><dt>Страна</dt><dd><span id="about-country-flag"></span><span id="about-country-code"></span></dd></div>
+              <div><dt>Основная роль</dt><dd id="about-primary-role">—</dd></div>
+              <div><dt>Дополнительные роли</dt><dd id="about-secondary-roles">—</dd></div>
+            </dl>
+            <p class="profile-panel-note">Описание и привязки аккаунтов появятся позже.</p>
+          </section>
+        </div>
+
+        <section id="achievements" class="profile-panel achievements-panel" aria-labelledby="achievements-heading">
+          <div class="profile-panel-heading">
+            <div><span class="profile-panel-kicker">ПРОГРЕСС</span><h2 id="achievements-heading">Достижения</h2></div>
+            <span class="profile-panel-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/cup.svg" aria-hidden="true"></span></span>
+          </div>
+          <div class="profile-empty-row">
+            <span class="profile-empty-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/cup.svg" aria-hidden="true"></span></span>
+            <div><h3>Достижения появятся после первых матчей</h3><p>Здесь будут только результаты, подтверждённые игровыми данными CQRTV.</p></div>
+          </div>
+        </section>
+
+        <section id="settings" class="profile-panel settings-panel" aria-labelledby="settings-heading">
+          <div class="profile-panel-heading">
+            <div><span class="profile-panel-kicker">АККАУНТ</span><h2 id="settings-heading">Настройки</h2></div>
+            <span class="profile-panel-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/edit.svg" aria-hidden="true"></span></span>
+          </div>
+          <div class="settings-row">
+            <div><h3>Игровой никнейм</h3><p>Доступно изменение никнейма; другие поля редактируются в будущем.</p></div>
+            <button class="profile-secondary-action" type="button" data-open-nickname-editor>Изменить никнейм</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="nickname-dialog" class="profile-nickname-dialog" aria-labelledby="nickname-dialog-title">
+    <div class="nickname-shell">
+      <div class="nickname-heading-row"><h2 id="nickname-dialog-title">Игровой никнейм</h2><button id="nickname-dialog-close" class="nickname-close" type="button" aria-label="Закрыть">×</button></div>
+      <p id="nickname-current" class="nickname-current">Проверяем аккаунт…</p>
+      <form id="nickname-form" class="nickname-form">
+        <label for="nickname-change-input">Новый никнейм</label>
+        <input id="nickname-change-input" name="nickname" autocomplete="nickname" minlength="3" maxlength="24" required>
+        <p class="nickname-policy">Уникальный игровой никнейм должен содержать от 3 до 24 символов.</p>
+        <p id="nickname-change-status" class="nickname-status" role="status" aria-live="polite"></p>
+        <button class="profile-primary-action nickname-submit" type="submit">Сохранить никнейм</button>
+      </form>
+    </div>
+  </dialog>
+</body>
+</html>

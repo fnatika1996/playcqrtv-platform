@@ -87,9 +87,9 @@ test("player profile is private until a valid session exists and clears on logou
   assert.equal(ids["member-actions"].hidden,false);
   assert.equal(ids["player-welcome"].hidden,false);
   assert.equal(ids["player-welcome"].textContent,"С возвращением, ClutchAce");
-  assert.equal(ids["sidebar-profile-link"].href,"#player-profile");
-  assert.equal(ids["mobile-menu-profile-link"].href,"#player-profile");
-  assert.equal(ids["mobile-profile-link"].href,"#player-profile");
+  assert.equal(ids["sidebar-profile-link"].href,"/profile.html");
+  assert.equal(ids["mobile-menu-profile-link"].href,"/profile.html");
+  assert.equal(ids["mobile-profile-link"].href,"/profile.html");
   assert.equal(document.body.dataset.accountState,"authenticated");
 
   notifySession(null);
