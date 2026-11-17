@@ -164,6 +164,18 @@ test("a future raw UI literal is rejected while a semantically keyed new page pa
   assert.deepEqual(semantic, [], "a new page with an authored semantic key should pass");
 });
 
+test("future UI source literals require semantic keys", () => {
+  const catalogs = {
+    ru: { "fixture.panel.title": "Панель пользователя", "fixture.future": "Новая функция" },
+    en: { "fixture.panel.title": "User dashboard", "fixture.future": "New feature" },
+    ro: { "fixture.panel.title": "Panoul utilizatorului", "fixture.future": "Funcție nouă" }
+  };
+  const raw = inspectRawSourceLiterals('const heading = "New feature";', "assets/future-panel.mjs", catalogs);
+  assert.ok(raw.some((item) => item.includes("new or untranslated raw UI literal")), "new raw JS UI text must fail CI");
+  const semantic = inspectRawSourceLiterals('const heading = t("fixture.panel.title");', "assets/future-panel.mjs", catalogs);
+  assert.deepEqual(semantic, [], "new UI text using a stable semantic key with three authored translations should pass");
+});
+
 test("locale catalogs preserve interpolation parameters", () => {
   const placeholders = (value) => [...value.matchAll(/\{([\w]+)\}/g)].map((match) => match[1]).sort();
   for (const [key, russian] of Object.entries(dictionaries.ru)) {
