@@ -24,7 +24,7 @@ async function installSyntheticAdminFixture(page) {
     let body={};
     if(url.pathname==="/api/admin/me") body={csrfToken:"qa-csrf",user:{emailMasked:"admin@example.test",nickname:"CQRTV QA"}};
     else if(url.pathname==="/api/admin/stats") body={total_users:0,verified_users:0,suspended_users:0};
-    else if(url.pathname==="/api/admin/users") body={users:[],pagination:{total:0,limit:20,offset:0}};
+    else if(url.pathname==="/api/admin/users") body={users:[{id:41,nickname:"QA_PLAYER",email:"qa@example.test",country:"RO",primary_role:"rifler",secondary_roles:[],created_at:"2026-11-17T12:00:00.000Z",email_verified:true,account_status:"active"}],pagination:{total:1,limit:20,offset:0}};
     else if(url.pathname==="/api/admin/audit") body={events:[],pagination:{total:0,limit:20,offset:0}};
     else if(url.pathname==="/api/admin/site-control") body={settings:{mode:"open",heading:"",subtitle:"",description:"",statusLabel:"",maintenanceHeading:"",maintenanceSubtitle:"",maintenanceDescription:"",maintenanceStatusLabel:"",aboutButtonLabel:"",aboutTitle:"",aboutBody:"",launchAt:null,countdownEnabled:false,animationEnabled:false,backgroundAssetId:null},socialLinks:[]};
     await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(body)});
@@ -82,6 +82,19 @@ async function check(page,route,locale,width,height,screenshot=false) {
   }
   assert.deepEqual(errors,[],`browser errors on ${route}: ${errors.join("; ")}`);
   if(route==="/admin.html"||route==="/site-control-admin.html")assert.ok(adminRequests.length>0,`synthetic authorized fixture was not used for ${route}`);
+  if(route==="/admin.html"&&width>=720){
+    await page.locator('[data-view="users"]').first().click();
+    const action=page.locator('#users button[data-action="suspend"]').first();
+    await action.waitFor({state:"visible",timeout:8000});
+    await action.click();
+    const dialog=page.locator('#modal[role="dialog"]');
+    await dialog.waitFor({state:"visible",timeout:5000});
+    const dialogText=await dialog.innerText();
+    assert.ok(dialogText.length>0,"synthetic admin confirmation dialog is rendered");
+    if(locale!=="ru")assert.ok(!/[\\u0400-\\u04ff]/.test(dialogText),`admin confirmation remains Russian in ${locale}: ${dialogText}`);
+    await page.locator("#cancel").click();
+    assert.ok(await page.locator("#modal").evaluate(element=>element.classList.contains("hidden")),"cancel closes the synthetic confirmation dialog without an API mutation");
+  }
   if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-${width}.png`,artifactDir).pathname,fullPage:true});
   return true;
 }
