@@ -194,6 +194,7 @@ jobs:
           API_IMAGE_REF: ${{ needs.build-release.outputs.api_ref }}
           PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
           PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
+          LEGACY_HANDOFF_APPROVED: ${{ inputs.legacy_handoff_approved }}
         run: |
           set -euo pipefail
           : "${CQRTV_SSH_HOST:?Configure the production Environment variable CQRTV_SSH_HOST}"
