@@ -209,7 +209,8 @@ class ContainerImageIdentityTests(unittest.TestCase):
             "\t/docker/playcqrtv/docker-compose.yml\t/docker/playcqrtv"
             "\talpine:3.21\tsha256:" + "2" * 64 + "\texited\tnone\t0"
         ).encode()
-        mount = b"volume\tplaycqrtv_db_secret\t/run/db-secret\n"
+        # Docker inspect --format adds a final newline after the template output.
+        mount = b"volume\tplaycqrtv_db_secret\t/run/db-secret\n\n"
         outputs = [line, mount]
         def runner(args, **kwargs):
             return subprocess.CompletedProcess(args, 0, stdout=outputs.pop(0), stderr=b"")
