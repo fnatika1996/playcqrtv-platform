@@ -100,15 +100,30 @@ try {
     await page.waitForSelector("[data-cqrtv-language-switcher] select");
     const defaultLocale=await page.evaluate(()=>document.documentElement.lang);
     assert.equal(defaultLocale,"ru","unsupported browser locales fall back to Russian");
-    await page.evaluate(value=>localStorage.setItem("cqrtv.locale",value),"ro");
+    for(const next of ["en","ro","ru"]){
+      await page.locator("[data-cqrtv-language-switcher] select").selectOption(next);
+      await page.waitForFunction(expected=>document.documentElement.lang===expected,next);
+      assert.equal(await page.evaluate(()=>localStorage.getItem("cqrtv.locale")),next,"active language choice persists");
+    }
+    await page.goto(new URL("/rules.html",base).href,{waitUntil:"domcontentloaded"});
+    await page.waitForFunction(()=>document.documentElement.lang==="ru");
     await page.reload({waitUntil:"domcontentloaded"});
-    await page.waitForFunction(()=>document.documentElement.lang==="ro");
+    await page.waitForFunction(()=>document.documentElement.lang==="ru");
     await page.route("**/api/auth/verify",route=>route.abort("failed"));
     await page.goto(new URL("/auth.html?mode=verify&token=cqrtv-invalid-qa&lang=en",base).href,{waitUntil:"domcontentloaded"});
     await page.waitForFunction(()=>document.querySelector("#verify-error-message")?.textContent?.length>0,{timeout:10000});
-    const verifyState=await page.evaluate(()=>({lang:document.documentElement.lang,text:document.querySelector("#verify-error-message")?.textContent||""}));
+    const verifyState=await page.evaluate(()=>({lang:document.documentElement.lang,text:document.querySelector("#verify-error-message")?.textContent||"",switcher:!!document.querySelector("[data-cqrtv-language-switcher] select")}));
     assert.equal(verifyState.lang,"en","auth link locale overrides prior preference");
-    assert.ok(verifyState.text&&!/[\u0400-\u04ff]/.test(verifyState.text),"network error is visible and localized");
+    assert.ok(verifyState.text&&!/[\\u0400-\\u04ff]/.test(verifyState.text),"network error is visible and localized");
+    assert.ok(verifyState.switcher,"language switcher remains available during API network error");
+    await page.unroute("**/api/auth/verify");
+    await page.route("**/api/site-control/public",route=>route.abort("failed"));
+    await page.goto(new URL("/site-closed.html",base).href,{waitUntil:"domcontentloaded"});
+    const closedSwitcher=page.locator("[data-cqrtv-language-switcher] select");
+    await closedSwitcher.waitFor({state:"visible",timeout:8000});
+    await closedSwitcher.selectOption("ro");
+    await page.waitForFunction(()=>document.documentElement.lang==="ro");
+    assert.ok(await closedSwitcher.isVisible(),"language switcher remains available when status API is offline");
     await context.close();
   }
 } finally { await browser.close(); }
