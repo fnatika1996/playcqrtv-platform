@@ -49,7 +49,7 @@ class SigningFixture(unittest.TestCase):
         self.allowed_signers.write_text(
             'cqrtv-release namespaces="cqrtv-release" ' + public_fields[0] + " " + public_fields[1] + "\n"
         )
-        os.chmod(self.allowed_signers, 0o600)
+        os.chmod(self.allowed_signers, 0o400)
 
     def sign_raw(self, raw):
         source = self.directory / "payload.json"
@@ -105,7 +105,7 @@ class SigningFixture(unittest.TestCase):
         _, signature_spaced = self.sign_raw(spaced)
         with self.assertRaises(agent.DeployError):
             agent.decode_frame(
-                self.frame(spaced, pathlib.Path(str(source) + ".sig").read_bytes()),
+                self.frame(spaced, signature_spaced),
                 str(self.allowed_signers), owner_uid=os.getuid(),
             )
         with self.assertRaises(agent.DeployError):
