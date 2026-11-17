@@ -44,7 +44,7 @@ function t(key, params = {}, fallback = "") {
 }
 function ignored(node) {
   const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
-  return Boolean(element?.closest('script,style,noscript,input,textarea,select,[contenteditable="true"],[data-i18n-ignore],.user-generated,.custom-announcement,.social-links,#header-user-nickname,#profile-nickname,.profile-header-nickname,.profile-nickname,.profile-about-list dd,#social-links a,.social-item strong,.social-item small'));
+  return Boolean(element?.closest('script,style,noscript,[contenteditable="true"],[data-i18n-ignore],.user-generated,.custom-announcement,.social-links,#header-user-nickname,#profile-nickname,.profile-header-nickname,.profile-nickname,.profile-about-list dd,#social-links a,.social-item strong,.social-item small'));
 }
 function translateText(node) {
   if (!node || node.nodeType !== Node.TEXT_NODE || ignored(node) || node.parentElement?.hasAttribute("data-i18n")) return;
