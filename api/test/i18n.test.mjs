@@ -72,7 +72,7 @@ async function discoverAppSourceModules(root = projectRootPath) {
       if (entry.isDirectory()) {
         if (ignoredSourceDirectories.has(entry.name) || path === "api/test") continue;
         await walk(path);
-      } else if (entry.isFile() && /\\.(?:mjs|js)$/i.test(entry.name) && !sourceModuleExclusions.has(path)) {
+      } else if (entry.isFile() && /\.(?:mjs|js)$/i.test(entry.name) && !sourceModuleExclusions.has(path)) {
         found.push(path);
       }
     }
@@ -241,7 +241,7 @@ test("new app modules imported by a route are discovered and must localize every
     await writeFile(join(root, "index.html"), '<!doctype html><script type="module" src="/assets/features/future-feature.mjs"></script>');
     await writeFile(moduleFile, 'export const title = "Future dashboard";');
     const route = await readFile(join(root, "index.html"), "utf8");
-    assert.match(route, /src="\\/assets\\/features\\/future-feature\\.mjs"/, "fixture route imports the previously unlisted module");
+    assert.ok(route.includes('src="/assets/features/future-feature.mjs"'), "fixture route imports the previously unlisted module");
     let result = await lintAppSourceTree(root);
     assert.ok(result.files.includes(modulePath), "recursive app-source discovery finds nested new modules");
     assert.ok(result.errors.some((item) => item.includes("new raw source literal")), "a newly imported raw label fails through the production discovery and lint path");
