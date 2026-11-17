@@ -20,12 +20,26 @@ function detectLocale() {
 }
 let locale = detectLocale();
 const initialLocale = locale;
-function t(key, params = {}) {
-  let value = dictionaries[locale]?.[key] ?? key;
+const missingKeys = new Set();
+function reportMissing(key, context = "runtime") {
+  const id = `${locale}:${key}`;
+  if (missingKeys.has(id)) return;
+  missingKeys.add(id);
+  const detail = { locale, key, context };
+  window.dispatchEvent(new CustomEvent("cqrtv:i18nmissing", { detail }));
+  if (location.hostname === "localhost" || new URLSearchParams(location.search).has("i18nDebug")) {
+    console.warn("[CQRTV i18n] Missing authored translation", detail);
+  }
+}
+function t(key, params = {}, fallback = "") {
+  const catalog = dictionaries[locale];
+  const hasTranslation = Object.prototype.hasOwnProperty.call(catalog || {}, key);
+  if (!hasTranslation) reportMissing(key);
+  let value = hasTranslation ? catalog[key] : fallback;
   value = String(value).replace(/\{([\w]+)\}/g, (match, name) =>
     Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match
   );
-  localizedResults.set(value, { key, params: { ...params } });
+  localizedResults.set(value, { key, params: { ...params }, fallback });
   return value;
 }
 function ignored(node) {
@@ -50,18 +64,37 @@ function translateText(node) {
   const translated = leading + t(key, textParams.get(node) || {}) + trailing;
   if (node.nodeValue !== translated) node.nodeValue = translated;
 }
+function applyExplicitBindings(element) {
+  if (ignored(element)) return;
+  const params = (() => { try { return JSON.parse(element.dataset.i18nParams || "{}"); } catch { return {}; } })();
+  const contentKey = element.dataset.i18n;
+  if (contentKey) {
+    const source = element.dataset.i18nFallback || element.textContent || "";
+    if (Object.hasOwn(dictionaries[locale] || {}, contentKey)) element.textContent = t(contentKey, params, source);
+    else { reportMissing(contentKey, "data-i18n"); if (element.dataset.i18nFallback) element.textContent = element.dataset.i18nFallback; }
+  }
+  for (const attr of ["placeholder", "title", "aria-label", "alt"]) {
+    const key = element.getAttribute(`data-i18n-${attr}`);
+    if (!key) continue;
+    const fallback = element.getAttribute(attr) || "";
+    if (Object.hasOwn(dictionaries[locale] || {}, key)) element.setAttribute(attr, t(key, params, fallback));
+    else { reportMissing(key, `data-i18n-${attr}`); if (!fallback && element.dataset.i18nFallback) element.setAttribute(attr, element.dataset.i18nFallback); }
+  }
+}
 function translateAttributes(root = document) {
   const nodes = [];
   if (root.nodeType === Node.ELEMENT_NODE) nodes.push(root);
-  nodes.push(...root.querySelectorAll?.("[placeholder],[title],[aria-label],[alt]") || []);
+  nodes.push(...root.querySelectorAll?.("[placeholder],[title],[aria-label],[alt],[data-i18n],[data-i18n-placeholder],[data-i18n-title],[data-i18n-aria-label],[data-i18n-alt]") || []);
   for (const element of nodes) {
     if (ignored(element)) continue;
+    applyExplicitBindings(element);
     for (const attr of ["placeholder", "title", "aria-label", "alt"]) {
       const value = element.getAttribute?.(attr);
       if (value && !originalAttributes.has(element)) originalAttributes.set(element, {});
       const saved = originalAttributes.get(element);
       if (value && saved && !Object.prototype.hasOwnProperty.call(saved, attr)) saved[attr] = value;
-      const source = saved?.[attr] || value;
+      const key = element.getAttribute(`data-i18n-${attr}`);
+      const source = key || saved?.[attr] || value;
       if (source && Object.prototype.hasOwnProperty.call(dictionaries.ru, normalize(source))) {
         element.setAttribute(attr, t(normalize(source)));
       }
@@ -149,6 +182,6 @@ function initialize() {
   });
   observer.observe(document.body, {subtree:true,childList:true,characterData:true});
 }
-window.CQRTVI18n = Object.freeze({t, get locale(){return locale;}, setLocale, dictionaries, initialLocale});
+window.CQRTVI18n = Object.freeze({t, bind: translateTree, get locale(){return locale;}, setLocale, dictionaries, initialLocale, missingKeys});
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initialize, {once:true});
 else initialize();
