@@ -55,10 +55,12 @@ test("dynamic API messages used by account and admin UI are translated", async (
 
 
 const projectRoot = new URL("../../", import.meta.url);
-async function discoverRootPages() {
-  const entries = await readdir(projectRoot, { withFileTypes: true });
+function selectRootHtmlEntrypoints(entries) {
   return entries.filter((entry) => entry.isFile() && entry.name.endsWith(".html"))
     .map((entry) => entry.name).sort();
+}
+async function discoverRootPages() {
+  return selectRootHtmlEntrypoints(await readdir(projectRoot, { withFileTypes: true }));
 }
 function decodeHtml(value) {
   return value.replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<")
@@ -113,6 +115,7 @@ test("all root HTML entrypoints are discovered and localized, including attribut
 });
 
 test("a future raw UI literal is rejected while a semantically keyed new page passes", () => {
+  assert.ok(selectRootHtmlEntrypoints([{name:"index.html",isFile:()=>true},{name:"future-page.html",isFile:()=>true},{name:"notes.md",isFile:()=>true}]).includes("future-page.html"),"new root HTML routes are discovered automatically");
   const raw = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1>New competitive dashboard</h1></main></body></html>", "future-page.html");
   assert.ok(raw.some((item) => item.includes("unbound UI text")), "new raw page text must fail CI");
   const catalogs = {
