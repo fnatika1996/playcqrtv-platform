@@ -49,6 +49,7 @@ test("every static visible text node on routed pages has an authored translation
 test("all app-owned JavaScript source modules are discovered and linted", async () => {
   const { files, errors } = await lintAppSourceTree(projectRootPath);
   assert.ok(files.includes("assets/auth-header.mjs"), "existing browser modules are included");
+  assert.ok(files.includes("assets/i18n.mjs"), "runtime code is linted separately from its tested catalogs");
   assert.ok(files.includes("assets/admin/admin-icons.mjs"), "nested browser modules are included");
   assert.ok(files.includes("api/password-policy.mjs"), "server validation messages are included");
   assert.ok(files.includes("api/server.mjs"), "API and email modules are included");
@@ -56,8 +57,7 @@ test("all app-owned JavaScript source modules are discovered and linted", async 
 });
 
 const sourceModuleExclusions = new Set([
-  "assets/i18n.mjs", // translation catalogs/runtime are checked through catalog and binding tests
-  "api/scripts/grant-admin.mjs", // owner-only bootstrap CLI, not a user interface
+    "api/scripts/grant-admin.mjs", // owner-only bootstrap CLI, not a user interface
   "scripts/build-cqrtv-admin-icons.mjs" // build-time asset tooling
 ]);
 const ignoredSourceDirectories = new Set([".git", "node_modules", "qa", "ops"]);
@@ -85,7 +85,11 @@ async function lintAppSourceTree(root, catalogs = dictionaries) {
   const errors = [];
   for (const path of files) {
     const source = await readFile(join(root, path), "utf8");
-    errors.push(...inspectRawSourceLiterals(source, path, catalogs, true));
+    if (path === "assets/i18n.mjs") {
+      const runtimeStart = source.indexOf("const ui =");
+      if (runtimeStart < 0) errors.push("assets/i18n.mjs: localization runtime marker missing");
+      else errors.push(...inspectRawSourceLiterals(source.slice(runtimeStart), path, catalogs, true));
+    } else errors.push(...inspectRawSourceLiterals(source, path, catalogs, true));
   }
   return { files, errors };
 }
