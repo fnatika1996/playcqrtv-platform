@@ -131,3 +131,21 @@ test("locale catalogs preserve interpolation parameters", () => {
     }
   }
 });
+
+test("fixed client UI literals and semantic references are covered", async () => {
+  const clientFiles=["assets/auth-header.mjs","assets/player-experience.mjs","assets/player-profile.mjs","assets/registration-roles.mjs","assets/admin/admin-icons.mjs"];
+  const allValues=new Set(Object.values(dictionaries).flatMap((catalog)=>Object.values(catalog)));
+  const missing=[];
+  for(const path of clientFiles){
+    const source=await read(path);
+    for(const literal of source.matchAll(/["'`]([^"'`\\n]*[\\u0400-\\u04ff][^"'`\\n]*)["'`]/g)){
+      const phrase=literal[1].trim();
+      if(phrase.length>1&&!phrase.includes("${")&&!Object.hasOwn(dictionaries.ru,phrase)&&!allValues.has(phrase))missing.push(`${path}: ${phrase}`);
+    }
+    for(const reference of source.matchAll(/(?:\\.t|data-i18n(?:-[\\w-]+)?)\\s*(?:\\(|=)\\s*["']([\\w.-]+)["']/g)){
+      const key=reference[1];
+      if(!Object.values(dictionaries).every((catalog)=>Object.hasOwn(catalog,key)))missing.push(`${path}: unknown translation key ${key}`);
+    }
+  }
+  assert.deepEqual(missing,[],"client fixed UI literals must have authored translations and every semantic reference must resolve");
+});
