@@ -4,6 +4,8 @@ const ui = {"languageLabel":{"ru":"Язык","en":"Language","ro":"Limbă"},"doc
 const supported = ["ru", "en", "ro"];
 const storageKey = "cqrtv.locale";
 const originalText = new WeakMap();
+const textParams = new WeakMap();
+const localizedResults = new Map();
 const originalAttributes = new WeakMap();
 const normalize = (value) => String(value ?? "").trim();
 function detectLocale() {
@@ -20,9 +22,11 @@ let locale = detectLocale();
 const initialLocale = locale;
 function t(key, params = {}) {
   let value = dictionaries[locale]?.[key] ?? key;
-  return String(value).replace(/\{([\w]+)\}/g, (match, name) =>
+  value = String(value).replace(/\{([\w]+)\}/g, (match, name) =>
     Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match
   );
+  localizedResults.set(value, { key, params: { ...params } });
+  return value;
 }
 function ignored(node) {
   const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
@@ -31,13 +35,19 @@ function ignored(node) {
 function translateText(node) {
   if (!node || node.nodeType !== Node.TEXT_NODE || ignored(node)) return;
   const raw = node.nodeValue || "";
-  if (!originalText.has(node)) originalText.set(node, raw);
+  if (!originalText.has(node)) {
+    const registered = localizedResults.get(normalize(raw));
+    if (registered) {
+      originalText.set(node, registered.key);
+      textParams.set(node, registered.params);
+    } else originalText.set(node, raw);
+  }
   const source = originalText.get(node) || "";
   const key = normalize(source);
   if (!key || !Object.prototype.hasOwnProperty.call(dictionaries.ru, key)) return;
   const leading = raw.match(/^\s*/)?.[0] || "";
   const trailing = raw.match(/\s*$/)?.[0] || "";
-  node.nodeValue = leading + t(key) + trailing;
+  node.nodeValue = leading + t(key, textParams.get(node) || {}) + trailing;
 }
 function translateAttributes(root = document) {
   const nodes = [];
