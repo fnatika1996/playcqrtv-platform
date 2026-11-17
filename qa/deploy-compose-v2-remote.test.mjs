@@ -19,7 +19,8 @@ test("root gate verifies signed stdin and rejects caller-selected commands", () 
   assert.match(workflow, /CQRTV-DEPLOY-REQUEST-V2/);
   assert.match(workflow, /ssh-keygen -Y sign/);
   assert.match(workflow, /ClearAllForwardings=yes/);
-  assert.match(workflow, /legacy_handoff_approved/);
+  assert.doesNotMatch(workflow, /inputs\.legacy_handoff_approved/);
+  assert.match(workflow, /LEGACY_HANDOFF_APPROVED: "false"/);
   assert.match(agent, /legacy_handoff_completed/);
   assert.doesNotMatch(workflow, /\bscp\b|bash -s|sudoers|docker group/i);
 });
