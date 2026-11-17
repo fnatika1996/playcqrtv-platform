@@ -48,7 +48,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
     // Serve checkout HTML only for this isolated visual fixture; Caddy forward-auth is covered by the dedicated admin security suite.
     const filename=route==="/admin.html"?"admin.html":"site-control-admin.html";
     const body=await readFile(new URL(`../${filename}`,import.meta.url),"utf8");
-    await page.route(new URL(route,base).href,request=>request.fulfill({status:200,contentType:"text/html; charset=utf-8",body}));
+    await page.route(`**${route}`,request=>request.fulfill({status:200,contentType:"text/html; charset=utf-8",body}));
   }
   await page.goto(new URL(route,base).href,{waitUntil:"domcontentloaded",timeout:30000});
   if(adminReady)await adminReady;
