@@ -46,10 +46,7 @@ test("dynamic API messages used by account and admin UI are translated", async (
   const missing = [];
   for (const path of serverFiles) {
     const source = await read(path);
-    for (const literal of source.matchAll(/["']([^"'\n]*[\u0400-\u04ff][^"'\n]*)["']/g)) {
-      const phrase = literal[1].trim();
-      if (phrase.length < 250 && !phrase.includes("${") && !Object.hasOwn(dictionaries.ru, phrase)) missing.push(`${path}: ${phrase}`);
-    }
+    missing.push(...inspectRawSourceLiterals(source, path));
   }
   assert.deepEqual(missing, [], "fixed server messages must map to localized UI messages");
 });
@@ -112,6 +109,30 @@ function inspectMarkup(html, path, catalogs = dictionaries, baseline = legacyHtm
   return errors;
 }
 
+function inspectRawSourceLiterals(source, path, catalogs = dictionaries, allowEmbeddedMarkup = false) {
+  const errors = [];
+  const values = new Set(Object.values(catalogs).flatMap((catalog) => Object.values(catalog)));
+  const baseline = legacyHtmlBaseline.sourceLiterals?.[path] || [];
+  for (const literal of source.matchAll(/(["'\`])([^"'\\\n]*[\u0400-\u04ff][^"'\\\n]*)["'\`]/g)) {
+    const phrase = literal[2].trim();
+    if (phrase.length <= 1 || phrase.length >= 250 || phrase.includes("\${")) continue;
+    if (allowEmbeddedMarkup) {
+      const keys = [...phrase.matchAll(/data-i18n(?:-[\w-]+)?="([\w.-]+)"/g)].map((match) => match[1]);
+      if (keys.length) {
+        for (const key of keys) if (!Object.values(catalogs).every((catalog) => Object.hasOwn(catalog, key))) errors.push(path + ": unknown embedded translation key " + key);
+        continue;
+      }
+    }
+    const localized = Object.hasOwn(catalogs.ru || {}, phrase) || values.has(phrase);
+    if (!localized || !baseline.includes(phrase)) errors.push(path + ": new or untranslated raw UI literal “" + phrase + "”");
+  }
+  for (const reference of source.matchAll(/(?:\.t|data-i18n(?:-[\w-]+)?)\s*(?:\(|=)\s*["']([\w.-]+)["']/g)) {
+    const key = reference[1];
+    if (!Object.values(catalogs).every((catalog) => Object.hasOwn(catalog, key))) errors.push(path + ": unknown translation key " + key);
+  }
+  return errors;
+}
+
 test("all root HTML entrypoints are discovered and localized, including attributes", async () => {
   const pages = await discoverRootPages();
   assert.ok(pages.length > 0, "the route inventory must not be empty");
@@ -158,14 +179,7 @@ test("fixed client UI literals and semantic references are covered", async () =>
   const missing=[];
   for(const path of clientFiles){
     const source=await read(path);
-    for(const literal of source.matchAll(/["'`]([^"'`\n]*[\u0400-\u04ff][^"'`\n]*)["'`]/g)){
-      const phrase=literal[1].trim();
-      if(phrase.length>1&&!phrase.includes("${")&&!Object.hasOwn(dictionaries.ru,phrase)&&!allValues.has(phrase))missing.push(`${path}: ${phrase}`);
-    }
-    for(const reference of source.matchAll(/(?:\.t|data-i18n(?:-[\w-]+)?)\s*(?:\(|=)\s*["']([\w.-]+)["']/g)){
-      const key=reference[1];
-      if(!Object.values(dictionaries).every((catalog)=>Object.hasOwn(catalog,key)))missing.push(`${path}: unknown translation key ${key}`);
-    }
+    missing.push(...inspectRawSourceLiterals(source, path));
   }
   assert.deepEqual(missing,[],"client fixed UI literals must have authored translations and every semantic reference must resolve");
 });
@@ -178,16 +192,7 @@ test("inline page scripts use catalogued fixed UI text and known translation ref
     const html=await read(path);
     for(const block of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
       if(/\bsrc=/i.test(block[1]))continue;
-      for(const literal of block[2].matchAll(/(["'`])([^"'`\n]*[\u0400-\u04ff][^"'`\n]*)["'`]/g)){
-        const phrase=literal[2].trim();
-        const embeddedKeys=[...phrase.matchAll(/data-i18n(?:-[\\w-]+)?="([\\w.-]+)"/g)].map(match=>match[1]);
-        if(embeddedKeys.length){for(const key of embeddedKeys)if(!Object.values(dictionaries).every(catalog=>Object.hasOwn(catalog,key)))missing.push(`${path}: unknown embedded translation key ${key}`);continue;}
-        if(phrase.length>1&&!phrase.includes("${")&&!Object.hasOwn(dictionaries.ru,phrase)&&!allValues.has(phrase))missing.push(`${path}: inline literal ${phrase}`);
-      }
-      for(const reference of block[2].matchAll(/(?:\.t|data-i18n(?:-[\w-]+)?)\s*(?:\(|=)\s*["']([\w.-]+)["']/g)){
-        const key=reference[1];
-        if(!Object.values(dictionaries).every((catalog)=>Object.hasOwn(catalog,key)))missing.push(`${path}: unknown inline key ${key}`);
-      }
+      missing.push(...inspectRawSourceLiterals(block[2], "inline:" + path, dictionaries, true));
     }
   }
   assert.deepEqual(missing,[],"inline dynamic UI must use authored translations and known semantic keys");
