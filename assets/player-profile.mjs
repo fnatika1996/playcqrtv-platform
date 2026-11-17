@@ -1,5 +1,5 @@
 const dateLocale=()=>window.CQRTVI18n?.locale==="en"?"en-US":window.CQRTVI18n?.locale==="ro"?"ro-RO":"ru-RU";
-const roleLabels={rifler:"Rifler",entry:"Entry",support:"Support",awper:"AWPer",igl:"IGL",lurker:"Lurker",anchor:"Anchor",flex:"Flex"};
+const roleLabels={rifler:"Стрелок",entry:"Энтри",support:"Поддержка",awper:"AWP-игрок",igl:"IGL",lurker:"Луркер",anchor:"Анкор",flex:"Флекс"};
 function countryFlag(code){const value=String(code||"").toUpperCase();if(!/^[A-Z]{2}$/.test(value))return "—";return [...value].map(letter=>String.fromCodePoint(letter.charCodeAt(0)+127397)).join("")}
 export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
   const byId=id=>document.getElementById(id),loading=byId("profile-loading"),guest=byId("profile-guest"),content=byId("profile-content");
