@@ -84,7 +84,7 @@ try {
   }
 
   for (const width of widths) {
-    const context = await browser.newContext({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
+    const context = await browser.newContext({locale:"ru-RU", viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
     await context.addCookies([{ name: "cqrtv_qa_admin", value: "valid", domain: "playcqrtv.com", path: "/" }]);
     const page = await context.newPage();
     let suspendCalls = 0;
