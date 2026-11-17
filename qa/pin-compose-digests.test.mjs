@@ -102,8 +102,9 @@ test("production workflow is manual, protected and uses immutable Compose refs",
   assert.match(deploymentWorkflow, /docker-compose\.release\.yml/);
   assert.match(deploymentWorkflow, /Create signed release request and use restricted SSH command/);
   assert.match(deploymentWorkflow, /CQRTV_RELEASE_SIGNING_KEY/);
-  assert.match(deploymentWorkflow, /legacy_handoff_approved:[\s\S]*default: false/);
-  assert.match(deploymentWorkflow, /LEGACY_HANDOFF_APPROVED: \$\{\{ inputs\.legacy_handoff_approved \}\}/);
+  assert.doesNotMatch(deploymentWorkflow, /legacy_handoff_approved:[\s\S]*default: false/);
+  assert.doesNotMatch(deploymentWorkflow, /inputs\.legacy_handoff_approved/);
+  assert.match(deploymentWorkflow, /LEGACY_HANDOFF_APPROVED: "false"/);
   assert.match(deploymentWorkflow, /CQRTV_PROJECT_ROOT/);
   assert.match(remoteScript, /Direct user-context Compose deployment is disabled/);
   assert.doesNotMatch(remoteScript, /docker compose|bash -s|eval /);
