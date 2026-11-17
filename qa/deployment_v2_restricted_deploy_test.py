@@ -221,7 +221,7 @@ class ContainerImageIdentityTests(unittest.TestCase):
         for index, field in ((2, "project"), (3, "service"), (4, "config file"), (5, "working directory")):
             fields = line.decode().split("\t")
             fields[index] = "unexpected"
-            wrong_line = ("\\t".join(fields)).encode()
+            wrong_line = ("\t".join(fields)).encode()
             responses = [wrong_line]
             def bad_runner(args, **kwargs):
                 return subprocess.CompletedProcess(args, 0, stdout=responses.pop(0), stderr=b"")
