@@ -14,7 +14,7 @@ const fixture={nickname:"ClutchAce",country:"MD",primary_role:"awper",secondary_
 try{
   for(const width of widths){
     fixture.nickname="ClutchAce";
-    const context=await browser.newContext({viewport:{width,height:900},reducedMotion:"reduce"});
+    const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900},reducedMotion:"reduce"});
     await context.route("**/api/auth/me",async route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({user})}));
     await context.route("**/api/auth/logout",async route=>{user=null;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Вы вышли."})})});
     await context.route("**/api/auth/register",async route=>{registrationPosts++;await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"registration is stubbed in QA"})})});
@@ -77,7 +77,7 @@ try{
     await context.close();user=null;nicknamePosts=0;lastNicknamePayload=null;
     console.log("PASS profile guest/member, editor, and layout at "+width+"px");
   }
-  const offlineContext=await browser.newContext({viewport:{width:390,height:844}});
+  const offlineContext=await browser.newContext({locale:"ru-RU",viewport:{width:390,height:844}});
   await offlineContext.route("**/api/auth/me",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"unavailable"})}));
   const offlinePage=await offlineContext.newPage();await offlinePage.goto(baseUrl+"/profile.html",{waitUntil:"domcontentloaded"});
   await offlinePage.locator("#profile-guest-title").waitFor({state:"visible"});
