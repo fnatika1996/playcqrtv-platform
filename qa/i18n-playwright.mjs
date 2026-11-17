@@ -59,7 +59,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
   if(adminReady)await adminReady;
   const selector=page.locator("[data-cqrtv-language-switcher] select");
   if(adminRequests)assert.ok(adminRequests.some(path=>path==="/api/admin/me"),`synthetic authorized fixture must protect and load ${route}`);
-  await selector.waitFor({state:"visible",timeout:8000});
+  try{await selector.waitFor({state:"visible",timeout:8000});}catch(error){const state=await page.evaluate(()=>({url:location.href,title:document.title,lang:document.documentElement.lang,hasRuntime:!!window.CQRTVI18n,scriptUrls:[...document.scripts].map(script=>script.src)}));throw new Error(`${error.message}; locale fixture diagnostics: ${JSON.stringify(state)}; page errors: ${errors.join("; ")}`)}
   await selector.selectOption(locale);
   await page.waitForFunction(expected=>document.documentElement.lang===expected,locale);
   await page.waitForTimeout(60);
