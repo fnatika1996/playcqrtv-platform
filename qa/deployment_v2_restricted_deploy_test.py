@@ -244,9 +244,10 @@ class DeploymentFlowTests(unittest.TestCase):
             "secret-init": {"configured_image": "alpine:3.21"},
         }
         self.target = {
-            "api": {"repo_digests": [self.payload["api_image_ref"]]},
-            "caddy": {"repo_digests": [self.payload["web_image_ref"]]},
-            "db": {"id": "db-container-1"},
+            "api": {"repo_digests": [self.payload["api_image_ref"]], "configured_image": self.payload["api_image_ref"]},
+            "caddy": {"repo_digests": [self.payload["web_image_ref"]], "configured_image": self.payload["web_image_ref"]},
+            "db": {"id": "db-container-1", "configured_image": "postgres:17-alpine"},
+            "secret-init": {"configured_image": "alpine:3.21"},
         }
         self.commands = []
 
