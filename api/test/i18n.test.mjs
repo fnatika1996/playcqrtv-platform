@@ -113,7 +113,8 @@ function inspectRawSourceLiterals(source, path, catalogs = dictionaries, allowEm
   const errors = [];
   const baseline = legacyHtmlBaseline.sourceLiterals?.[path] || [];
   for (const literal of source.matchAll(/(["'\x60])((?:\\.|[\s\S])*?)\1/g)) {
-    const phrase = literal[2].trim();
+    const rawValue = literal[2];
+    const phrase = rawValue.trim();
     if (!phrase || phrase.length >= 1000 || !/\p{L}/u.test(phrase)) continue;
     if (allowEmbeddedMarkup) {
       const keys = [...phrase.matchAll(/data-i18n(?:-[\w-]+)?="([\w.-]+)"/g)].map((match) => match[1]);
@@ -123,7 +124,7 @@ function inspectRawSourceLiterals(source, path, catalogs = dictionaries, allowEm
       }
     }
     const semanticKey = Object.values(catalogs).every((catalog) => Object.hasOwn(catalog, phrase));
-    if (!semanticKey && !baseline.includes(phrase)) errors.push(path + ": new raw source literal “" + phrase + "”; use a semantic translation key or add a reviewed non-human exemption");
+    if (!semanticKey && !baseline.includes(rawValue)) errors.push(path + ": new raw source literal “" + phrase + "”; use a semantic translation key or add a reviewed non-human exemption");
   }
   for (const reference of source.matchAll(/(?:\.t|\bt|data-i18n(?:-[\w-]+)?)\s*(?:\(|=)\s*["']([\w.-]+)["']/g)) {
     const key = reference[1];
