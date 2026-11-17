@@ -6,6 +6,8 @@ docker compose version
 scratch=$(mktemp -d)
 project="cqrtv-v2-qa-${GITHUB_RUN_ID:-local}-${BASHPID}"
 label_project="cqrtv-v2-label-${GITHUB_RUN_ID:-local}-${BASHPID}"
+label_project_db_secret="${label_project}_db_secret"
+label_project_postgres_data="${label_project}_postgres_data"
 [[ "$project" =~ ^cqrtv-v2-qa-[A-Za-z0-9-]+$ ]]
 STAGING_HTTP_PORT=$(shuf -i 20000-45000 -n 1)
 STAGING_DB_PASSWORD=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')
