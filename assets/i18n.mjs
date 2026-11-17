@@ -7,6 +7,8 @@ const originalText = new WeakMap();
 const originalAttributes = new WeakMap();
 const normalize = (value) => String(value ?? "").trim();
 function detectLocale() {
+  const linkLocale = new URLSearchParams(location.search).get("lang");
+  if (supported.includes(linkLocale)) { try { localStorage.setItem(storageKey, linkLocale); } catch {} return linkLocale; }
   try {
     const saved = localStorage.getItem(storageKey);
     if (supported.includes(saved)) return saved;
