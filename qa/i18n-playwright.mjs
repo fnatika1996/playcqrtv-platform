@@ -56,8 +56,8 @@ try {
     await page.evaluate(value=>localStorage.setItem("cqrtv.locale",value),"ro");
     await page.reload({waitUntil:"domcontentloaded"});
     await page.waitForFunction(()=>document.documentElement.lang==="ro");
-    await page.goto(new URL("/auth.html?mode=verify&token=cqrtv-invalid-qa&lang=en",base).href,{waitUntil:"domcontentloaded"});
     await page.route("**/api/auth/verify",route=>route.abort("failed"));
+    await page.goto(new URL("/auth.html?mode=verify&token=cqrtv-invalid-qa&lang=en",base).href,{waitUntil:"domcontentloaded"});
     await page.waitForFunction(()=>document.querySelector("#verify-error-message")?.textContent?.length>0,{timeout:10000});
     const verifyState=await page.evaluate(()=>({lang:document.documentElement.lang,text:document.querySelector("#verify-error-message")?.textContent||""}));
     assert.equal(verifyState.lang,"en","auth link locale overrides prior preference");
