@@ -330,7 +330,7 @@ def _inspect_container(container_id, service, config, *, runner=subprocess.run):
            "\t{{index .Config.Labels \"com.docker.compose.project.config_files\"}}"
            "\t{{index .Config.Labels \"com.docker.compose.project.working_dir\"}}"
            "\t{{.Config.Image}}\t{{.Image}}\t{{.State.Status}}"
-           "\t{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}\t{{.State.ExitCode}}")
+           "\t{{with index .State "Health"}}{{.Status}}{{else}}none{{end}}\t{{.State.ExitCode}}")
     line = _command([DOCKER, "inspect", "--format", fmt, container_id], runner=runner).decode().strip()
     fields = line.split("\t")
     if len(fields) != 11:
