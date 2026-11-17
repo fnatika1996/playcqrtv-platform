@@ -42,8 +42,10 @@ async function check(page,route,locale,width,height,screenshot=false) {
   const errors=[];
   page.on("pageerror",error=>errors.push(error.message));
   const adminRequests=(route==="/admin.html"||route==="/site-control-admin.html")?await installSyntheticAdminFixture(page):null;
+  const adminReady=adminRequests?page.waitForResponse(response=>new URL(response.url()).pathname==="/api/admin/me",{timeout:10000}):null;
   await page.setViewportSize({width,height});
   await page.goto(new URL(route,base).href,{waitUntil:"domcontentloaded",timeout:30000});
+  if(adminReady)await adminReady;
   const selector=page.locator("[data-cqrtv-language-switcher] select");
   if(adminRequests)assert.ok(adminRequests.some(path=>path==="/api/admin/me"),`synthetic authorized fixture must protect and load ${route}`);
   await selector.waitFor({state:"visible",timeout:8000});
@@ -54,7 +56,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
     const ignored='[data-i18n-ignore],.user-generated,.custom-announcement,.social-links,#header-user-nickname,#profile-nickname,.profile-header-nickname,.profile-nickname,.profile-about-list dd,#social-links a,.social-item strong,.social-item small';
     const texts=[];
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-    while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement?.closest(ignored))continue;const value=node.nodeValue?.trim();if(value)texts.push(value)}
+    while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement?.closest(`${ignored},script,style,noscript`))continue;const value=node.nodeValue?.trim();if(value)texts.push(value)}
     const attributes=[];
     for(const element of document.querySelectorAll('[placeholder],[title],[aria-label],[alt]')){if(element.closest(ignored))continue;for(const attr of ['placeholder','title','aria-label','alt']){const value=element.getAttribute(attr);if(value)attributes.push(value)}}
     return {title:document.title,scrollWidth:document.documentElement.scrollWidth,width:innerWidth,texts,attributes};
