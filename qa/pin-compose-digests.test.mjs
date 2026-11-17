@@ -103,7 +103,7 @@ test("production workflow is manual, protected and uses immutable Compose refs",
   assert.match(deploymentWorkflow, /Create signed release request and use restricted SSH command/);
   assert.match(deploymentWorkflow, /CQRTV_RELEASE_SIGNING_KEY/);
   assert.match(deploymentWorkflow, /CQRTV_PROJECT_ROOT/);
-  assert.match(remoteScript, /Direct deployment is disabled/);
+  assert.match(remoteScript, /Direct user-context Compose deployment is disabled/);
   assert.doesNotMatch(remoteScript, /docker compose|bash -s|eval /);
   assert.doesNotMatch(deploymentWorkflow, /HOSTINGER_API_KEY|qa\/hostinger-deploy\.mjs|playcqrtv-platform:latest|playcqrtv-api:latest/);
   assert.doesNotMatch(remoteScript, /docker compose down\s+-v|docker rm\s+-f/);
