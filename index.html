@@ -115,7 +115,7 @@
       <button class="signup-trigger js-open-signup" id="signup-open" type="button" hidden>Создать профиль</button>
       <a class="signup-trigger" id="login-link" href="/auth.html" hidden>Войти</a>
       <span class="auth-header-status" id="auth-header-status" role="status" aria-live="polite">Проверяем аккаунт…</span>
-      <div class="user-menu" id="auth-user-menu" hidden><a class="avatar" href="#player-profile" aria-label="Открыть профиль"><span id="header-avatar-initial" aria-hidden="true"></span></a><div class="user-copy"><div class="user-label" id="header-user-nickname"></div></div><button class="logout-btn" id="logout-btn" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/logout.svg" aria-hidden="true"></span>Выйти</button></div>
+      <div class="user-menu" id="auth-user-menu" hidden><a class="avatar" href="/profile.html" aria-label="Открыть профиль"><span id="header-avatar-initial" aria-hidden="true"></span></a><div class="user-copy"><div class="user-label" id="header-user-nickname"></div></div><button class="logout-btn" id="logout-btn" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/logout.svg" aria-hidden="true"></span>Выйти</button></div>
     </div>
   </header>
   <nav id="mobile-navigation" class="mobile-drawer site-nav" aria-label="Мобильная навигация" hidden>
@@ -136,7 +136,7 @@
             <a class="outline-btn" href="/auth.html"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/login.svg" aria-hidden="true"></span>Войти</a>
           </div>
           <div id="member-actions" class="home-hero-actions" hidden>
-            <a class="primary-btn" href="#player-profile"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span>Мой профиль</a>
+            <a class="primary-btn" href="/profile.html"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span>Мой профиль</a>
           </div>
         </div>
       </section>
@@ -291,7 +291,28 @@ document.getElementById("profile-edit-btn").addEventListener("click",async()=>{n
 nicknameChangeForm.addEventListener("submit",async event=>{event.preventDefault();if(!nicknameChangeForm.reportValidity()||nicknameSaveButton.disabled)return;nicknameChangeBlocked=true;nicknameSaveButton.disabled=true;nicknameChangeStatus.textContent="Сохраняем никнейм…";try{const response=await fetch("/api/account/nickname",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nickname:nicknameChangeInput.value})}),data=await response.json();nicknameChangeStatus.textContent=data.message||data.error||"Не удалось изменить никнейм.";if(response.ok){nicknameChangeBlocked=true;const newName=data.nickname;document.getElementById("profile-nickname").textContent=newName;document.querySelector(".user-label").textContent=newName;document.getElementById("header-avatar-initial").textContent=newName.trim().charAt(0).toLocaleUpperCase("ru");document.getElementById("profile-avatar-letter").textContent=newName.trim().charAt(0).toLocaleUpperCase("ru");nicknameCurrent.textContent="Сейчас установлен ник: "+newName;if(data.nicknameAvailableAt)nicknameChangeStatus.textContent="Ник изменён. Бесплатная смена будет доступна "+new Date(data.nicknameAvailableAt).toLocaleDateString("ru-RU")+"."}else if(data.nicknameAvailableAt){nicknameChangeBlocked=true;nicknameChangeStatus.textContent=data.error+" Следующая смена: "+new Date(data.nicknameAvailableAt).toLocaleDateString("ru-RU")+"."}else{nicknameChangeBlocked=false}}catch{nicknameChangeBlocked=false;nicknameChangeStatus.textContent="Не удалось связаться с сервером. Попробуйте позже."}finally{nicknameSaveButton.disabled=nicknameChangeBlocked}});
 
   </script>
-<script type="module">import { bindRegistrationRoles } from "/assets/registration-roles.mjs";import { bindAuthHeader } from "/assets/auth-header.mjs";import { bindPlayerExperience } from "/assets/player-experience.mjs";bindRegistrationRoles(document.getElementById("signup-form"));const authHeader=bindAuthHeader(document);bindPlayerExperience(document,authHeader);</script></body>
+<script type="module">
+import { bindRegistrationRoles } from "/assets/registration-roles.mjs";
+import { bindAuthHeader } from "/assets/auth-header.mjs";
+import { bindPlayerExperience } from "/assets/player-experience.mjs";
+bindRegistrationRoles(document.getElementById("signup-form"));
+const authHeader=bindAuthHeader(document);
+bindPlayerExperience(document,authHeader);
+const registrationDialog=document.getElementById("signup-dialog");
+function openSignupDeepLink(){
+  if(location.hash!=="#signup-dialog")return;
+  authHeader.ready.then(user=>{
+    if(location.hash!=="#signup-dialog"||user)return;
+    if(document.getElementById("auth-header-status").textContent.includes("Не удалось проверить аккаунт."))return;
+    if(!registrationDialog.open)registrationDialog.showModal();
+  });
+}
+window.addEventListener("hashchange",openSignupDeepLink);
+registrationDialog.addEventListener("close",()=>{
+  if(location.hash==="#signup-dialog")history.replaceState(null,"",location.pathname+location.search);
+});
+openSignupDeepLink();
+</script></body>
 </html>
 
 

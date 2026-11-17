@@ -98,8 +98,8 @@ try{
       assert.equal(await page.locator("#profile-email-verified").isVisible(),true);
       assert.equal(await page.locator("#guest-actions").isVisible(),false);
       assert.equal(await page.locator("#member-actions").isVisible(),true);
-      assert.equal(await page.locator("#mobile-menu-profile-link").getAttribute("href"),"#player-profile");
-      assert.equal(await page.locator("#auth-user-menu .avatar").getAttribute("href"),"#player-profile");
+      assert.equal(await page.locator("#mobile-menu-profile-link").getAttribute("href"),"/profile.html");
+      assert.equal(await page.locator("#auth-user-menu .avatar").getAttribute("href"),"/profile.html");
       assert.equal(await page.locator("#player-profile").locator("#profile-edit-btn").isVisible(),true);
       assert.equal(await page.locator("#player-profile").locator("text=ELO").count(),0,"large dashboard profile metrics should not return to the homepage");
       await page.screenshot({path:path.join(screenshotDir,`home-v31-player-${width}.png`),fullPage:true});

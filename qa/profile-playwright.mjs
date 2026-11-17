@@ -1,0 +1,88 @@
+import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+const playwrightRoot=process.env.PLAYWRIGHT_PACKAGE;
+if(!playwrightRoot)throw new Error("PLAYWRIGHT_PACKAGE must point to the pinned Playwright install.");
+const {chromium}=await import(pathToFileURL(playwrightRoot+"/index.mjs").href);
+const baseUrl=process.env.CQRTV_QA_BASE_URL||"http://playcqrtv.com:8765";
+const screenshotDir=fileURLToPath(new URL("../qa-artifacts/",import.meta.url));
+await mkdir(screenshotDir,{recursive:true});
+const widths=[1440,1024,760,390,375,320],browser=await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
+let user=null,nicknamePosts=0,lastNicknamePayload=null,registrationPosts=0;
+const fixture={nickname:"ClutchAce",country:"MD",primary_role:"awper",secondary_roles:["rifler","support"],nickname_available_at:null};
+try{
+  for(const width of widths){
+    fixture.nickname="ClutchAce";
+    const context=await browser.newContext({viewport:{width,height:900},reducedMotion:"reduce"});
+    await context.route("**/api/auth/me",async route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({user})}));
+    await context.route("**/api/auth/logout",async route=>{user=null;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Вы вышли."})})});
+    await context.route("**/api/auth/register",async route=>{registrationPosts++;await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"registration is stubbed in QA"})})});
+    await context.route("**/api/account/nickname",async route=>{nicknamePosts++;const body=JSON.parse(route.request().postData()||"{}");lastNicknamePayload=body.nickname;fixture.nickname=body.nickname;user={...fixture};await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Никнейм изменён.",nickname:body.nickname,nicknameAvailableAt:null})})});
+    const page=await context.newPage(),errors=[];page.on("pageerror",error=>errors.push(error.message));
+    const response=await page.goto(baseUrl+"/profile.html",{waitUntil:"domcontentloaded"});
+    assert.equal(response?.status(),200,"profile should load at "+width+"px");
+    await page.locator("#profile-guest:not([hidden])").waitFor({state:"visible"});
+    assert.equal(await page.locator("#profile-guest-login").getAttribute("href"),"/auth.html");
+    assert.equal(await page.locator("#profile-guest-signup").getAttribute("href"),"/#signup-dialog");
+    assert.equal(await page.locator("#profile-guest-signup").isVisible(),true);
+    if(width===390){
+      await page.locator("#profile-guest-signup").click();
+      await page.waitForURL(url=>url.pathname==="/"&&url.hash==="#signup-dialog");
+      await page.locator("#signup-dialog").waitFor({state:"visible"});
+      assert.equal(await page.locator("#signup-dialog").evaluate(dialog=>dialog.open),true,"profile signup deep link should open the existing registration dialog");
+      assert.equal(await page.locator("#signup-dialog").count(),1,"homepage should keep one registration dialog");
+      assert.equal(registrationPosts,0,"opening registration must not submit its form");
+      await page.locator("#signup-close").click();
+      await page.waitForFunction(()=>location.hash==="");
+      assert.equal(await page.locator("#signup-dialog").evaluate(dialog=>dialog.open),false);
+      await page.goto(baseUrl+"/profile.html",{waitUntil:"domcontentloaded"});
+      await page.locator("#profile-guest:not([hidden])").waitFor({state:"visible"});
+    }
+    assert.equal(await page.locator("#profile-content").isVisible(),false);
+    assert.match(await page.locator("#profile-guest-title").textContent(),/Войдите/);
+    const overflow=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,offenders:[...document.querySelectorAll("body *")].map(node=>{const rect=node.getBoundingClientRect();return{id:node.id,className:typeof node.className==="string"?node.className:"",tag:node.tagName,left:Math.round(rect.left),right:Math.round(rect.right),scrollWidth:node.scrollWidth,clientWidth:node.clientWidth}}).filter(node=>node.right>innerWidth+1||node.left< -1||node.scrollWidth>node.clientWidth+12).slice(0,12)}));
+    assert.ok(overflow.scrollWidth<=overflow.clientWidth,"profile overflow at "+width+"px: "+JSON.stringify(overflow));
+    if(width>1024)assert.equal(await page.locator("#profile-menu-toggle").isVisible(),false);
+    else{
+      const toggle=page.locator("#profile-menu-toggle");await toggle.focus();await page.keyboard.press("Enter");
+      assert.equal(await page.locator("#profile-mobile-navigation").isVisible(),true);
+      await page.keyboard.press("Escape");assert.equal(await page.evaluate(()=>document.activeElement?.id),"profile-menu-toggle");
+      assert.equal(await page.locator("#profile-mobile-navigation").isVisible(),false);
+    }
+    user={...fixture};await page.reload({waitUntil:"domcontentloaded"});
+    await page.locator("#profile-content:not([hidden])").waitFor({state:"visible"});
+    assert.equal(await page.locator("#profile-nickname").textContent(),"ClutchAce");
+    assert.equal(await page.locator("#profile-email-verified").isVisible(),true);
+    assert.equal(await page.locator("#profile-country-code").textContent(),"MD");
+    assert.equal(await page.locator("#about-country-flag").textContent(),"🇲🇩");
+    assert.equal(await page.locator("#profile-role").textContent(),"AWPer");
+    assert.equal(await page.locator("#profile-secondary-roles").textContent(),"Rifler · Support");
+    assert.deepEqual(await page.locator(".profile-stat strong").allTextContents(),["—","—","—","—"]);
+    assert.match(await page.locator(".elo-empty-state").textContent(),/Рейтинг появится после запуска матчмейкинга/);
+    assert.match(await page.locator(".matches-panel").textContent(),/Матчей пока нет/);
+    assert.equal(await page.locator("#profile-search").isDisabled(),true);
+    assert.equal(await page.locator("#profile-notifications").isDisabled(),true);
+    await page.locator("#profile-edit-btn").click();await page.locator("#nickname-dialog[open]").waitFor();
+    await page.locator("#nickname-change-input:not([disabled])").waitFor();
+    await page.locator("#nickname-change-input").fill("ClutchAce2");await page.locator("#nickname-form button[type=submit]").click();
+    await page.getByText("Никнейм изменён.",{exact:true}).waitFor();
+    assert.equal(lastNicknamePayload,"ClutchAce2");
+    await page.waitForFunction(()=>document.querySelector("#profile-nickname")?.textContent==="ClutchAce2");
+    assert.equal(await page.locator("#profile-nickname").textContent(),"ClutchAce2");
+    assert.equal(nicknamePosts,1);
+    await page.locator("#nickname-dialog-close").click();
+    if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,"profile-v1-"+width+".png"),fullPage:true});
+    assert.deepEqual(errors,[],"uncaught profile errors at "+width+"px: "+errors.join("; "));
+    await context.close();user=null;nicknamePosts=0;lastNicknamePayload=null;
+    console.log("PASS profile guest/member, editor, and layout at "+width+"px");
+  }
+  const offlineContext=await browser.newContext({viewport:{width:390,height:844}});
+  await offlineContext.route("**/api/auth/me",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"unavailable"})}));
+  const offlinePage=await offlineContext.newPage();await offlinePage.goto(baseUrl+"/profile.html",{waitUntil:"domcontentloaded"});
+  await offlinePage.locator("#profile-guest-title").waitFor({state:"visible"});
+  assert.match(await offlinePage.locator("#profile-guest-title").textContent(),/Не удалось загрузить профиль/);
+  assert.match(await offlinePage.locator("#profile-guest-description").textContent(),/Проверьте подключение/);
+  assert.equal(await offlinePage.locator("#profile-guest-signup").isVisible(),false);
+  await offlineContext.close();
+}finally{await browser.close()}

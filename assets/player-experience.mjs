@@ -16,7 +16,7 @@ export function bindPlayerExperience(document, session) {
     guestActions.hidden = authenticated;
     memberActions.hidden = !authenticated;
     welcome.hidden = !authenticated;
-    profileLinks.forEach(link => { link.href = authenticated ? "#player-profile" : "#guest-actions"; });
+    profileLinks.forEach(link => { link.href = authenticated ? "/profile.html" : "#guest-actions"; });
     if (authenticated) welcome.textContent = `С возвращением, ${nickname}`;
     document.body.dataset.accountState = authenticated ? "authenticated" : "guest";
   }
