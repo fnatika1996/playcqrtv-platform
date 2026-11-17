@@ -21,7 +21,8 @@ try{
       const body=route.request().url().endsWith("/api/auth/me")?{user:null}:{};
       await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(body)});
     });
-    const page=await context.newPage();
+    await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
+const page=await context.newPage();
     const response=await page.goto(beforeBaseUrl,{waitUntil:"domcontentloaded"});
     assert.equal(response?.status(),200,`baseline homepage should load at ${width}px`);
     assert.match(await page.title(),/CQRTV/);
@@ -37,7 +38,8 @@ try{
     await context.route("**/api/auth/register",async route=>{registerPosts++;await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"registration unavailable in QA"})})});
     await context.route("**/api/auth/logout",async route=>{logoutPosts++;user=null;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Вы вышли."})})});
     await context.route("**/api/account/nickname",async route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({nickname:"ClutchAce"})}));
-    const page=await context.newPage();
+    await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
+const page=await context.newPage();
     const errors=[];page.on("pageerror",error=>errors.push(error.message));
     const response=await page.goto(baseUrl,{waitUntil:"domcontentloaded"});
     assert.equal(response?.status(),200,`public home should load at ${width}px`);
@@ -116,6 +118,7 @@ try{
   }
   const offlineContext=await browser.newContext({locale:"ru-RU",viewport:{width:390,height:844}});
   await offlineContext.setExtraHTTPHeaders({"X-QA-Site-Mode":"coming_soon"});
+  await offlineContext.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
   const offline=await offlineContext.newPage();
   const offlineResponse=await offline.goto(baseUrl,{waitUntil:"domcontentloaded"});
   assert.equal(offlineResponse?.status(),200);
