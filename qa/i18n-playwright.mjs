@@ -31,13 +31,13 @@ async function installSyntheticAdminFixture(page) {
   });
   return requests;
 }
-async function check(page,route,locale,width,height,screenshot=false) {
+async function check(page,route,locale,width,height,screenshot=false,statusMode=null) {
   await page.unroute("**/api/admin/**");
   await page.unroute("**/api/site-control/public");
   if(route==="/site-closed.html"){
-    const mode=locale==="ro"?"maintenance":"coming_soon";
-    const status=mode==="maintenance"?{statusLabel:"ТЕХНИЧЕСКИЕ РАБОТЫ",heading:"CQRTV на техобслуживании",subtitle:"Мы настраиваем платформу и скоро вернёмся.",description:"Проводятся технические работы",maintenanceStatusLabel:"ТЕХНИЧЕСКИЕ РАБОТЫ",maintenanceHeading:"CQRTV на техобслуживании",maintenanceSubtitle:"Мы настраиваем платформу и скоро вернёмся.",maintenanceDescription:"Проводятся технические работы"}:{statusLabel:"ПЛАТФОРМА ГОТОВИТСЯ",heading:"CQRTV скоро откроется",subtitle:"Следите за анонсами",description:"Мы готовим пространство для игроков и команд: подбор матчей, турниры, статистика и развитие esports-сцены.",maintenanceStatusLabel:"ТЕХНИЧЕСКИЕ РАБОТЫ",maintenanceHeading:"CQRTV на техобслуживании",maintenanceSubtitle:"Мы настраиваем платформу и скоро вернёмся.",maintenanceDescription:"Проводятся технические работы"};
-    await page.route("**/api/site-control/public",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({mode,...status,aboutButtonLabel:"Что такое CQRTV?",aboutTitle:"Что такое CQRTV?",aboutBody:"Играй. Объединяйся. Развивайся.",launchAt:null,countdownEnabled:false,animationEnabled:false,socialLinks:[]})}));
+    const mode=statusMode||"coming_soon";
+    const status={statusLabel:"QA COMING SOON STATUS",heading:"CQRTV coming soon",subtitle:"QA coming soon subtitle",description:"QA coming soon description",maintenanceStatusLabel:"QA MAINTENANCE STATUS",maintenanceHeading:"CQRTV maintenance",maintenanceSubtitle:"QA maintenance subtitle",maintenanceDescription:"QA maintenance description"};
+    await page.route("**/api/site-control/public",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({mode,...status,aboutButtonLabel:"About CQRTV",aboutTitle:"About CQRTV",aboutBody:"Play. Unite. Grow.",launchAt:null,countdownEnabled:false,animationEnabled:false,socialLinks:[]})}));
   }
   const errors=[];
   page.on("pageerror",error=>errors.push(error.message));
@@ -70,10 +70,11 @@ async function check(page,route,locale,width,height,screenshot=false) {
     while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement?.closest(`${ignored},script,style,noscript`))continue;const value=node.nodeValue?.trim();if(value)texts.push(value)}
     const attributes=[];
     for(const element of document.querySelectorAll('[placeholder],[title],[aria-label],[alt]')){if(element.closest(ignored))continue;for(const attr of ['placeholder','title','aria-label','alt']){const value=element.getAttribute(attr);if(value)attributes.push(value)}}
-    return {title:document.title,description:document.querySelector('meta[name="description"]')?.content||null,scrollWidth:document.documentElement.scrollWidth,width:innerWidth,texts,attributes};
+    return {title:document.title,description:document.querySelector('meta[name="description"]')?.content||null,statusText:document.querySelector('#status-text')?.textContent||null,scrollWidth:document.documentElement.scrollWidth,width:innerWidth,texts,attributes};
   });
   assert.ok(state.title,`localized title missing on ${route}`);
   assert.ok(state.scrollWidth<=state.width+1,`horizontal overflow at ${width}px on ${route}: ${state.scrollWidth}`);
+  if(route==="/site-closed.html")assert.equal(state.statusText,statusMode==="maintenance"?"QA MAINTENANCE STATUS":"QA COMING SOON STATUS",`status page should render requested ${statusMode} mode in ${locale}`);
   if(locale!=="ru"){
     assert.ok(!/[\u0400-\u04ff]/.test(state.title),`title remains Russian: ${state.title}`);
     if(state.description)assert.ok(!/[\u0400-\u04ff]/.test(state.description),`meta description remains Russian: ${state.description}`);
@@ -115,15 +116,21 @@ async function check(page,route,locale,width,height,screenshot=false) {
     await page.locator("#cancel").click();
     assert.ok(await page.locator("#modal").evaluate(element=>element.classList.contains("hidden")),"cancel closes the synthetic confirmation dialog without an API mutation");
   }
-  if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-${width}.png`,artifactDir).pathname,fullPage:true});
+  if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-${statusMode||"default"}-${width}.png`,artifactDir).pathname,fullPage:true});
   return true;
 }
 try {
   for(const locale of locales){
     const context=await browser.newContext({locale:locale==="ru"?"ru-RU":locale==="ro"?"ro-RO":"en-US",viewport:{width:1440,height:1000}});
     const page=await context.newPage();
-    for(const route of routes)try{await check(page,route,locale,1440,1000,true)}catch(error){failures.push(`${route} ${locale} desktop: ${error.message}`)}
-    for(const route of routes)for(const width of [390,320])try{await check(page,route,locale,width,844,width===390)}catch(error){failures.push(`${route} ${locale} ${width}px: ${error.message}`)}
+    for(const route of routes){
+      const modes=route==="/site-closed.html"?["coming_soon","maintenance"]:[null];
+      for(const mode of modes)try{await check(page,route,locale,1440,1000,true,mode)}catch(error){failures.push(`${route} ${locale} ${mode||""} desktop: ${error.message}`)}
+    }
+    for(const route of routes)for(const width of [390,320]){
+      const modes=route==="/site-closed.html"?["coming_soon","maintenance"]:[null];
+      for(const mode of modes)try{await check(page,route,locale,width,844,width===390,mode)}catch(error){failures.push(`${route} ${locale} ${mode||""} ${width}px: ${error.message}`)}
+    }
     await context.close();
   }
   for(const locale of locales){
