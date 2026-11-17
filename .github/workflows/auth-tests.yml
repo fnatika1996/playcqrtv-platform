@@ -270,7 +270,6 @@ jobs:
           node qa/site-control-playwright.mjs
           node qa/public-site-playwright.mjs
           node qa/profile-playwright.mjs
-          node qa/profile-playwright.mjs
 
       - name: Upload non-sensitive browser screenshots
         id: upload-screenshots
