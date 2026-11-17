@@ -107,7 +107,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
     const action=page.locator('#users button[data-action="suspend"]').first();
     await action.waitFor({state:"visible",timeout:8000});
     await action.click();
-    const dialog=page.locator('#modal[role="dialog"]');
+    const dialog=page.locator('#modal [role="dialog"]');
     await dialog.waitFor({state:"visible",timeout:5000});
     const dialogText=await dialog.innerText();
     assert.ok(dialogText.length>0,"synthetic admin confirmation dialog is rendered");
