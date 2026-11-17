@@ -116,7 +116,7 @@ function inspectRawSourceLiterals(source, path, catalogs = dictionaries, allowEm
     const rawValue = literal[2];
     const phrase = rawValue.trim();
     if (!phrase || phrase.length >= 1000 || !/\p{L}/u.test(phrase)) continue;
-    if (allowEmbeddedMarkup && /<[a-z][\\w:-]*(?:\\s|>)/i.test(phrase)) {
+    if (allowEmbeddedMarkup && /<[a-z][\w:-]*(?:\s|>)/i.test(phrase)) {
       errors.push(...inspectMarkup(phrase, path, catalogs, legacyHtmlBaseline));
       continue;
     }
