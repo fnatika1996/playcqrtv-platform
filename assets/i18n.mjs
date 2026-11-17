@@ -133,7 +133,7 @@ function updateTitle() {
 function initialize() {
   document.documentElement.lang = locale;
   const style = document.createElement("style");
-  style.textContent = ".cqrtv-language-switcher{display:inline-flex;align-items:center;gap:6px;margin-inline-start:12px;color:#8B8E96;font:500 11px/1.2 inherit;vertical-align:middle}.cqrtv-language-switcher select{min-height:32px;padding:4px 24px 4px 8px;border:1px solid #35373D;border-radius:6px;background:#17191D;color:#F3F3F2;font:inherit;cursor:pointer}.cqrtv-language-switcher select:focus-visible{outline:2px solid #FF7629;outline-offset:2px}@media(max-width:480px){.cqrtv-language-switcher{gap:4px;margin-inline-start:6px}.cqrtv-language-switcher select{min-height:40px}}";
+  style.textContent = ".cqrtv-language-switcher{display:inline-flex;align-items:center;gap:6px;margin-inline-start:12px;color:#8B8E96;font:500 11px/1.2 inherit;vertical-align:middle}.cqrtv-language-switcher select{min-height:32px;padding:4px 24px 4px 8px;border:1px solid #35373D;border-radius:6px;background:#17191D;color:#F3F3F2;font:inherit;cursor:pointer}.cqrtv-language-switcher select:focus-visible{outline:2px solid #FF7629;outline-offset:2px}@media(max-width:480px){.cqrtv-language-label{display:none}.cqrtv-language-switcher{gap:0;margin-inline-start:4px}.cqrtv-language-switcher select{width:56px;min-width:56px;min-height:40px;padding:4px 3px}}";
   document.head.append(style);
   translateTree();
   addSwitcher();
