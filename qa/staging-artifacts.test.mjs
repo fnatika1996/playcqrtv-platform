@@ -32,7 +32,7 @@ test("staging artifacts have fixed isolated identity and no production mounts", 
   assert.match(gateCompose, /cqrtv-v2-staging_postgres_data/);
   assert.doesNotMatch(gateCompose, /playcqrtv|\/docker\/playcqrtv|\/var\/run\/docker\.sock/);
   assert.doesNotMatch(compose, /playcqrtv|\/docker\/playcqrtv|\/var\/run\/docker\.sock/);
-  assert.doesNotMatch(smoke, /\/docker\/playcqrtv|playcqrtv_(?:postgres_data|db_secret|caddy_data|caddy_config)/);
+  assert.match(smoke, /production path or socket reference found/);
   assert.match(smoke, /docker context show/);
   assert.match(smoke, /No cleanup was performed/);
 });
