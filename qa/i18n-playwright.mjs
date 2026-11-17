@@ -32,6 +32,13 @@ async function installSyntheticAdminFixture(page) {
   return requests;
 }
 async function check(page,route,locale,width,height,screenshot=false) {
+  await page.unroute("**/api/admin/**");
+  await page.unroute("**/api/site-control/public");
+  if(route==="/site-closed.html"){
+    const mode=locale==="ro"?"maintenance":"coming_soon";
+    const status=mode==="maintenance"?{statusLabel:"ТЕХНИЧЕСКИЕ РАБОТЫ",heading:"CQRTV на техобслуживании",subtitle:"Мы настраиваем платформу и скоро вернёмся.",description:"Проводятся технические работы",maintenanceStatusLabel:"ТЕХНИЧЕСКИЕ РАБОТЫ",maintenanceHeading:"CQRTV на техобслуживании",maintenanceSubtitle:"Мы настраиваем платформу и скоро вернёмся.",maintenanceDescription:"Проводятся технические работы"}:{statusLabel:"ПЛАТФОРМА ГОТОВИТСЯ",heading:"CQRTV скоро откроется",subtitle:"Следите за анонсами",description:"Мы готовим пространство для игроков и команд: подбор матчей, турниры, статистика и развитие esports-сцены.",maintenanceStatusLabel:"ТЕХНИЧЕСКИЕ РАБОТЫ",maintenanceHeading:"CQRTV на техобслуживании",maintenanceSubtitle:"Мы настраиваем платформу и скоро вернёмся.",maintenanceDescription:"Проводятся технические работы"};
+    await page.route("**/api/site-control/public",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({mode,...status,aboutButtonLabel:"Что такое CQRTV?",aboutTitle:"Что такое CQRTV?",aboutBody:"Играй. Объединяйся. Развивайся.",launchAt:null,countdownEnabled:false,animationEnabled:false,socialLinks:[]})}));
+  }
   const errors=[];
   page.on("pageerror",error=>errors.push(error.message));
   const adminRequests=(route==="/admin.html"||route==="/site-control-admin.html")?await installSyntheticAdminFixture(page):null;
@@ -83,7 +90,7 @@ try {
     const context=await browser.newContext({locale:locale==="ru"?"ru-RU":locale==="ro"?"ro-RO":"en-US",viewport:{width:1440,height:1000}});
     const page=await context.newPage();
     for(const route of routes)try{await check(page,route,locale,1440,1000)}catch(error){failures.push(`${route} ${locale} desktop: ${error.message}`)}
-    for(const route of ["/","/auth.html","/site-closed.html"])for(const width of [390,320])try{await check(page,route,locale,width,844,width===390)}catch(error){failures.push(`${route} ${locale} ${width}px: ${error.message}`)}
+    for(const route of routes)for(const width of [390,320])try{await check(page,route,locale,width,844,width===390)}catch(error){failures.push(`${route} ${locale} ${width}px: ${error.message}`)}
     await context.close();
   }
   for(const locale of locales){
