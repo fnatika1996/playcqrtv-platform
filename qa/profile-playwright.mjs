@@ -27,7 +27,7 @@ try{
     assert.equal(await page.locator("#profile-guest-signup").isVisible(),true);
     assert.equal(await page.locator("#profile-content").isVisible(),false);
     assert.match(await page.locator("#profile-guest-title").textContent(),/Войдите/);
-    const overflow=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth}));
+    const overflow=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,offenders:[...document.querySelectorAll("body *")].map(node=>{const rect=node.getBoundingClientRect();return{id:node.id,className:typeof node.className==="string"?node.className:"",tag:node.tagName,left:Math.round(rect.left),right:Math.round(rect.right),scrollWidth:node.scrollWidth,clientWidth:node.clientWidth}}).filter(node=>node.right>innerWidth+1||node.left< -1||node.scrollWidth>node.clientWidth+12).slice(0,12)}));
     assert.ok(overflow.scrollWidth<=overflow.clientWidth,"profile overflow at "+width+"px: "+JSON.stringify(overflow));
     if(width>1024)assert.equal(await page.locator("#profile-menu-toggle").isVisible(),false);
     else{
