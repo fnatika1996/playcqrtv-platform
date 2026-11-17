@@ -28,11 +28,6 @@ on:
         description: Previously observed running API RepoDigest
         required: true
         type: string
-      legacy_handoff_approved:
-        description: Owner attestation for the one-time exact :latest-to-digest handoff; leave false for routine releases
-        required: true
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -67,7 +62,7 @@ jobs:
           BACKUP_VERIFIED: ${{ inputs.backup_verified }}
           PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
           PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
-          LEGACY_HANDOFF_APPROVED: ${{ inputs.legacy_handoff_approved }}
+          LEGACY_HANDOFF_APPROVED: "false"
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
@@ -194,7 +189,7 @@ jobs:
           API_IMAGE_REF: ${{ needs.build-release.outputs.api_ref }}
           PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
           PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
-          LEGACY_HANDOFF_APPROVED: ${{ inputs.legacy_handoff_approved }}
+          LEGACY_HANDOFF_APPROVED: "false"
         run: |
           set -euo pipefail
           : "${CQRTV_SSH_HOST:?Configure the production Environment variable CQRTV_SSH_HOST}"
