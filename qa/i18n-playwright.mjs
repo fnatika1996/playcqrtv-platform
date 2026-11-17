@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, readFile, readdir } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 const playwrightRoot = process.env.PLAYWRIGHT_PACKAGE;
@@ -42,9 +42,14 @@ async function check(page,route,locale,width,height,screenshot=false) {
   const errors=[];
   page.on("pageerror",error=>errors.push(error.message));
   const adminRequests=(route==="/admin.html"||route==="/site-control-admin.html")?await installSyntheticAdminFixture(page):null;
-  if(adminRequests)await page.context().addCookies([{name:"cqrtv_qa_admin",value:"valid",domain:base.hostname,path:"/",httpOnly:true,sameSite:"Lax"}]);
   const adminReady=adminRequests?page.waitForResponse(response=>new URL(response.url()).pathname==="/api/admin/me",{timeout:10000}):null;
   await page.setViewportSize({width,height});
+  if(adminRequests){
+    // Serve checkout HTML only for this isolated visual fixture; Caddy forward-auth is covered by the dedicated admin security suite.
+    const filename=route==="/admin.html"?"admin.html":"site-control-admin.html";
+    const body=await readFile(new URL(`../${filename}`,import.meta.url),"utf8");
+    await page.route(new URL(route,base).href,request=>request.fulfill({status:200,contentType:"text/html; charset=utf-8",body}));
+  }
   await page.goto(new URL(route,base).href,{waitUntil:"domcontentloaded",timeout:30000});
   if(adminReady)await adminReady;
   const selector=page.locator("[data-cqrtv-language-switcher] select");
