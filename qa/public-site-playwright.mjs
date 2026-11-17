@@ -16,12 +16,13 @@ try{
   const beforeBaseUrl=process.env.CQRTV_QA_BEFORE_URL;
   if(!beforeBaseUrl)throw new Error("CQRTV_QA_BEFORE_URL must point to an isolated baseline built from the PR base.");
   for(const width of [1440,390]){
-    const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});
+    const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900},deviceScaleFactor:1});
     await context.route("**/api/**",async route=>{
       const body=route.request().url().endsWith("/api/auth/me")?{user:null}:{};
       await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(body)});
     });
-    const page=await context.newPage();
+    await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
+const page=await context.newPage();
     const response=await page.goto(beforeBaseUrl,{waitUntil:"domcontentloaded"});
     assert.equal(response?.status(),200,`baseline homepage should load at ${width}px`);
     assert.match(await page.title(),/CQRTV/);
@@ -31,13 +32,14 @@ try{
     console.log(`PASS baseline homepage screenshot at ${width}px`);
   }
   for(const width of widths){
-    const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});
+    const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900},deviceScaleFactor:1});
     let user=null,registerPosts=0,logoutPosts=0,meCalls=0;
     await context.route("**/api/auth/me",async route=>{meCalls++;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({user})})});
     await context.route("**/api/auth/register",async route=>{registerPosts++;await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"registration unavailable in QA"})})});
     await context.route("**/api/auth/logout",async route=>{logoutPosts++;user=null;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Вы вышли."})})});
     await context.route("**/api/account/nickname",async route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({nickname:"ClutchAce"})}));
-    const page=await context.newPage();
+    await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
+const page=await context.newPage();
     const errors=[];page.on("pageerror",error=>errors.push(error.message));
     const response=await page.goto(baseUrl,{waitUntil:"domcontentloaded"});
     assert.equal(response?.status(),200,`public home should load at ${width}px`);
@@ -114,8 +116,9 @@ try{
     await context.close();
     console.log(`PASS approved home v3.1 at ${width}px`);
   }
-  const offlineContext=await browser.newContext({viewport:{width:390,height:844}});
+  const offlineContext=await browser.newContext({locale:"ru-RU",viewport:{width:390,height:844}});
   await offlineContext.setExtraHTTPHeaders({"X-QA-Site-Mode":"coming_soon"});
+  await offlineContext.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
   const offline=await offlineContext.newPage();
   const offlineResponse=await offline.goto(baseUrl,{waitUntil:"domcontentloaded"});
   assert.equal(offlineResponse?.status(),200);
@@ -128,3 +131,5 @@ try{
 }finally{
   await browser.close();
 }
+
+await import("./i18n-playwright.mjs");

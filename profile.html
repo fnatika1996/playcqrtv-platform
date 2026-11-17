@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101113">
   <title>Мой профиль — CQRTV</title>
-  <meta name="description" content="Профиль игрока CQRTV: игровая роль, страна и доступные разделы аккаунта.">
+  <meta name="description" content="Профиль игрока CQRTV: игровая роль, страна и доступные разделы аккаунта." data-i18n-content="page.meta.profile">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;500;600;700;800&family=Teko:wght@500;600;700&display=swap');
   </style>
@@ -21,7 +21,7 @@
 <body class="player-profile-page">
   <header class="profile-topbar">
     <button id="profile-menu-toggle" class="profile-menu-toggle" type="button" aria-label="Открыть меню" aria-controls="profile-mobile-navigation" aria-expanded="false"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/reorder.svg" aria-hidden="true"></span></button>
-    <a class="profile-brand" href="/" aria-label="CQRTV — главная"><span class="profile-brand-mark">C</span><span class="profile-brand-name">CQ<span>R</span>TV</span></a>
+    <a class="profile-brand" href="/" aria-label="CQRTV — главная"><span class="profile-brand-mark" data-i18n-ignore>C</span><span class="profile-brand-name" data-i18n-ignore>CQ<span>R</span>TV</span></a>
     <nav class="profile-topnav" aria-label="Основная навигация">
       <a href="/">Главная</a>
       <a href="/#play">Матчмейкинг</a>
@@ -70,7 +70,7 @@
 
       <section id="profile-guest" class="profile-guest-card" hidden aria-labelledby="profile-guest-title">
         <span class="profile-empty-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span></span>
-        <span class="profile-eyebrow">CQRTV PLAYER PROFILE</span>
+        <span class="profile-eyebrow" data-i18n="profile.kicker">CQRTV PLAYER PROFILE</span>
         <h1 id="profile-guest-title">Войдите, чтобы открыть профиль</h1>
         <p id="profile-guest-description">Данные профиля доступны только владельцу аккаунта CQRTV.</p>
         <div class="profile-guest-actions">
@@ -124,7 +124,7 @@
             <div class="profile-stat-grid">
               <div class="profile-stat"><span>Матчи</span><strong>—</strong></div>
               <div class="profile-stat"><span>Победы</span><strong>—</strong></div>
-              <div class="profile-stat"><span>K/D</span><strong>—</strong></div>
+              <div class="profile-stat"><span data-i18n-ignore>K/D</span><strong>—</strong></div>
               <div class="profile-stat"><span>Винрейт</span><strong>—</strong></div>
             </div>
             <p class="profile-panel-note">Статистика появится после первых матчей.</p>
@@ -195,5 +195,5 @@
       </form>
     </div>
   </dialog>
-</body>
+<script type="module" src="/assets/i18n.mjs"></script></body>
 </html>

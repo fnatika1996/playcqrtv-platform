@@ -11,8 +11,9 @@ await mkdir(dir,{recursive:true});
 const browser=await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
 try{
  for(const width of [1440,1024,760,390,375,320]){
-  const context=await browser.newContext({viewport:{width,height:900},reducedMotion:width===390?"reduce":"no-preference",extraHTTPHeaders:{"X-QA-Site-Mode":"coming_soon","X-CQRTV-Site-Mode":"open"}});
-  const page=await context.newPage();
+  const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900},reducedMotion:width===390?"reduce":"no-preference",extraHTTPHeaders:{"X-QA-Site-Mode":"coming_soon","X-CQRTV-Site-Mode":"open"}});
+  await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
+const page=await context.newPage();
   const response=await page.goto(baseUrl+"/",{waitUntil:"domcontentloaded"});
   assert.equal(response?.status(),200);
   assert.equal(await page.title(),"CQRTV — скоро");
@@ -44,7 +45,7 @@ try{
   }
   await context.close();
  }
- const maintenanceContext=await browser.newContext({viewport:{width:390,height:844},extraHTTPHeaders:{"X-QA-Site-Mode":"maintenance","X-CQRTV-Site-Mode":"open"}});
+ const maintenanceContext=await browser.newContext({locale:"ru-RU",viewport:{width:390,height:844},extraHTTPHeaders:{"X-QA-Site-Mode":"maintenance","X-CQRTV-Site-Mode":"open"}});
  const maintenancePage=await maintenanceContext.newPage();
  await maintenancePage.goto(baseUrl+"/",{waitUntil:"domcontentloaded"});
  await maintenancePage.getByRole("heading",{name:"CQRTV на обслуживании"}).waitFor({state:"visible"});
@@ -53,7 +54,7 @@ try{
  assert.equal(await maintenanceAdminLink.isVisible(),true,"maintenance page should also expose protected admin login");
  assert.equal(await maintenanceAdminLink.getAttribute("href"),"/admin/login?next=%2F");
  await maintenanceContext.close();
- const recoveryContext=await browser.newContext({viewport:{width:390,height:844},extraHTTPHeaders:{"X-QA-Site-Mode":"maintenance","X-CQRTV-Site-Mode":"open","X-Forwarded-Uri":"/"}});
+ const recoveryContext=await browser.newContext({locale:"ru-RU",viewport:{width:390,height:844},extraHTTPHeaders:{"X-QA-Site-Mode":"maintenance","X-CQRTV-Site-Mode":"open","X-Forwarded-Uri":"/"}});
  const recovery=await recoveryContext.newPage();
  const offlineResponse=await recovery.goto(baseUrl+"/",{waitUntil:"domcontentloaded"});
  assert.equal(offlineResponse?.status(),200);
@@ -86,7 +87,7 @@ try{
  assert.equal(validCookie?.value,"valid","successful mock login should set the expected admin session cookie");
  await recoveryContext.close();
  const rejectedNextValues=["","?next=https%3A%2F%2Fevil.example","?next=%2F%2Fevil.example","?next=%252F%252Fevil.example","?next=javascript%3Aalert%281%29","?next=%5C%5Cevil.example","?next=%2Fadmin"];
- const redirectContext=await browser.newContext({viewport:{width:390,height:844}});
+ const redirectContext=await browser.newContext({locale:"ru-RU",viewport:{width:390,height:844}});
  const redirectPage=await redirectContext.newPage();
  await redirectPage.route("**/admin",route=>route.fulfill({status:200,contentType:"text/html",body:"<!doctype html><title>QA admin destination</title>"}));
  for(const query of rejectedNextValues){
@@ -99,9 +100,10 @@ try{
  }
  await redirectContext.close();
  for(const width of [1440,760,390,320]){
-  const context=await browser.newContext({viewport:{width,height:900}});
+  const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900}});
   await context.addCookies([{name:"cqrtv_qa_admin",value:"valid",domain:"playcqrtv.com",path:"/"}]);
-  const page=await context.newPage();
+  await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
+const page=await context.newPage();
   let socialPayload=null;
   const siteControlState={settings:{mode:"open",heading:"Heading",subtitle:"Subtitle",description:"Description",statusLabel:"READY",maintenanceHeading:"Maintenance",maintenanceSubtitle:"Back soon",maintenanceDescription:"Updating.",maintenanceStatusLabel:"MAINTENANCE",launchAt:"",countdownEnabled:false,aboutButtonLabel:"About CQRTV",aboutTitle:"CQRTV",aboutBody:"Players, teams and matches.",animationEnabled:false,backgroundAssetId:null},socialLinks:[{id:"11111111-1111-4111-8111-111111111111",label:"Telegram QA",url:"https://t.me/cqrtv",iconKey:"chat",iconAssetId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",enabled:true,sortOrder:0}]};
   await page.route("**/api/site-control/media/**",route=>route.fulfill({status:200,contentType:"image/png",body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pZcAAAAASUVORK5CYII=","base64")}));

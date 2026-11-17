@@ -23,7 +23,7 @@ try {
     page.on("request", request => {
       if (request.method() === "POST" && request.url().includes("/api/admin/login")) loginPosts++;
     });
-    const response = await page.goto(`${baseUrl}/admin/login`, { waitUntil: "domcontentloaded" });
+    const response = await page.goto(`${baseUrl}/admin/login?lang=ru`, { waitUntil: "domcontentloaded" });
     assert.equal(response?.status(), 200, `admin login must load at ${width}px`);
     assert.equal(await page.title(), "Вход администратора · CQRTV", `admin login document should parse its title at ${width}px`);
     await page.screenshot({ path: path.join(screenshotDir, `admin-login-${width}.png`), fullPage: true });
@@ -84,8 +84,9 @@ try {
   }
 
   for (const width of widths) {
-    const context = await browser.newContext({ viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
+    const context = await browser.newContext({locale:"ru-RU", viewport: { width, height: 1000 }, deviceScaleFactor: 1 });
     await context.addCookies([{ name: "cqrtv_qa_admin", value: "valid", domain: "playcqrtv.com", path: "/" }]);
+    await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
     const page = await context.newPage();
     let suspendCalls = 0;
     let logoutCalls = 0;
