@@ -156,13 +156,13 @@ test("inline page scripts use catalogued fixed UI text and known translation ref
   const missing=[];
   for(const path of pages){
     const html=await read(path);
-    for(const block of html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)){
-      if(/\\bsrc=/i.test(block[1]))continue;
-      for(const literal of block[2].matchAll(/(["'`])([^"'`\\n]*[\\u0400-\\u04ff][^"'`\\n]*)["'`]/g)){
+    for(const block of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
+      if(/\bsrc=/i.test(block[1]))continue;
+      for(const literal of block[2].matchAll(/(["'`])([^"'`\n]*[\u0400-\u04ff][^"'`\n]*)["'`]/g)){
         const phrase=literal[2].trim();
         if(phrase.length>1&&!phrase.includes("${")&&!Object.hasOwn(dictionaries.ru,phrase)&&!allValues.has(phrase))missing.push(`${path}: inline literal ${phrase}`);
       }
-      for(const reference of block[2].matchAll(/(?:\\.t|data-i18n(?:-[\\w-]+)?)\\s*(?:\\(|=)\\s*["']([\\w.-]+)["']/g)){
+      for(const reference of block[2].matchAll(/(?:\.t|data-i18n(?:-[\w-]+)?)\s*(?:\(|=)\s*["']([\w.-]+)["']/g)){
         const key=reference[1];
         if(!Object.values(dictionaries).every((catalog)=>Object.hasOwn(catalog,key)))missing.push(`${path}: unknown inline key ${key}`);
       }
