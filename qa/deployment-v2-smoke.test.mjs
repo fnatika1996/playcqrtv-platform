@@ -6,10 +6,12 @@ import {classifyHomepage,verifyPublicSurface} from "./deployment-v2-smoke.mjs";
 const currentMain=fs.readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const closedGate=fs.readFileSync(new URL("../site-closed.html",import.meta.url),"utf8");
 const phase1='<html><main id="home"><h1 id="home-title">CQRTV — твоя платформа для CS2</h1></main></html>';
+const homeV31='<html><main><h1 id="home-title">Твой путь в соревновательный <span>CS2</span></h1></main></html>';
 
 test("smoke accepts current main, Phase 1 and closed gate",()=>{
-  assert.ok(["current-main-public","phase1-public"].includes(classifyHomepage(currentMain)));
+  assert.ok(["current-main-public","phase1-public","home-v3.1-public"].includes(classifyHomepage(currentMain)));
   assert.equal(classifyHomepage(phase1),"phase1-public");
+  assert.equal(classifyHomepage(homeV31),"home-v3.1-public");
   assert.equal(classifyHomepage(closedGate),"closed-gate");
 });
 
