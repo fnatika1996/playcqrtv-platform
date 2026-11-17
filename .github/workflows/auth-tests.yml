@@ -218,7 +218,7 @@ jobs:
           grep -Eqi '^content-type: image/svg\+xml([;[:space:]]|$)' "$RUNNER_TEMP/shield.svg.headers"
           grep -q 'Панель администратора' "$RUNNER_TEMP/admin-login.html"
           grep -q 'Обзор платформы' "$RUNNER_TEMP/admin.html"
-          grep -q 'CQRTV — твоя платформа для CS2' "$RUNNER_TEMP/player-home.html"
+          grep -q 'Твой путь в соревновательный' "$RUNNER_TEMP/player-home.html"
           grep -q '<main id="auth-card"' "$RUNNER_TEMP/player-auth.html"
           echo '3ef86e6f3dbe7c095382bd13ae21db0a239c0a8271ae2798553740cb3efee08d  '"$RUNNER_TEMP/admin-hero.png" | sha256sum --check
 
