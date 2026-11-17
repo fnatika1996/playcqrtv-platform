@@ -55,8 +55,8 @@ The VPS must already have root-scoped read-only GHCR credential access for image
 - A rerun of the same workflow run reuses its retained Compose artifact and exact digest outputs. If target refs are already healthy, reconciliation returns success. If both services remain at the recorded old refs and healthy, the same approved deployment can proceed. Mixed state is an operator hold.
 - Build, test or pull failure occurs before Compose up; current services remain running. Pulling immutable images may add cache entries only.
 - A network interruption or timeout after up is not proof of failure or success. Run read-only inventory first. No blind retry or automatic rollback.
-- Web rollback is an owner-approved new gated release using the previous pinned web digest, after checking the rollback manifest and API compatibility.
-- API rollback is fail-closed. After any auth/admin-state or schema change, or any uncertainty, use a forward fix. Even with compatibility evidence, API rollback requires explicit owner review.
+- The workflow exposes no rollback input and this PR adds no rollback operation. Recorded previous digests are used only to reconcile the currently running state; rollback remains unavailable through this gate.
+- If recovery is required, stop and prepare a separate owner-reviewed recovery design with compatibility evidence and staging proof. Never make a previous digest an implicit target or automatically roll back API/database state.
 - Never use docker compose down -v, remove/recreate PostgreSQL or Caddy volumes, overwrite a database from a backup, or reverse migrations destructively.
 
 ## Staging and reliability checks

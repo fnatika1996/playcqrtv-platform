@@ -484,25 +484,25 @@ def _safe_project_files(config, owner_uid=0):
         raise DeployError("Pinned root Compose file changed; no deployment applied.")
 
 
-def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, sleep=time.sleep, attempts=30):
-    _safe_project_files(config)
+def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, sleep=time.sleep, attempts=30, owner_uid=0):
+    _safe_project_files(config, owner_uid=owner_uid)
     lock_fd = os.open(LOCK_FILE, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
     lock_stat = os.fstat(lock_fd)
-    if lock_stat.st_uid != 0 or not stat.S_ISREG(lock_stat.st_mode) or lock_stat.st_mode & 0o077:
+    if lock_stat.st_uid != owner_uid or not stat.S_ISREG(lock_stat.st_mode) or lock_stat.st_mode & 0o077:
         os.close(lock_fd)
         raise DeployError("Deployment lock file ownership or permissions are unsafe.")
     with os.fdopen(lock_fd, "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        state = _read_state(config["state_file"])
+        state = _read_state(config["state_file"], owner_uid=owner_uid)
         _check_replay(state, payload, payload_hash)
         with tempfile.TemporaryDirectory(prefix="cqrtv-compose-") as work:
             os.chmod(work, 0o700)
             override = os.path.join(work, "release.override.yml")
             _build_override(payload["web_image_ref"], payload["api_image_ref"], override)
             base = _compose_base(config)
-            _safe_project_files(config)
+            _safe_project_files(config, owner_uid=owner_uid)
             config_bytes = _command(base + ["--file", override, "config", "--format", "json"], runner=runner)
-            _safe_project_files(config)
+            _safe_project_files(config, owner_uid=owner_uid)
             document = _json(config_bytes, 2 * 1024 * 1024, "Rendered Compose")
             _validate_compose_config(document, config, payload)
             before = _inventory(config, runner=runner)
@@ -522,7 +522,7 @@ def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, 
                 })
                 return "Already-running target digests are healthy; no-op success."
             # Explicit pulls happen before any service update.
-            _safe_project_files(config)
+            _safe_project_files(config, owner_uid=owner_uid)
             _command(base + ["--file", override, "pull", "api", "caddy"], runner=runner, timeout=300)
             for service, key in (("api", "api_image_ref"), ("caddy", "web_image_ref")):
                 image_ref = payload[key]
@@ -531,7 +531,7 @@ def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, 
                 if not isinstance(digests, list) or image_ref not in digests:
                     raise DeployError("Pulled image does not expose the exact approved RepoDigest.")
             up_error = None
-            _safe_project_files(config)
+            _safe_project_files(config, owner_uid=owner_uid)
             try:
                 _command(base + ["--file", override, "up", "-d", "--no-build", "--no-deps", "api", "caddy"], runner=runner, timeout=300)
             except DeployError as error:

@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parent
 MODULE_PATH = ROOT / "deployment-v2-restricted-deploy.py"
@@ -207,6 +208,120 @@ class StateAndComposePolicyTests(unittest.TestCase):
         with self.assertRaises(agent.DeployError):
             agent._check_replay(current, {**self.payload, "run_id": "200"}, "b" * 64)
         agent._check_replay(current, {**self.payload, "run_id": "200"}, "a" * 64)
+
+
+
+class DeploymentFlowTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="cqrtv-flow-test-", dir=ROOT)
+        self.addCleanup(self.temp.cleanup)
+        self.lock_path = str(pathlib.Path(self.temp.name) / "deploy.lock")
+        self.payload = request()
+        self.config = {"project_name": "playcqrtv", "project_root": "/docker/playcqrtv",
+                       "compose_file": "/docker/playcqrtv/docker-compose.yml",
+                       "volume_names": dict(agent.VOLUME_NAMES)}
+        self.document = {
+            "services": {
+                "api": {"image": self.payload["api_image_ref"], "pull_policy": "never",
+                        "volumes": [{"type": "volume", "source": "db_secret", "target": "/run/db-secret"}]},
+                "caddy": {"image": self.payload["web_image_ref"], "pull_policy": "never",
+                          "volumes": [
+                              {"type": "volume", "source": "caddy_data", "target": "/data"},
+                              {"type": "volume", "source": "caddy_config", "target": "/config"}]},
+                "db": {"image": "postgres:17-alpine", "volumes": [
+                    {"type": "volume", "source": "postgres_data", "target": "/var/lib/postgresql/data"},
+                    {"type": "volume", "source": "db_secret", "target": "/run/db-secret"}]},
+                "secret-init": {"image": "alpine:3.21", "volumes": [
+                    {"type": "volume", "source": "db_secret", "target": "/run/db-secret"}]},
+            },
+            "volumes": {key: {"name": value} for key, value in agent.VOLUME_NAMES.items()},
+        }
+        self.previous = {
+            "api": {"repo_digests": [self.payload["previous_api_ref"]]},
+            "caddy": {"repo_digests": [self.payload["previous_web_ref"]]},
+            "db": {"id": "db-container-1"},
+        }
+        self.target = {
+            "api": {"repo_digests": [self.payload["api_image_ref"]]},
+            "caddy": {"repo_digests": [self.payload["web_image_ref"]]},
+            "db": {"id": "db-container-1"},
+        }
+        self.commands = []
+
+    def command(self, args, *, runner=subprocess.run, timeout=30):
+        self.commands.append(list(args))
+        if args[-3:] == ["config", "--format", "json"]:
+            return json.dumps(self.document).encode()
+        if args[-3:] == ["pull", "api", "caddy"]:
+            return b""
+        if len(args) >= 3 and args[1:3] == ["image", "inspect"]:
+            return json.dumps([self.payload["api_image_ref"] if args[-1] == self.payload["api_image_ref"]
+                               else self.payload["web_image_ref"]]).encode()
+        if "up" in args:
+            return b""
+        raise AssertionError("Unexpected Docker command: " + " ".join(args))
+
+    def run(self, inventories, *, command=None, attempts=1):
+        with mock.patch.object(agent, "LOCK_FILE", self.lock_path), \
+             mock.patch.object(agent, "_safe_project_files"), \
+             mock.patch.object(agent, "_read_state", return_value={"schema_version": 1, "run_id": "0", "payload_sha256": ""}), \
+             mock.patch.object(agent, "_write_state") as write_state, \
+             mock.patch.object(agent, "_compose_base", return_value=["/usr/bin/docker", "compose"]), \
+             mock.patch.object(agent, "_inventory", side_effect=inventories), \
+             mock.patch.object(agent, "_command", side_effect=command or self.command):
+            result = agent.perform_deployment(
+                self.payload, "a" * 64, self.config, attempts=attempts, sleep=lambda _seconds: None,
+                owner_uid=os.getuid(),
+            )
+        return result, write_state
+
+    def test_correct_digest_apply_only_pulls_and_recreates_app_services(self):
+        result, write_state = self.run([self.previous, self.target])
+        self.assertIn("target digests are running", result)
+        self.assertEqual(len(self.commands), 5)
+        self.assertTrue(any(command[-3:] == ["pull", "api", "caddy"] for command in self.commands))
+        self.assertTrue(any(command[-6:] == ["up", "-d", "--no-build", "--no-deps", "api", "caddy"] for command in self.commands))
+        self.assertFalse(any("down" in command or "db" in command for command in self.commands))
+        write_state.assert_called_once()
+
+    def test_repeat_on_healthy_target_is_noop(self):
+        result, write_state = self.run([self.target])
+        self.assertIn("no-op success", result)
+        self.assertFalse(any(command[-3:] == ["pull", "api", "caddy"] or "up" in command for command in self.commands))
+        write_state.assert_called_once()
+
+    def test_mixed_state_stops_before_pull(self):
+        mixed = dict(self.previous)
+        mixed["caddy"] = self.target["caddy"]
+        with self.assertRaises(agent.DeployError):
+            self.run([mixed])
+        self.assertFalse(any("pull" in command or "up" in command for command in self.commands))
+
+    def test_pull_error_never_reaches_compose_up(self):
+        def fail_pull(args, *, runner=subprocess.run, timeout=30):
+            if args[-3:] == ["pull", "api", "caddy"]:
+                raise agent.DeployError("simulated pull failure")
+            return self.command(args, runner=runner, timeout=timeout)
+        with self.assertRaises(agent.DeployError):
+            self.run([self.previous], command=fail_pull)
+        self.assertFalse(any("up" in command for command in self.commands))
+
+    def test_lost_up_response_reconciles_observed_target_without_retry(self):
+        def uncertain_up(args, *, runner=subprocess.run, timeout=30):
+            self.commands.append(list(args))
+            if "up" in args:
+                raise agent.DeployError("simulated lost response")
+            if args[-3:] == ["config", "--format", "json"]:
+                return json.dumps(self.document).encode()
+            if args[-3:] == ["pull", "api", "caddy"]:
+                return b""
+            if len(args) >= 3 and args[1:3] == ["image", "inspect"]:
+                return json.dumps([args[-1]]).encode()
+            raise AssertionError("Unexpected Docker command")
+        result, _ = self.run([self.previous, self.target], command=uncertain_up, attempts=1)
+        self.assertIn("target digests are running", result)
+        self.assertEqual(sum("up" in command for command in self.commands), 1)
+
 
 
 if __name__ == "__main__":
