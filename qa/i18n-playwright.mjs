@@ -71,14 +71,20 @@ async function check(page,route,locale,width,height,screenshot=false) {
       const host=document.createElement('div');host.hidden=true;
       const label=document.createElement('span');label.dataset.i18n='common.language.label';label.dataset.i18nFallback='Язык';
       const input=document.createElement('input');input.dataset.i18nPlaceholder='common.language.choose';input.placeholder='Выбрать язык';
-      host.append(label,input);document.body.append(host);window.CQRTVI18n.bind(host);
-      const first={label:label.textContent,placeholder:input.placeholder};
-      label.textContent='Язык';input.placeholder='Выбрать язык';window.CQRTVI18n.bind(host);
-      return {first,repeat:{label:label.textContent,placeholder:input.placeholder}};
+      const button=document.createElement('button');button.dataset.i18nTitle='common.language.choose';button.title='Выбрать язык';
+      const image=document.createElement('img');image.dataset.i18nAlt='common.language.choose';image.alt='Выбрать язык';
+      host.append(label,input,button,image);document.body.append(host);window.CQRTVI18n.bind(host);
+      const first={label:label.textContent,placeholder:input.placeholder,title:button.title,alt:image.alt};
+      label.textContent='Язык';input.placeholder='Выбрать язык';button.title='Выбрать язык';image.alt='Выбрать язык';window.CQRTVI18n.bind(host);
+      let missing=null;const onMissing=event=>{missing=event.detail.key};window.addEventListener('cqrtv:i18nmissing',onMissing,{once:true});
+      const fallback=window.CQRTVI18n.t('qa.fixture.unknown',{},'Safe fallback');window.removeEventListener('cqrtv:i18nmissing',onMissing);
+      return {first,repeat:{label:label.textContent,placeholder:input.placeholder,title:button.title,alt:image.alt},fallback,missing};
     });
-    const expected=locale==='ru'?{label:'Язык',placeholder:'Выбрать язык'}:locale==='en'?{label:'Language',placeholder:'Choose language'}:{label:'Limbă',placeholder:'Alege limba'};
+    const expected=locale==='ru'?{label:'Язык',placeholder:'Выбрать язык',title:'Выбрать язык',alt:'Выбрать язык'}:locale==='en'?{label:'Language',placeholder:'Choose language',title:'Choose language',alt:'Choose language'}:{label:'Limbă',placeholder:'Alege limba',title:'Alege limba',alt:'Alege limba'};
     assert.deepEqual(probe.first,expected,`semantic dynamic binding for ${locale}`);
     assert.deepEqual(probe.repeat,expected,`repeated dynamic binding for ${locale}`);
+    assert.equal(probe.fallback,'Safe fallback');
+    assert.equal(probe.missing,'qa.fixture.unknown',`missing translation must be observable for ${locale}`);
   }
   assert.deepEqual(errors,[],`browser errors on ${route}: ${errors.join("; ")}`);
   if(route==="/admin.html"||route==="/site-control-admin.html")assert.ok(adminRequests.length>0,`synthetic authorized fixture was not used for ${route}`);
