@@ -1,4 +1,4 @@
-const tr=(key,fallback)=>window.CQRTVI18n?.t(key,{},fallback)||fallback;
+const tr=(key,fallback)=>globalThis.CQRTVI18n?.t(key,{},fallback)||fallback;
 const roleLabels={rifler:"Rifler",entry:"Entry",support:"Support",awper:"AWPer",igl:"IGL",lurker:"Lurker",anchor:"Anchor",flex:"Flex"};
 function countryFlag(code){if(!/^[A-Z]{2}$/.test(String(code||"").toUpperCase()))return "—";return [...String(code).toUpperCase()].map(letter=>String.fromCodePoint(letter.charCodeAt(0)+127397)).join("")}
 export function bindAuthHeader(document,fetchImpl=globalThis.fetch){
