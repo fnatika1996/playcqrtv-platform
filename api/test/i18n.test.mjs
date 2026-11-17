@@ -64,7 +64,7 @@ function decodeHtml(value) {
 function isHumanText(value) {
   const normalized = decodeHtml(value).replace(/\s+/g, " ").trim();
   if (!normalized || !/[\p{L}]/u.test(normalized)) return false;
-  return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO)$/i.test(normalized);
+  return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO|ID|K\\/D)$/i.test(normalized);
 }
 function inspectMarkup(html, path, catalogs = dictionaries) {
   const errors = [];
@@ -74,7 +74,7 @@ function inspectMarkup(html, path, catalogs = dictionaries) {
   for (const match of source.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>([^<>]+)</gi)) {
     const attrs = match[2] || "";
     const text = decodeHtml(match[3]).replace(/\s+/g, " ").trim();
-    if (!isHumanText(text)) continue;
+    if (!isHumanText(text) || /\\bdata-i18n-ignore(?:=|\\s|>)/i.test(attrs)) continue;
     const binding = attrs.match(/\bdata-i18n="([^"]+)"/i)?.[1];
     if (binding) {
       for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
@@ -85,7 +85,7 @@ function inspectMarkup(html, path, catalogs = dictionaries) {
     const values = Object.fromEntries([...attrs.matchAll(/([\w:-]+)="([^"]*)"/g)].map((item) => [item[1], item[2]]));
     for (const attr of ["aria-label", "title", "placeholder", "alt"]) {
       const value = values[attr];
-      if (!value || !isHumanText(value)) continue;
+      if (!value || !isHumanText(value) || /\\bdata-i18n-ignore(?:=|\\s|>)/i.test(attrs)) continue;
       const binding = values[`data-i18n-${attr}`];
       if (binding) {
         for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
