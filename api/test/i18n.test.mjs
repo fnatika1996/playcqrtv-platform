@@ -64,7 +64,7 @@ function decodeHtml(value) {
 function isHumanText(value) {
   const normalized = decodeHtml(value).replace(/\s+/g, " ").trim();
   if (!normalized || !/[\p{L}]/u.test(normalized)) return false;
-  return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO|ID|K\\/D)$/i.test(normalized);
+  return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO|ID|K\\/D|© CQRTV)$/i.test(normalized);
 }
 function inspectMarkup(html, path, catalogs = dictionaries) {
   const errors = [];
@@ -148,4 +148,25 @@ test("fixed client UI literals and semantic references are covered", async () =>
     }
   }
   assert.deepEqual(missing,[],"client fixed UI literals must have authored translations and every semantic reference must resolve");
+});
+
+test("inline page scripts use catalogued fixed UI text and known translation references", async () => {
+  const pages=await discoverRootPages();
+  const allValues=new Set(Object.values(dictionaries).flatMap((catalog)=>Object.values(catalog)));
+  const missing=[];
+  for(const path of pages){
+    const html=await read(path);
+    for(const block of html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)){
+      if(/\\bsrc=/i.test(block[1]))continue;
+      for(const literal of block[2].matchAll(/(["'`])([^"'`\\n]*[\\u0400-\\u04ff][^"'`\\n]*)["'`]/g)){
+        const phrase=literal[2].trim();
+        if(phrase.length>1&&!phrase.includes("${")&&!Object.hasOwn(dictionaries.ru,phrase)&&!allValues.has(phrase))missing.push(`${path}: inline literal ${phrase}`);
+      }
+      for(const reference of block[2].matchAll(/(?:\\.t|data-i18n(?:-[\\w-]+)?)\\s*(?:\\(|=)\\s*["']([\\w.-]+)["']/g)){
+        const key=reference[1];
+        if(!Object.values(dictionaries).every((catalog)=>Object.hasOwn(catalog,key)))missing.push(`${path}: unknown inline key ${key}`);
+      }
+    }
+  }
+  assert.deepEqual(missing,[],"inline dynamic UI must use authored translations and known semantic keys");
 });
