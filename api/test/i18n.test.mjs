@@ -66,7 +66,7 @@ function isHumanText(value) {
   if (!normalized || !/[\\p{L}]/u.test(normalized)) return false;
   return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO)$/i.test(normalized);
 }
-function inspectMarkup(html, path) {
+function inspectMarkup(html, path, catalogs = dictionaries) {
   const errors = [];
   const source = html.replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi, " ")
     .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi, " ")
@@ -77,8 +77,8 @@ function inspectMarkup(html, path) {
     if (!isHumanText(text)) continue;
     const binding = attrs.match(/\\bdata-i18n="([^"]+)"/i)?.[1];
     if (binding) {
-      for (const locale of locales) if (!Object.hasOwn(dictionaries[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
-    } else if (!Object.hasOwn(dictionaries.ru, text)) errors.push(`${path}: unbound UI text “${text}”`);
+      for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
+    } else if (!Object.hasOwn(catalogs.ru || {}, text)) errors.push(`${path}: unbound UI text “${text}”`);
   }
   for (const match of source.matchAll(/<([a-z][\\w:-]*)(\\s[^<>]*?)?>/gi)) {
     const attrs = match[2] || "";
@@ -88,8 +88,8 @@ function inspectMarkup(html, path) {
       if (!value || !isHumanText(value)) continue;
       const binding = values[`data-i18n-${attr}`];
       if (binding) {
-        for (const locale of locales) if (!Object.hasOwn(dictionaries[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
-      } else if (!Object.hasOwn(dictionaries.ru, decodeHtml(value).trim())) errors.push(`${path}: unbound ${attr} “${value}”`);
+        for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
+      } else if (!Object.hasOwn(catalogs.ru || {}, decodeHtml(value).trim())) errors.push(`${path}: unbound ${attr} “${value}”`);
     }
   }
   return errors;
