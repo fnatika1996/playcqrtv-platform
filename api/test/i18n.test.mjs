@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -237,7 +237,7 @@ test("new app modules imported by a route are discovered and must localize every
   try {
     const modulePath = "assets/features/future-feature.mjs";
     const moduleFile = join(root, modulePath);
-    await (await import("node:fs/promises")).mkdir(join(root, "assets/features"), { recursive: true });
+    await mkdir(join(root, "assets/features"), { recursive: true });
     await writeFile(join(root, "index.html"), '<!doctype html><script type="module" src="/assets/features/future-feature.mjs"></script>');
     await writeFile(moduleFile, 'export const title = "Future dashboard";');
     const route = await readFile(join(root, "index.html"), "utf8");
