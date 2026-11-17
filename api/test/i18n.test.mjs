@@ -180,6 +180,8 @@ test("inline page scripts use catalogued fixed UI text and known translation ref
       if(/\bsrc=/i.test(block[1]))continue;
       for(const literal of block[2].matchAll(/(["'`])([^"'`\n]*[\u0400-\u04ff][^"'`\n]*)["'`]/g)){
         const phrase=literal[2].trim();
+        const embeddedKeys=[...phrase.matchAll(/data-i18n(?:-[\\w-]+)?="([\\w.-]+)"/g)].map(match=>match[1]);
+        if(embeddedKeys.length){for(const key of embeddedKeys)if(!Object.values(dictionaries).every(catalog=>Object.hasOwn(catalog,key)))missing.push(`${path}: unknown embedded translation key ${key}`);continue;}
         if(phrase.length>1&&!phrase.includes("${")&&!Object.hasOwn(dictionaries.ru,phrase)&&!allValues.has(phrase))missing.push(`${path}: inline literal ${phrase}`);
       }
       for(const reference of block[2].matchAll(/(?:\.t|data-i18n(?:-[\w-]+)?)\s*(?:\(|=)\s*["']([\w.-]+)["']/g)){
