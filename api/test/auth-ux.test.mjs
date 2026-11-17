@@ -93,7 +93,7 @@ test("login micro-UX keeps auth semantics and provides approved controls",()=>{
   assert.match(html,/<a id="auth-back" href="\/" aria-label="Вернуться на сайт" data-i18n-aria-label="common.nav.back" data-i18n="common.nav.back">← Назад<\/a>/);
   assert.match(html,/back\.classList\.add\("login-back"\)/);
   assert.match(html,/<input id="email-input" name="email" type="email" autocomplete="email" placeholder="player@example.com" data-i18n-placeholder="common.email.placeholder" required>/);
-  assert.match(html,/<input id="password-input" name="password" type="password" minlength="12" maxlength="128" autocomplete="current-password" placeholder="Введите пароль" required>/);
+  assert.match(html,/<input id="password-input" name="password" type="password" minlength="12" maxlength="128" autocomplete="current-password" placeholder="Введите пароль" data-i18n-placeholder="auth.password.placeholder" required>/);
   assert.match(html,/<button id="submit" type="submit"><span class="pack-icon" data-src="\/assets\/icons\/cqrtv\/ui\/login\.svg"/);
   assert.match(html,/<script type="module" src="\/assets\/admin\/admin-icons\.mjs"><\/script>/);
   assert.match(html,/data-src="\/assets\/icons\/cqrtv\/ui\/mail\.svg"/);
