@@ -354,6 +354,8 @@ def _inspect_container(container_id, service, config, *, runner=subprocess.run):
     ], runner=runner).decode()
     mounts = set()
     for row in mounts_text.splitlines():
+        if not row.strip():
+            continue
         parts = row.split("\t")
         if len(parts) != 3:
             raise DeployError("Container mount inventory is malformed.")
