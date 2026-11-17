@@ -1,3 +1,4 @@
+const tr=(key,fallback)=>window.CQRTVI18n?.t(key,{},fallback)||fallback;
 const dateLocale=()=>window.CQRTVI18n?.locale==="en"?"en-US":window.CQRTVI18n?.locale==="ro"?"ro-RO":"ru-RU";
 const roleLabels={rifler:"Rifler",entry:"Entry",support:"Support",awper:"AWPer",igl:"IGL",lurker:"Lurker",anchor:"Anchor",flex:"Flex"};
 function countryFlag(code){const value=String(code||"").toUpperCase();if(!/^[A-Z]{2}$/.test(value))return "—";return [...value].map(letter=>String.fromCodePoint(letter.charCodeAt(0)+127397)).join("")}
@@ -12,12 +13,12 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
     user=next&&typeof next.nickname==="string"?next:null;
     loading.hidden=true;guest.hidden=Boolean(user);content.hidden=!user;
     document.body.dataset.accountState=user?"authenticated":"guest";
-    if(!user){const networkError=byId("auth-header-status").textContent.includes("Не удалось проверить аккаунт");byId("profile-guest-title").textContent=networkError?"Не удалось загрузить профиль":"Войдите, чтобы открыть профиль";byId("profile-guest-description").textContent=networkError?"Проверьте подключение и обновите страницу.":"Данные профиля доступны только владельцу аккаунта CQRTV.";byId("profile-guest-signup").hidden=networkError;return;}
+    if(!user){const networkError=byId("auth-header-status").textContent.includes(tr("profile.account.verify_error_short","Не удалось проверить аккаунт"));byId("profile-guest-title").textContent=networkError?tr("profile.load.error","Не удалось загрузить профиль"):"Войдите, чтобы открыть профиль";byId("profile-guest-description").textContent=networkError?tr("profile.network.refresh_hint","Проверьте подключение и обновите страницу."):"Данные профиля доступны только владельцу аккаунта CQRTV.";byId("profile-guest-signup").hidden=networkError;return;}
     const nickname=user.nickname.trim(),country=String(user.country||"").toUpperCase();
     byId("profile-title").setAttribute("aria-label","Профиль игрока "+nickname);
     byId("profile-country-code").textContent=country||"—";
     const flag=countryFlag(country);byId("about-country-flag").textContent=flag;
-    byId("about-country-flag").setAttribute("aria-label",country?"Флаг страны "+country:"Страна не указана");
+    byId("about-country-flag").setAttribute("aria-label",country?"Флаг страны "+country:tr("profile.country.unspecified","Страна не указана"));
     byId("about-country-code").textContent=country||"—";
     byId("about-primary-role").textContent=roleLabels[user.primary_role]||"—";
     const secondary=(Array.isArray(user.secondary_roles)?user.secondary_roles:[]).map(role=>roleLabels[role]).filter(Boolean);
@@ -34,12 +35,12 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
     dialog.showModal();current.textContent="Проверяем аккаунт…";status.textContent="";input.disabled=true;input.value=user.nickname;blocked=true;save.disabled=true;let checked=false;
     try{
       const response=await fetchImpl("/api/auth/me",{cache:"no-store",credentials:"same-origin"}),data=await response.json();
-      if(!response.ok||!data?.user){current.textContent="Не удалось проверить аккаунт. Войдите ещё раз.";return}
+      if(!response.ok||!data?.user){current.textContent=tr("profile.account.verify_error","Не удалось проверить аккаунт. Войдите ещё раз.");return}
       user=data.user;input.value=user.nickname;current.textContent=window.CQRTVI18n?.t("Сейчас установлен ник: {nickname}",{nickname:user.nickname})||("Сейчас установлен ник: "+user.nickname);checked=true;
       const availableAt=user.nickname_available_at?new Date(user.nickname_available_at):null;
       if(availableAt&&availableAt>Date.now()){status.textContent=window.CQRTVI18n?.t("Бесплатная смена будет доступна {date}.",{date:availableAt.toLocaleDateString(dateLocale())})||("Бесплатная смена будет доступна "+availableAt.toLocaleDateString(dateLocale())+".");blocked=true}
       else{status.textContent="Бесплатная смена доступна.";blocked=false}
-    }catch{current.textContent="Не удалось загрузить аккаунт. Попробуйте ещё раз."}
+    }catch{current.textContent=tr("profile.account.load_error","Не удалось загрузить аккаунт. Попробуйте ещё раз.")}
     finally{input.disabled=!checked;save.disabled=blocked}
   }
   editButton.addEventListener("click",openNicknameEditor);
@@ -59,7 +60,7 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
         byId("header-user-nickname").textContent=data.nickname;byId("header-avatar-initial").textContent=initial;
         current.textContent=window.CQRTVI18n?.t("Сейчас установлен ник: {nickname}",{nickname:data.nickname})||("Сейчас установлен ник: "+data.nickname);
         if(data.nicknameAvailableAt)status.textContent=window.CQRTVI18n?.t("Ник изменён. Бесплатная смена будет доступна {date}.",{date:new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())})||("Ник изменён. Бесплатная смена будет доступна "+new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())+".");
-      }else if(data.nicknameAvailableAt){status.textContent=(data.error||"Никнейм пока нельзя изменить.")+" Следующая смена: "+new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())+".";blocked=true}
+      }else if(data.nicknameAvailableAt){status.textContent=(data.error||tr("profile.nickname.change_blocked","Никнейм пока нельзя изменить."))+" Следующая смена: "+new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())+".";blocked=true}
       else blocked=false;
     }catch{status.textContent="Не удалось связаться с сервером. Попробуйте позже.";blocked=false}
     finally{save.disabled=blocked}
