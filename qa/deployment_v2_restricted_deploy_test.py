@@ -228,6 +228,30 @@ class ContainerImageIdentityTests(unittest.TestCase):
             with self.subTest(field=field), self.assertRaisesRegex(agent.DeployError, "labels"):
                 agent._inspect_container("secret-init-id", "secret-init", config, runner=bad_runner)
 
+    def test_app_accepts_only_base_and_fixed_override_compose_labels(self):
+        config_files = "/docker/playcqrtv/docker-compose.yml," + agent.OVERRIDE_FILE
+        image_id = "sha256:" + "3" * 64
+        line = (
+            "container-456\t/playcqrtv-web\tplaycqrtv\tcaddy\t" + config_files +
+            "\t/docker/playcqrtv\t" + agent.LEGACY_IMAGE_REF["caddy"] +
+            "\t" + image_id + "\trunning\thealthy\t0"
+        ).encode()
+        mount = b"volume\tplaycqrtv_caddy_data\t/data\nvolume\tplaycqrtv_caddy_config\t/config\n"
+        outputs = [line, mount, json.dumps(["ghcr.io/fnatika1996/playcqrtv-platform@" + "sha256:" + "a" * 64]).encode()]
+        def runner(args, **kwargs):
+            return subprocess.CompletedProcess(args, 0, stdout=outputs.pop(0), stderr=b"")
+        config = {"project_name": "playcqrtv", "compose_file": "/docker/playcqrtv/docker-compose.yml",
+                  "project_root": "/docker/playcqrtv"}
+        item = agent._inspect_container("container-456", "caddy", config, runner=runner)
+        self.assertEqual(item["config_files"], config_files)
+
+        bad_line = line.decode().replace(agent.OVERRIDE_FILE, "/tmp/untrusted.yml").encode()
+        responses = [bad_line]
+        def bad_runner(args, **kwargs):
+            return subprocess.CompletedProcess(args, 0, stdout=responses.pop(0), stderr=b"")
+        with self.assertRaisesRegex(agent.DeployError, "labels"):
+            agent._inspect_container("container-456", "caddy", config, runner=bad_runner)
+
     def test_unexpected_app_container_name_is_rejected(self):
         image_id = "sha256:" + "1" * 64
         line = ("container-123\t/other-api\tplaycqrtv\tapi\t/docker/playcqrtv/docker-compose.yml\t" +
@@ -417,6 +441,7 @@ class DeploymentFlowTests(unittest.TestCase):
              mock.patch.object(agent, "_safe_project_files"), \
              mock.patch.object(agent, "_read_state", return_value=initial_state), \
              mock.patch.object(agent, "_write_state") as write_state, \
+             mock.patch.object(agent, "OVERRIDE_FILE", str(pathlib.Path(self.temp.name) / "release.override.yml")), \
              mock.patch.object(agent, "_compose_base", return_value=["/usr/bin/docker", "compose"]), \
              mock.patch.object(agent, "_inventory", side_effect=inventories), \
              mock.patch.object(agent, "_command", side_effect=command or self.command):

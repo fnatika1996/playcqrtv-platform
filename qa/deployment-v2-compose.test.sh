@@ -5,11 +5,13 @@ command -v docker >/dev/null
 docker compose version
 scratch=$(mktemp -d)
 project="cqrtv-v2-qa-${GITHUB_RUN_ID:-local}-${BASHPID}"
+label_project="cqrtv-v2-label-${GITHUB_RUN_ID:-local}-${BASHPID}"
 [[ "$project" =~ ^cqrtv-v2-qa-[A-Za-z0-9-]+$ ]]
 STAGING_HTTP_PORT=$(shuf -i 20000-45000 -n 1)
 STAGING_DB_PASSWORD=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')
 export STAGING_HTTP_PORT STAGING_DB_PASSWORD
 cleanup() {
+  docker compose --project-name "$label_project" --project-directory "$scratch/labels" -f "$scratch/labels/docker-compose.yml" down --volumes --remove-orphans >/dev/null 2>&1 || true
   docker compose --project-name "$project" -f "$scratch/compose.yml" down --volumes --remove-orphans >/dev/null 2>&1 || true
   rm -rf -- "$scratch"
 }
@@ -150,4 +152,85 @@ test "$(docker inspect --format '{{.Image}}' "$api_id")" = "$api_image_id_before
 test "$(docker inspect --format '{{.Image}}' "$web_id")" = "$web_image_id_before"
 test "$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' "$db_id")" = "$volume_before"
 test "$(docker exec "$db_id" psql -U staging -d staging -Atc 'SELECT marker FROM release_probe WHERE id=1')" = "preserve-me"
-echo "PASS disposable loopback staging; isolated project/network/volume/credential; read-only inventory; failed build/pull preserve state; web deploy/rollback; repeat idempotency; PostgreSQL volume and isolated restore."
+
+# Exercise real Compose config_files labels across a base + stable override update.
+label_dir="$scratch/labels"
+mkdir -p "$label_dir"
+label_api_base="$api_image"
+label_api_target="cqrtv-v2-qa-api-target:${GITHUB_SHA:-local}"
+label_web_base="$web_rollback_image"
+label_web_target="cqrtv-v2-qa-web-target:${GITHUB_SHA:-local}"
+docker tag "$label_api_base" "$label_api_target"
+docker tag "$label_web_base" "$label_web_target"
+cat > "$label_dir/docker-compose.yml" <<YAML
+services:
+  api:
+    image: $label_api_base
+    command: ["sh", "-ec", "while true; do sleep 1; done"]
+    volumes: [api_data:/data]
+  caddy:
+    image: $label_web_base
+    volumes: [caddy_data:/data, caddy_config:/config]
+  db:
+    image: $label_api_base
+    command: ["sh", "-ec", "while true; do sleep 1; done"]
+    volumes: [postgres_data:/var/lib/postgresql/data, db_secret:/run/db-secret]
+  secret-init:
+    image: $label_api_base
+    command: ["sh", "-ec", "touch /run/db-secret/initialized"]
+    volumes: [db_secret:/run/db-secret]
+volumes:
+  api_data: {name: ${label_project}_api_data}
+  caddy_data: {name: ${label_project}_caddy_data}
+  caddy_config: {name: ${label_project}_caddy_config}
+  postgres_data: {name: ${label_project}_postgres_data}
+  db_secret: {name: ${label_project}_db_secret}
+YAML
+cat > "$label_dir/release.override.yml" <<YAML
+services:
+  api:
+    image: $label_api_target
+    pull_policy: never
+  caddy:
+    image: $label_web_target
+    pull_policy: never
+YAML
+label_compose=(docker compose --project-name "$label_project" --project-directory "$label_dir" --file "$label_dir/docker-compose.yml")
+"${label_compose[@]}" up -d api caddy db secret-init
+label_api_id_before=$("${label_compose[@]}" ps -q api)
+label_caddy_id_before=$("${label_compose[@]}" ps -q caddy)
+label_db_id=$("${label_compose[@]}" ps -q db)
+label_secret_id=$("${label_compose[@]}" ps -q secret-init)
+test -n "$label_api_id_before" && test -n "$label_caddy_id_before" && test -n "$label_db_id" && test -n "$label_secret_id"
+label_base_api=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_api_id_before")
+label_base_db=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_db_id")
+test "$label_base_api" = "$label_dir/docker-compose.yml"
+test "$label_base_db" = "$label_dir/docker-compose.yml"
+
+"${label_compose[@]}" --file "$label_dir/release.override.yml" up -d --no-deps api caddy
+label_api_id_after=$("${label_compose[@]}" ps -q api)
+label_caddy_id_after=$("${label_compose[@]}" ps -q caddy)
+label_after_api=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_api_id_after")
+label_after_caddy=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_caddy_id_after")
+expected_label_files="$label_dir/docker-compose.yml,$label_dir/release.override.yml"
+echo "Observed Compose config_files before: api=$label_base_api db=$label_base_db"
+echo "Observed Compose config_files after two-file up: api=$label_after_api caddy=$label_after_caddy"
+test "$label_after_api" = "$expected_label_files"
+test "$label_after_caddy" = "$expected_label_files"
+test "$("${label_compose[@]}" ps -q db)" = "$label_db_id"
+test "$("${label_compose[@]}" ps -q secret-init)" = "$label_secret_id"
+label_db_mounts=$(docker inspect --format '{{range .Mounts}}{{.Name}}:{{.Destination}};{{end}}' "$label_db_id")
+[[ "$label_db_mounts" == *"$label_project_db_secret:/run/db-secret;"* ]]
+[[ "$label_db_mounts" == *"$label_project_postgres_data:/var/lib/postgresql/data;"* ]]
+label_api_target_id=$label_api_id_after
+label_caddy_target_id=$label_caddy_id_after
+
+# A routine subsequent run keeps the stable config_files label and protected services untouched.
+"${label_compose[@]}" --file "$label_dir/release.override.yml" up -d --no-deps api caddy
+test "$("${label_compose[@]}" ps -q api)" = "$label_api_target_id"
+test "$("${label_compose[@]}" ps -q caddy)" = "$label_caddy_target_id"
+test "$("${label_compose[@]}" ps -q db)" = "$label_db_id"
+test "$("${label_compose[@]}" ps -q secret-init)" = "$label_secret_id"
+test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_api_target_id")" = "$expected_label_files"
+
+echo "PASS disposable loopback staging; existing data/volumes preserved; Compose labels observed across base+stable override and repeat; DB/secret-init identities untouched."

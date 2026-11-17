@@ -20,6 +20,7 @@ ENV_FILE = "/docker/playcqrtv/.env"
 ALLOWED_SIGNERS = "/etc/cqrtv-deploy/allowed_signers"
 STATE_FILE = "/var/lib/cqrtv-deploy/state.json"
 LOCK_FILE = "/run/lock/cqrtv-deploy.lock"
+OVERRIDE_FILE = "/var/lib/cqrtv-deploy/release.override.yml"
 DOCKER = "/usr/bin/docker"
 SSH_KEYGEN = "/usr/bin/ssh-keygen"
 MAX_FRAME = 32768
@@ -278,10 +279,14 @@ def _compose_base(config):
     ]
 
 
-def _build_override(target_web, target_api, path):
+def _build_override(target_web, target_api, path, *, owner_uid=None):
     # Reject direct callers too; no arbitrary YAML or shell metacharacters enter this file.
     if not EXPECTED_IMAGE["caddy"].fullmatch(target_web) or not EXPECTED_IMAGE["api"].fullmatch(target_api):
         raise DeployError("Generated Compose override accepts only CQRTV registry digests.")
+    if owner_uid is None:
+        owner_uid = os.geteuid()
+    parent = os.path.dirname(path)
+    _trusted_file(parent, owner_uid, directory=True)
     content = (
         "services:\n"
         "  api:\n"
@@ -291,11 +296,32 @@ def _build_override(target_web, target_api, path):
         f"    image: {target_web}\n"
         "    pull_policy: never\n"
     ).encode("ascii")
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
-    with os.fdopen(fd, "wb") as stream:
-        stream.write(content)
-        stream.flush()
-        os.fsync(stream.fileno())
+    try:
+        existing = os.lstat(path)
+    except FileNotFoundError:
+        existing = None
+    if existing and (not stat.S_ISREG(existing.st_mode) or stat.S_ISLNK(existing.st_mode) or
+                     existing.st_uid != owner_uid or existing.st_mode & 0o077):
+        raise DeployError("Persistent Compose override ownership or permissions are unsafe.")
+    fd, temporary = tempfile.mkstemp(prefix=".release.override-", dir=parent)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        directory_fd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
 
 
 def _inspect_container(container_id, service, config, *, runner=subprocess.run):
@@ -316,7 +342,10 @@ def _inspect_container(container_id, service, config, *, runner=subprocess.run):
         raise DeployError("Container Compose project/service labels do not match.")
     if service in EXPECTED_CONTAINER_NAMES and item["name"].lstrip("/") != EXPECTED_CONTAINER_NAMES[service]:
         raise DeployError("Application container name differs from the owner-observed project identity.")
-    if item["config_files"] != config["compose_file"] or item["working_dir"] != config["project_root"]:
+    expected_config_files = {config["compose_file"]}
+    if service in ("api", "caddy"):
+        expected_config_files.add(config["compose_file"] + "," + OVERRIDE_FILE)
+    if item["config_files"] not in expected_config_files or item["working_dir"] != config["project_root"]:
         raise DeployError("Container Compose ownership labels do not match the verified project.")
     mounts_text = _command([
         DOCKER, "inspect", "--format",
@@ -543,71 +572,68 @@ def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, 
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         state = _read_state(config["state_file"], owner_uid=owner_uid)
         _check_replay(state, payload, payload_hash)
-        with tempfile.TemporaryDirectory(prefix="cqrtv-compose-") as work:
-            os.chmod(work, 0o700)
-            override = os.path.join(work, "release.override.yml")
-            _build_override(payload["web_image_ref"], payload["api_image_ref"], override)
-            base = _compose_base(config)
-            _safe_project_files(config, owner_uid=owner_uid)
-            config_bytes = _command(base + ["--file", override, "config", "--format", "json"], runner=runner)
-            _safe_project_files(config, owner_uid=owner_uid)
-            document = _json(config_bytes, 2 * 1024 * 1024, "Rendered Compose")
-            _validate_compose_config(document, config, payload)
-            before = _inventory(config, runner=runner)
-            for service in ("db", "secret-init"):
-                if before[service]["configured_image"] != document["services"][service]["image"]:
-                    raise DeployError("Database/secret-init image differs from the pinned Compose definition.")
-            current, handoff_completed = _validate_configured_app_images(before, payload, state, payload_hash)
-            if current == "target":
-                _write_state(config["state_file"], {
-                    "schema_version": 2, "run_id": payload["run_id"], "payload_sha256": payload_hash,
-                    "legacy_handoff_completed": handoff_completed,
-                })
-                return "Already-running target digests are healthy; no-op success."
-            # Explicit pulls happen before any service update.
-            _safe_project_files(config, owner_uid=owner_uid)
-            _command(base + ["--file", override, "pull", "api", "caddy"], runner=runner, timeout=300)
-            for service, key in (("api", "api_image_ref"), ("caddy", "web_image_ref")):
-                image_ref = payload[key]
-                output = _command([DOCKER, "image", "inspect", "--format", "{{json .RepoDigests}}", image_ref], runner=runner)
-                digests = _json(output, 16384, "Pulled image RepoDigests")
-                if not isinstance(digests, list) or image_ref not in digests:
-                    raise DeployError("Pulled image does not expose the exact approved RepoDigest.")
-            up_error = None
-            _safe_project_files(config, owner_uid=owner_uid)
-            try:
-                _command(base + ["--file", override, "up", "-d", "--no-build", "--no-deps", "api", "caddy"], runner=runner, timeout=300)
-            except DeployError as error:
-                up_error = error
-            final = None
-            for attempt in range(attempts):
-                try:
-                    observed = _inventory(config, runner=runner)
-                    if observed["db"]["id"] != before["db"]["id"]:
-                        raise DeployError("PostgreSQL container identity changed during app deployment.")
-                    if not isinstance(observed, dict):
-                        raise DeployError("Observed post-update container inventory is invalid.")
-                    observed_state, observed_handoff = _validate_configured_app_images(
-                        observed, payload, state, payload_hash, allow_handoff_convergence=True,
-                    )
-                    if observed_state == "target" and observed_handoff == handoff_completed:
-                        final = observed
-                        break
-                except DeployError:
-                    if attempt == attempts - 1:
-                        raise
-                if attempt < attempts - 1:
-                    sleep(4)
-            if final is None:
-                if up_error:
-                    raise DeployError("Compose update failed; state did not converge. No retry or rollback was attempted.")
-                raise DeployError("Compose update did not converge. No retry or rollback was attempted.")
+        _build_override(payload["web_image_ref"], payload["api_image_ref"], OVERRIDE_FILE, owner_uid=owner_uid)
+        override = OVERRIDE_FILE
+        base = _compose_base(config)
+        _safe_project_files(config, owner_uid=owner_uid)
+        config_bytes = _command(base + ["--file", override, "config", "--format", "json"], runner=runner)
+        _safe_project_files(config, owner_uid=owner_uid)
+        document = _json(config_bytes, 2 * 1024 * 1024, "Rendered Compose")
+        _validate_compose_config(document, config, payload)
+        before = _inventory(config, runner=runner)
+        for service in ("db", "secret-init"):
+            if before[service]["configured_image"] != document["services"][service]["image"]:
+                raise DeployError("Database/secret-init image differs from the pinned Compose definition.")
+        current, handoff_completed = _validate_configured_app_images(before, payload, state, payload_hash)
+        if current == "target":
             _write_state(config["state_file"], {
                 "schema_version": 2, "run_id": payload["run_id"], "payload_sha256": payload_hash,
                 "legacy_handoff_completed": handoff_completed,
             })
-            return "Exact web/API target digests are running; PostgreSQL identity is unchanged."
-
+            return "Already-running target digests are healthy; no-op success."
+        # Explicit pulls happen before any service update.
+        _safe_project_files(config, owner_uid=owner_uid)
+        _command(base + ["--file", override, "pull", "api", "caddy"], runner=runner, timeout=300)
+        for service, key in (("api", "api_image_ref"), ("caddy", "web_image_ref")):
+            image_ref = payload[key]
+            output = _command([DOCKER, "image", "inspect", "--format", "{{json .RepoDigests}}", image_ref], runner=runner)
+            digests = _json(output, 16384, "Pulled image RepoDigests")
+            if not isinstance(digests, list) or image_ref not in digests:
+                raise DeployError("Pulled image does not expose the exact approved RepoDigest.")
+        up_error = None
+        _safe_project_files(config, owner_uid=owner_uid)
+        try:
+            _command(base + ["--file", override, "up", "-d", "--no-build", "--no-deps", "api", "caddy"], runner=runner, timeout=300)
+        except DeployError as error:
+            up_error = error
+        final = None
+        for attempt in range(attempts):
+            try:
+                observed = _inventory(config, runner=runner)
+                if observed["db"]["id"] != before["db"]["id"]:
+                    raise DeployError("PostgreSQL container identity changed during app deployment.")
+                if not isinstance(observed, dict):
+                    raise DeployError("Observed post-update container inventory is invalid.")
+                observed_state, observed_handoff = _validate_configured_app_images(
+                    observed, payload, state, payload_hash, allow_handoff_convergence=True,
+                )
+                if observed_state == "target" and observed_handoff == handoff_completed:
+                    final = observed
+                    break
+            except DeployError:
+                if attempt == attempts - 1:
+                    raise
+            if attempt < attempts - 1:
+                sleep(4)
+        if final is None:
+            if up_error:
+                raise DeployError("Compose update failed; state did not converge. No retry or rollback was attempted.")
+            raise DeployError("Compose update did not converge. No retry or rollback was attempted.")
+        _write_state(config["state_file"], {
+            "schema_version": 2, "run_id": payload["run_id"], "payload_sha256": payload_hash,
+            "legacy_handoff_completed": handoff_completed,
+        })
+        return "Exact web/API target digests are running; PostgreSQL identity is unchanged."
 
 def main():
     try:
