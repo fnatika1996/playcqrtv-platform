@@ -63,7 +63,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
   assert.ok(state.scrollWidth<=state.width+1,`horizontal overflow at ${width}px on ${route}: ${state.scrollWidth}`);
   if(locale!=="ru"){
     assert.ok(!/[\u0400-\u04ff]/.test(state.title),`title remains Russian: ${state.title}`);
-    const residual=[...state.texts,...state.attributes].filter(value=>/[\\u0400-\\u04ff]/.test(value));
+    const residual=[...state.texts,...state.attributes].filter(value=>/[\u0400-\u04ff]/.test(value));
     assert.deepEqual(residual,[],`unlocalized rendered text or attributes on ${route}: ${residual.join(" | ")}`);
   }
   if(route==="/auth.html"){
