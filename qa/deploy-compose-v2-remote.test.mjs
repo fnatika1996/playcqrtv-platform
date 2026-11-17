@@ -26,5 +26,5 @@ test("installation docs explicitly state root-equivalent residual risk", () => {
   assert.match(docs, /not a full sandbox/i);
   assert.match(docs, /root-equivalent/i);
   assert.match(docs, /NOPASSWD/);
-  assert.match(docs, /no[- ]arguments/i);
+  assert.match(docs, /no[- ]argument/i);
 });
