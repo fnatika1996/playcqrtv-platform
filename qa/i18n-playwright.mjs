@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 const playwrightRoot = process.env.PLAYWRIGHT_PACKAGE;
 if (!playwrightRoot) throw new Error("PLAYWRIGHT_PACKAGE must point to the pinned Playwright install.");
 const { chromium } = await import(pathToFileURL(`${playwrightRoot}/index.mjs`).href);
-const baseUrl = process.env.CQRTV_QA_BASE_URL || "http://127.0.0.1:8765";
+const baseUrl = process.env.CQRTV_QA_BASE_URL || "http://playcqrtv.com:8765";
 const base = new URL(baseUrl);
 if (base.protocol !== "http:" || !base.port || base.port !== "8765") {
   throw new Error("i18n browser QA is restricted to the isolated HTTP preview port 8765.");
@@ -14,7 +14,7 @@ const artifactDir = new URL("../qa-artifacts/", import.meta.url);
 await mkdir(artifactDir, { recursive: true });
 const routes = ["/","/profile.html","/auth.html","/rules.html","/privacy.html","/site-closed.html","/admin-login.html","/admin.html","/site-control-admin.html"];
 const locales = ["ru","en","ro"];
-const browser = await chromium.launch({headless:true});
+const browser = await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
 const failures=[];
 async function check(page,route,locale,width,height,screenshot=false) {
   const errors=[];
