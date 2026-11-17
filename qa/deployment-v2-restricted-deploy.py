@@ -593,11 +593,12 @@ def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, 
                 "legacy_handoff_completed": handoff_completed,
             })
             return "Already-running target digests are healthy; no-op success."
-        # Explicit pulls happen before any service update.
+        # Compose override pins pull_policy: never to prevent implicit or mutable pulls.
+        # Pull ONLY the two validated, signed immutable refs explicitly before any up.
         _safe_project_files(config, owner_uid=owner_uid)
-        _command(base + ["--file", override, "pull", "api", "caddy"], runner=runner, timeout=300)
         for service, key in (("api", "api_image_ref"), ("caddy", "web_image_ref")):
             image_ref = payload[key]
+            _command([DOCKER, "pull", image_ref], runner=runner, timeout=300)
             output = _command([DOCKER, "image", "inspect", "--format", "{{json .RepoDigests}}", image_ref], runner=runner)
             digests = _json(output, 16384, "Pulled image RepoDigests")
             if not isinstance(digests, list) or image_ref not in digests:
