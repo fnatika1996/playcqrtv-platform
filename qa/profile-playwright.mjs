@@ -9,7 +9,7 @@ const baseUrl=process.env.CQRTV_QA_BASE_URL||"http://playcqrtv.com:8765";
 const screenshotDir=fileURLToPath(new URL("../qa-artifacts/",import.meta.url));
 await mkdir(screenshotDir,{recursive:true});
 const widths=[1440,1024,760,390,375,320],browser=await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
-let user=null,nicknamePosts=0;
+let user=null,nicknamePosts=0,lastNicknamePayload=null;
 const fixture={nickname:"ClutchAce",country:"MD",primary_role:"awper",secondary_roles:["rifler","support"],nickname_available_at:null};
 try{
   for(const width of widths){
@@ -17,7 +17,7 @@ try{
     const context=await browser.newContext({viewport:{width,height:900},reducedMotion:"reduce"});
     await context.route("**/api/auth/me",async route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({user})}));
     await context.route("**/api/auth/logout",async route=>{user=null;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Вы вышли."})})});
-    await context.route("**/api/account/nickname",async route=>{nicknamePosts++;const body=JSON.parse(route.request().postData()||"{}");fixture.nickname=body.nickname;user={...fixture};await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Никнейм изменён.",nickname:body.nickname,nicknameAvailableAt:null})})});
+    await context.route("**/api/account/nickname",async route=>{nicknamePosts++;const body=JSON.parse(route.request().postData()||"{}");lastNicknamePayload=body.nickname;fixture.nickname=body.nickname;user={...fixture};await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Никнейм изменён.",nickname:body.nickname,nicknameAvailableAt:null})})});
     const page=await context.newPage(),errors=[];page.on("pageerror",error=>errors.push(error.message));
     const response=await page.goto(baseUrl+"/profile.html",{waitUntil:"domcontentloaded"});
     assert.equal(response?.status(),200,"profile should load at "+width+"px");
@@ -50,14 +50,17 @@ try{
     assert.equal(await page.locator("#profile-search").isDisabled(),true);
     assert.equal(await page.locator("#profile-notifications").isDisabled(),true);
     await page.locator("#profile-edit-btn").click();await page.locator("#nickname-dialog[open]").waitFor();
+    await page.locator("#nickname-change-input:not([disabled])").waitFor();
     await page.locator("#nickname-change-input").fill("ClutchAce2");await page.locator("#nickname-form button[type=submit]").click();
     await page.getByText("Никнейм изменён.",{exact:true}).waitFor();
+    assert.equal(lastNicknamePayload,"ClutchAce2");
+    await page.waitForFunction(()=>document.querySelector("#profile-nickname")?.textContent==="ClutchAce2");
     assert.equal(await page.locator("#profile-nickname").textContent(),"ClutchAce2");
     assert.equal(nicknamePosts,1);
     await page.locator("#nickname-dialog-close").click();
     if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,"profile-v1-"+width+".png"),fullPage:true});
     assert.deepEqual(errors,[],"uncaught profile errors at "+width+"px: "+errors.join("; "));
-    await context.close();user=null;nicknamePosts=0;
+    await context.close();user=null;nicknamePosts=0;lastNicknamePayload=null;
     console.log("PASS profile guest/member, editor, and layout at "+width+"px");
   }
   const offlineContext=await browser.newContext({viewport:{width:390,height:844}});

@@ -30,16 +30,16 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
   document.defaultView.addEventListener("hashchange",setCurrentSection);setCurrentSection();
   async function openNicknameEditor(){
     if(!user){location.assign("/auth.html");return}
-    dialog.showModal();current.textContent="Проверяем аккаунт…";status.textContent="";input.value=user.nickname;blocked=true;save.disabled=true;
+    dialog.showModal();current.textContent="Проверяем аккаунт…";status.textContent="";input.disabled=true;input.value=user.nickname;blocked=true;save.disabled=true;let checked=false;
     try{
       const response=await fetchImpl("/api/auth/me",{cache:"no-store",credentials:"same-origin"}),data=await response.json();
       if(!response.ok||!data?.user){current.textContent="Не удалось проверить аккаунт. Войдите ещё раз.";return}
-      user=data.user;input.value=user.nickname;current.textContent="Сейчас установлен ник: "+user.nickname;
+      user=data.user;input.value=user.nickname;current.textContent="Сейчас установлен ник: "+user.nickname;checked=true;
       const availableAt=user.nickname_available_at?new Date(user.nickname_available_at):null;
       if(availableAt&&availableAt>Date.now()){status.textContent="Бесплатная смена будет доступна "+availableAt.toLocaleDateString("ru-RU")+".";blocked=true}
       else{status.textContent="Бесплатная смена доступна.";blocked=false}
     }catch{current.textContent="Не удалось загрузить аккаунт. Попробуйте ещё раз."}
-    finally{save.disabled=blocked}
+    finally{input.disabled=!checked;save.disabled=blocked}
   }
   editButton.addEventListener("click",openNicknameEditor);
   document.querySelectorAll("[data-open-nickname-editor]").forEach(button=>button.addEventListener("click",openNicknameEditor));
