@@ -16,16 +16,29 @@ const routes = ["/","/profile.html","/auth.html","/rules.html","/privacy.html","
 const locales = ["ru","en","ro"];
 const browser = await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
 const failures=[];
+async function installSyntheticAdminFixture(page) {
+  const requests=[];
+  await page.route("**/api/admin/**", async route => {
+    const url=new URL(route.request().url());
+    requests.push(url.pathname);
+    let body={};
+    if(url.pathname==="/api/admin/me") body={csrfToken:"qa-csrf",user:{emailMasked:"admin@example.test",nickname:"CQRTV QA"}};
+    else if(url.pathname==="/api/admin/stats") body={total_users:0,verified_users:0,suspended_users:0};
+    else if(url.pathname==="/api/admin/users") body={users:[],pagination:{total:0,limit:20,offset:0}};
+    else if(url.pathname==="/api/admin/audit") body={events:[],pagination:{total:0,limit:20,offset:0}};
+    else if(url.pathname==="/api/admin/site-control") body={settings:{mode:"open",heading:"",subtitle:"",description:"",statusLabel:"",maintenanceHeading:"",maintenanceSubtitle:"",maintenanceDescription:"",maintenanceStatusLabel:"",aboutButtonLabel:"",aboutTitle:"",aboutBody:"",launchAt:null,countdownEnabled:false,animationEnabled:false,backgroundAssetId:null},socialLinks:[]};
+    await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(body)});
+  });
+  return requests;
+}
 async function check(page,route,locale,width,height,screenshot=false) {
   const errors=[];
   page.on("pageerror",error=>errors.push(error.message));
+  const adminRequests=(route==="/admin.html"||route==="/site-control-admin.html")?await installSyntheticAdminFixture(page):null;
   await page.setViewportSize({width,height});
   await page.goto(new URL(route,base).href,{waitUntil:"domcontentloaded",timeout:30000});
   const selector=page.locator("[data-cqrtv-language-switcher] select");
-  if (await selector.count()===0 && (route==="/admin.html"||route==="/site-control-admin.html")) {
-    console.log(`SKIP protected route without preview admin session: ${route}`);
-    return false;
-  }
+  if(adminRequests)assert.ok(adminRequests.some(path=>path==="/api/admin/me"),`synthetic authorized fixture must protect and load ${route}`);
   await selector.waitFor({state:"visible",timeout:8000});
   await selector.selectOption(locale);
   await page.waitForFunction(expected=>document.documentElement.lang===expected,locale);
@@ -35,6 +48,7 @@ async function check(page,route,locale,width,height,screenshot=false) {
   assert.ok(state.scrollWidth<=state.width+1,`horizontal overflow at ${width}px on ${route}: ${state.scrollWidth}`);
   if(locale!=="ru")assert.ok(!/[\u0400-\u04ff]/.test(state.title),`title remains Russian: ${state.title}`);
   assert.deepEqual(errors,[],`browser errors on ${route}: ${errors.join("; ")}`);
+  if(route==="/admin.html"||route==="/site-control-admin.html")assert.ok(adminRequests.length>0,`synthetic authorized fixture was not used for ${route}`);
   if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-390.png`,artifactDir).pathname,fullPage:true});
   return true;
 }
