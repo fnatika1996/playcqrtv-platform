@@ -11,7 +11,7 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
     user=next&&typeof next.nickname==="string"?next:null;
     loading.hidden=true;guest.hidden=Boolean(user);content.hidden=!user;
     document.body.dataset.accountState=user?"authenticated":"guest";
-    if(!user){const networkError=byId("auth-header-status").textContent.includes("Не удалось проверить аккаунт");byId("profile-guest-title").textContent=networkError?"Не удалось загрузить профиль":"Войдите, чтобы открыть профиль";byId("profile-guest-description").textContent=networkError?"Проверьте подключение и обновите страницу.":"Данные профиля доступны только владельцу аккаунта CQRTV.";return;}
+    if(!user){const networkError=byId("auth-header-status").textContent.includes("Не удалось проверить аккаунт");byId("profile-guest-title").textContent=networkError?"Не удалось загрузить профиль":"Войдите, чтобы открыть профиль";byId("profile-guest-description").textContent=networkError?"Проверьте подключение и обновите страницу.":"Данные профиля доступны только владельцу аккаунта CQRTV.";byId("profile-guest-signup").hidden=networkError;return;}
     const nickname=user.nickname.trim(),country=String(user.country||"").toUpperCase();
     byId("profile-title").setAttribute("aria-label","Профиль игрока "+nickname);
     byId("profile-country-code").textContent=country||"—";

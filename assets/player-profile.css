@@ -55,6 +55,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--profile-highlight);
 .profile-guest-card .profile-eyebrow{margin-top:24px}
 .profile-guest-card h1{max-width:580px;margin:8px 0 0;font:600 clamp(36px,5vw,54px)/.95 var(--profile-display)}
 .profile-guest-card p{max-width:500px;margin:14px 0 23px;color:#aeb0b6;font-size:12px;line-height:1.7}
+.profile-guest-actions{display:flex;flex-wrap:wrap;gap:8px}
 .profile-primary-action,.profile-secondary-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 15px;border-radius:8px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap}
 .profile-primary-action{border:1px solid var(--profile-orange);background:var(--profile-orange);color:#1a130f}
 .profile-primary-action:hover{background:#ff8b44}

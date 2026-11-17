@@ -23,6 +23,8 @@ try{
     assert.equal(response?.status(),200,"profile should load at "+width+"px");
     await page.locator("#profile-guest:not([hidden])").waitFor({state:"visible"});
     assert.equal(await page.locator("#profile-guest-login").getAttribute("href"),"/auth.html");
+    assert.equal(await page.locator("#profile-guest-signup").getAttribute("href"),"/#signup-dialog");
+    assert.equal(await page.locator("#profile-guest-signup").isVisible(),true);
     assert.equal(await page.locator("#profile-content").isVisible(),false);
     assert.match(await page.locator("#profile-guest-title").textContent(),/Войдите/);
     const overflow=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth}));
@@ -64,5 +66,6 @@ try{
   await offlinePage.locator("#profile-guest-title").waitFor({state:"visible"});
   assert.match(await offlinePage.locator("#profile-guest-title").textContent(),/Не удалось загрузить профиль/);
   assert.match(await offlinePage.locator("#profile-guest-description").textContent(),/Проверьте подключение/);
+  assert.equal(await offlinePage.locator("#profile-guest-signup").isVisible(),false);
   await offlineContext.close();
 }finally{await browser.close()}
