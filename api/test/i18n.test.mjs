@@ -111,27 +111,27 @@ function inspectMarkup(html, path, catalogs = dictionaries, baseline = legacyHtm
 
 function inspectRawSourceLiterals(source, path, catalogs = dictionaries, allowEmbeddedMarkup = false) {
   const errors = [];
-  const values = new Set(Object.values(catalogs).flatMap((catalog) => Object.values(catalog)));
   const baseline = legacyHtmlBaseline.sourceLiterals?.[path] || [];
-  for (const literal of source.matchAll(/(["'\`])([^"'\\\n]*[\u0400-\u04ff][^"'\\\n]*)["'\`]/g)) {
+  for (const literal of source.matchAll(/(["'`])((?:\\.|[\\s\\S])*?)\\1/g)) {
     const phrase = literal[2].trim();
-    if (phrase.length <= 1 || phrase.length >= 250 || phrase.includes("\${")) continue;
+    if (!phrase || phrase.length >= 1000 || !/\\p{L}/u.test(phrase)) continue;
     if (allowEmbeddedMarkup) {
-      const keys = [...phrase.matchAll(/data-i18n(?:-[\w-]+)?="([\w.-]+)"/g)].map((match) => match[1]);
+      const keys = [...phrase.matchAll(/data-i18n(?:-[\\w-]+)?="([\\w.-]+)"/g)].map((match) => match[1]);
       if (keys.length) {
         for (const key of keys) if (!Object.values(catalogs).every((catalog) => Object.hasOwn(catalog, key))) errors.push(path + ": unknown embedded translation key " + key);
         continue;
       }
     }
-    const localized = Object.hasOwn(catalogs.ru || {}, phrase) || values.has(phrase);
-    if (!localized || !baseline.includes(phrase)) errors.push(path + ": new or untranslated raw UI literal “" + phrase + "”");
+    const semanticKey = Object.values(catalogs).every((catalog) => Object.hasOwn(catalog, phrase));
+    if (!semanticKey && !baseline.includes(phrase)) errors.push(path + ": new raw source literal “" + phrase + "”; use a semantic translation key or add a reviewed non-human exemption");
   }
-  for (const reference of source.matchAll(/(?:\.t|data-i18n(?:-[\w-]+)?)\s*(?:\(|=)\s*["']([\w.-]+)["']/g)) {
+  for (const reference of source.matchAll(/(?:\\.t|\\bt|data-i18n(?:-[\\w-]+)?)\\s*(?:\\(|=)\\s*["']([\\w.-]+)["']/g)) {
     const key = reference[1];
     if (!Object.values(catalogs).every((catalog) => Object.hasOwn(catalog, key))) errors.push(path + ": unknown translation key " + key);
   }
   return errors;
 }
+
 
 test("all root HTML entrypoints are discovered and localized, including attributes", async () => {
   const pages = await discoverRootPages();
@@ -170,10 +170,14 @@ test("future UI source literals require semantic keys", () => {
     en: { "fixture.panel.title": "User dashboard", "fixture.future": "New feature" },
     ro: { "fixture.panel.title": "Panoul utilizatorului", "fixture.future": "Funcție nouă" }
   };
-  const raw = inspectRawSourceLiterals('const heading = "Новая функция";', "assets/future-panel.mjs", catalogs);
-  assert.ok(raw.some((item) => item.includes("new or untranslated raw UI literal")), "new raw JS UI text must fail CI");
+  for (const rawText of ["Новая функция", "Future dashboard"]) {
+    const raw = inspectRawSourceLiterals('const heading = "' + rawText + '";', "assets/future-panel.mjs", catalogs);
+    assert.ok(raw.some((item) => item.includes("new raw source literal")), "new raw JS UI text must fail CI regardless of language");
+  }
   const semantic = inspectRawSourceLiterals('const heading = t("fixture.panel.title");', "assets/future-panel.mjs", catalogs);
   assert.deepEqual(semantic, [], "new UI text using a stable semantic key with three authored translations should pass");
+  const unknown = inspectRawSourceLiterals('const heading = t("fixture.panel.unknown");', "assets/future-panel.mjs", catalogs);
+  assert.ok(unknown.some((item) => item.includes("unknown translation key")), "unknown semantic references must fail CI");
 });
 
 test("locale catalogs preserve interpolation parameters", () => {
