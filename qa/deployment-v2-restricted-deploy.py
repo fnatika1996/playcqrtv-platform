@@ -125,7 +125,7 @@ def _trusted_file(path, owner_uid, *, directory=False, writable=False, max_size=
         raise DeployError("Trusted file ownership or type is invalid.")
     if st.st_mode & 0o022:
         raise DeployError("Trusted file is group/world writable.")
-    if not writable and st.st_mode & 0o222:
+    if not directory and not writable and st.st_mode & 0o222:
         # Root-owned configuration may be root-writable, but never group/world writable.
         if owner_uid == 0:
             pass
