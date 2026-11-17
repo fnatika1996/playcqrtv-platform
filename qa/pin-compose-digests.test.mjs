@@ -78,7 +78,7 @@ test("release request binds the exact manifest hash and is signed before restric
   assert.match(requestBuilder, /createHash\("sha256"\)\.update\(manifest\)\.digest\("hex"\)/);
   assert.match(requestBuilder, /lstatSync\(manifestPath\)/);
   assert.match(deploymentWorkflow, /ssh-keygen -Y sign/);
-  assert.match(deploymentWorkflow, /CQRTV-DEPLOY-REQUEST-V1/);
+  assert.match(deploymentWorkflow, /CQRTV-DEPLOY-REQUEST-V2/);
   assert.match(deploymentWorkflow, /\|\s*ssh -i/);
   assert.doesNotMatch(deploymentWorkflow, /\bscp\b|bash -s|sha256sum %q|manifest_sha256=\$\(sha256sum/);
 });
@@ -102,6 +102,8 @@ test("production workflow is manual, protected and uses immutable Compose refs",
   assert.match(deploymentWorkflow, /docker-compose\.release\.yml/);
   assert.match(deploymentWorkflow, /Create signed release request and use restricted SSH command/);
   assert.match(deploymentWorkflow, /CQRTV_RELEASE_SIGNING_KEY/);
+  assert.match(deploymentWorkflow, /legacy_handoff_approved:[\s\S]*default: false/);
+  assert.match(deploymentWorkflow, /LEGACY_HANDOFF_APPROVED: \$\{\{ inputs\.legacy_handoff_approved \}\}/);
   assert.match(deploymentWorkflow, /CQRTV_PROJECT_ROOT/);
   assert.match(remoteScript, /Direct user-context Compose deployment is disabled/);
   assert.doesNotMatch(remoteScript, /docker compose|bash -s|eval /);

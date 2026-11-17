@@ -27,6 +27,11 @@ MAX_PAYLOAD = 8192
 MAX_CONFIG = 8192
 MAX_STATE = 4096
 SERVICES = ("api", "caddy", "db", "secret-init")
+LEGACY_IMAGE_REF = {
+    "api": "ghcr.io/fnatika1996/playcqrtv-api:latest",
+    "caddy": "ghcr.io/fnatika1996/playcqrtv-platform:latest",
+}
+EXPECTED_CONTAINER_NAMES = {"api": "playcqrtv-api-1", "caddy": "playcqrtv-web"}
 VOLUME_NAMES = {
     "postgres_data": "playcqrtv_postgres_data",
     "db_secret": "playcqrtv_db_secret",
@@ -61,6 +66,7 @@ EXPECTED_IMAGE = {
 REQUEST_KEYS = (
     "schema_version", "release_sha", "run_id", "project_root", "manifest_sha256",
     "web_image_ref", "api_image_ref", "previous_web_ref", "previous_api_ref",
+    "legacy_handoff_approved",
 )
 ROOT_ENV = {"PATH": "/usr/bin:/bin", "HOME": "/root", "LC_ALL": "C"}
 
@@ -220,7 +226,7 @@ def decode_frame(raw, allowed_signers, *, runner=subprocess.run, owner_uid=0):
     lines = raw.split(b"\n")
     if lines and lines[-1] == b"":
         lines.pop()
-    if len(lines) != 3 or lines[0] != b"CQRTV-DEPLOY-REQUEST-V1":
+    if len(lines) != 3 or lines[0] != b"CQRTV-DEPLOY-REQUEST-V2":
         raise DeployError("Signed request frame version mismatch.")
     signature = _safe_b64(lines[1])
     payload_bytes = _safe_b64(lines[2])
@@ -237,8 +243,10 @@ def decode_frame(raw, allowed_signers, *, runner=subprocess.run, owner_uid=0):
 
 
 def validate_request(payload, config):
-    if type(payload["schema_version"]) is not int or payload["schema_version"] != 1:
+    if type(payload["schema_version"]) is not int or payload["schema_version"] != 2:
         raise DeployError("Unsupported signed request schema.")
+    if type(payload["legacy_handoff_approved"]) is not bool:
+        raise DeployError("Legacy handoff attestation must be an explicit boolean.")
     if payload["project_root"] != config["project_root"]:
         raise DeployError("Signed request project root does not match fixed server config.")
     if not isinstance(payload["release_sha"], str) or not re.fullmatch(r"[a-f0-9]{40}", payload["release_sha"]):
@@ -306,6 +314,8 @@ def _inspect_container(container_id, service, config, *, runner=subprocess.run):
     item = dict(zip(keys, fields))
     if item["project"] != config["project_name"] or item["service"] != service:
         raise DeployError("Container Compose project/service labels do not match.")
+    if service in EXPECTED_CONTAINER_NAMES and item["name"].lstrip("/") != EXPECTED_CONTAINER_NAMES[service]:
+        raise DeployError("Application container name differs from the owner-observed project identity.")
     if item["config_files"] != config["compose_file"] or item["working_dir"] != config["project_root"]:
         raise DeployError("Container Compose ownership labels do not match the verified project.")
     mounts_text = _command([
@@ -322,6 +332,7 @@ def _inspect_container(container_id, service, config, *, runner=subprocess.run):
     if mounts != EXPECTED_MOUNTS[service]:
         raise DeployError("Container mount names or targets differ from the approved project.")
     if service in ("api", "caddy"):
+        # Inspect the immutable image ID attached to this exact container, never the mutable tag.
         image_rows = _command(
             [DOCKER, "image", "inspect", "--format", "{{json .RepoDigests}}", item["image_id"]],
             runner=runner,
@@ -430,13 +441,15 @@ def _read_state(path, owner_uid=0):
         state = _read_root_json(path, limit=MAX_STATE, owner_uid=owner_uid)
     except DeployError as error:
         if not os.path.exists(path):
-            return {"schema_version": 1, "run_id": "0", "payload_sha256": ""}
+            return {"schema_version": 2, "run_id": "0", "payload_sha256": "", "legacy_handoff_completed": False}
         raise error
-    if (not isinstance(state, dict) or set(state) != {"schema_version", "run_id", "payload_sha256"} or
-            state["schema_version"] != 1 or
+    if (not isinstance(state, dict) or
+            set(state) != {"schema_version", "run_id", "payload_sha256", "legacy_handoff_completed"} or
+            state["schema_version"] != 2 or
             not isinstance(state["run_id"], str) or not re.fullmatch(r"[0-9]{1,20}", state["run_id"]) or
             not isinstance(state["payload_sha256"], str) or
-            (state["payload_sha256"] and not re.fullmatch(r"[a-f0-9]{64}", state["payload_sha256"]))):
+            (state["payload_sha256"] and not re.fullmatch(r"[a-f0-9]{64}", state["payload_sha256"])) or
+            type(state["legacy_handoff_completed"]) is not bool):
         raise DeployError("Protected deployment replay state is invalid.")
     return state
 
@@ -471,6 +484,41 @@ def _check_replay(state, payload, payload_hash):
         raise DeployError("Signed workflow request is older than the last accepted release.")
     if run_id == last_id and state.get("payload_sha256") != payload_hash:
         raise DeployError("Workflow run ID was already used for a different signed request.")
+
+
+def _validate_configured_app_images(services, payload, state, payload_hash, *, allow_handoff_convergence=False):
+    current = _classify_refs(services, payload)
+    configured = {
+        "api": services["api"].get("configured_image"),
+        "caddy": services["caddy"].get("configured_image"),
+    }
+    target = {"api": payload["api_image_ref"], "caddy": payload["web_image_ref"]}
+    previous = {"api": payload["previous_api_ref"], "caddy": payload["previous_web_ref"]}
+    handoff_requested = payload["legacy_handoff_approved"]
+    handoff_completed = state["legacy_handoff_completed"]
+
+    if handoff_requested:
+        if handoff_completed:
+            same_accepted_request = (
+                state["run_id"] == payload["run_id"] and state["payload_sha256"] == payload_hash
+            )
+            if same_accepted_request and current == "target" and configured == target:
+                return "target", True
+            raise DeployError("The one-time legacy handoff was already completed.")
+        if current == "previous" and configured == LEGACY_IMAGE_REF:
+            # Only the explicitly observed legacy tags qualify; the signed previous refs
+            # must match RepoDigests inspected by each container's image ID.
+            return "previous", True
+        if allow_handoff_convergence and current == "target" and configured == target:
+            # This is reachable only after the fixed Compose up operation. The
+            # preflight path never accepts a target with an incomplete marker.
+            return "target", True
+        raise DeployError("Legacy handoff state differs from the exact owner-attested tags and digests.")
+
+    expected = previous if current == "previous" else target
+    if configured != expected:
+        raise DeployError("Running configured image refs do not match the signed target/previous RepoDigests.")
+    return current, handoff_completed
 
 
 def _safe_project_files(config, owner_uid=0):
@@ -509,16 +557,11 @@ def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, 
             for service in ("db", "secret-init"):
                 if before[service]["configured_image"] != document["services"][service]["image"]:
                     raise DeployError("Database/secret-init image differs from the pinned Compose definition.")
-            for service, target_key, previous_key in (
-                ("api", "api_image_ref", "previous_api_ref"),
-                ("caddy", "web_image_ref", "previous_web_ref"),
-            ):
-                if before[service]["configured_image"] not in (payload[target_key], payload[previous_key]):
-                    raise DeployError("Existing application container has an unrecognized configured image ref.")
-            current = _classify_refs(before, payload)
+            current, handoff_completed = _validate_configured_app_images(before, payload, state, payload_hash)
             if current == "target":
                 _write_state(config["state_file"], {
-                    "schema_version": 1, "run_id": payload["run_id"], "payload_sha256": payload_hash,
+                    "schema_version": 2, "run_id": payload["run_id"], "payload_sha256": payload_hash,
+                    "legacy_handoff_completed": handoff_completed,
                 })
                 return "Already-running target digests are healthy; no-op success."
             # Explicit pulls happen before any service update.
@@ -542,7 +585,12 @@ def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, 
                     observed = _inventory(config, runner=runner)
                     if observed["db"]["id"] != before["db"]["id"]:
                         raise DeployError("PostgreSQL container identity changed during app deployment.")
-                    if _classify_refs(observed, payload) == "target":
+                    if not isinstance(observed, dict):
+                        raise DeployError("Observed post-update container inventory is invalid.")
+                    observed_state, observed_handoff = _validate_configured_app_images(
+                        observed, payload, state, payload_hash, allow_handoff_convergence=True,
+                    )
+                    if observed_state == "target" and observed_handoff == handoff_completed:
                         final = observed
                         break
                 except DeployError:
@@ -555,7 +603,8 @@ def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, 
                     raise DeployError("Compose update failed; state did not converge. No retry or rollback was attempted.")
                 raise DeployError("Compose update did not converge. No retry or rollback was attempted.")
             _write_state(config["state_file"], {
-                "schema_version": 1, "run_id": payload["run_id"], "payload_sha256": payload_hash,
+                "schema_version": 2, "run_id": payload["run_id"], "payload_sha256": payload_hash,
+                "legacy_handoff_completed": handoff_completed,
             })
             return "Exact web/API target digests are running; PostgreSQL identity is unchanged."
 

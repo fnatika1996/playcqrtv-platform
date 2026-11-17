@@ -41,7 +41,7 @@ The VPS must already have root-scoped read-only GHCR credential access for image
 ## Controlled release
 
 1. Ensure required PR-only checks are green on the exact main SHA. Review the intended site mode and approved PRs.
-2. In GitHub Actions select CQRTV gated release, choose ref main, enter that same exact SHA as release_sha, and provide the previously read-only observed web/API RepoDigests.
+2. In GitHub Actions select CQRTV gated release, choose ref main, enter that same exact SHA as release_sha, and provide the freshly read-only observed web/API RepoDigests. Leave `legacy_handoff_approved=false` except for the separately owner-approved initial migration described below.
 3. Before approving release-artifacts, verify a protected PostgreSQL backup is available, its checksum matches, its age fits the agreed RPO, and an isolated restore test exists. The backup reference/checksum inputs are owner attestations; they do not independently prove the backup.
 4. Approve release-artifacts. The workflow builds and publishes commit-tagged images (no latest), captures Buildx digests, renders the tracked Compose with those exact refs and retains the manifest as a same-run artifact.
 5. Inspect the digest summary and approve the production Environment only if the release SHA, backup and previous refs are correct.
@@ -49,6 +49,14 @@ The VPS must already have root-scoped read-only GHCR credential access for image
 7. It pulls both immutable app refs before changing services, then runs only docker compose up -d --no-build --no-deps api caddy. It never stops/removes the project or updates the database service.
 8. Read-only reconciliation checks actual image RepoDigests and runtime health. Already-running target refs produce no-op success. Exact previous refs plus healthy containers permit first apply. Mixed, unknown or unhealthy state stops without retry or rollback.
 9. Read-only public smoke checks homepage (open or closed gate), /api/health, /auth.html, /admin/login and SVG MIME.
+
+## One-time legacy image handoff
+
+The release request is schema V2 and includes a signed `legacy_handoff_approved` boolean which defaults false. For the first tag-to-digest migration only, the owner can set it true after confirming the live configured references, exact container identities, and previous RepoDigests through authorized read-only inspection; the protected `production` reviewer remains a separate approval. The current root-owned server Compose file is pinned by its own hash and must be audited where it is; it is not assumed to equal or replaced by the repository file.
+
+When true, the root gate accepts only the exact owner-reported `ghcr.io/fnatika1996/...:latest` configured refs with matching signed previous RepoDigests obtained by inspecting each container's `.Image` ID, expected project/service labels and mount identities. It pulls only the new immutable target digests using the image-only override, updates only `api` and `caddy`, then verifies the project identity, target RepoDigests, DB container ID and mounts. The root Compose hash must remain unchanged. A successful handoff writes a root-owned completion marker; a same-request repeat on target is a no-op, a new handoff request is denied, and routine releases must leave the attestation false and use digest refs. No `:latest` pull is allowed. Changed hash, wrong tag/digest, mixed state or identity mismatch stops before image pull.
+
+Docker's documented `compose up` behavior is to recreate selected changed services while preserving mounted volumes. Compose-managed containers carry project/service identity labels. The gate rechecks the required labels and mounts after `up` and confirms that PostgreSQL's container ID did not change. This code-level behavior does not prove Hostinger-specific labels or volume ownership; that exact compatibility must pass isolated staging before any release. [Docker Compose up](https://docs.docker.com/reference/cli/docker/compose/up/), [Compose labels](https://docs.docker.com/reference/compose-file/services/), [Moby image inspect fields](https://github.com/moby/moby/blob/master/api/types/image/image_inspect.go).
 
 ## Recovery and retries
 

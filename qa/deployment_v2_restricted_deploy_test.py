@@ -19,7 +19,7 @@ SPEC.loader.exec_module(agent)
 
 def request(**overrides):
     value = {
-        "schema_version": 1,
+        "schema_version": 2,
         "release_sha": "a" * 40,
         "run_id": "12345",
         "project_root": "/docker/playcqrtv",
@@ -28,6 +28,7 @@ def request(**overrides):
         "api_image_ref": "ghcr.io/fnatika1996/playcqrtv-api@sha256:" + "d" * 64,
         "previous_web_ref": "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "e" * 64,
         "previous_api_ref": "ghcr.io/fnatika1996/playcqrtv-api@sha256:" + "f" * 64,
+        "legacy_handoff_approved": False,
     }
     value.update(overrides)
     return value
@@ -66,7 +67,7 @@ class SigningFixture(unittest.TestCase):
         return self.sign_raw(raw)
 
     def frame(self, raw, signature):
-        return b"CQRTV-DEPLOY-REQUEST-V1\n" + base64.b64encode(signature) + b"\n" + base64.b64encode(raw) + b"\n"
+        return b"CQRTV-DEPLOY-REQUEST-V2\n" + base64.b64encode(signature) + b"\n" + base64.b64encode(raw) + b"\n"
 
     def test_only_valid_signed_canonical_request_is_accepted(self):
         raw, signature = self.sign(request())
@@ -123,6 +124,8 @@ class SigningFixture(unittest.TestCase):
             {"api_image_ref": "ghcr.io/fnatika1996/playcqrtv-api:latest"},
             {"previous_api_ref": "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "f" * 64},
             {"run_id": "0"},
+            {"schema_version": 1},
+            {"legacy_handoff_approved": "true"},
         ]:
             with self.subTest(change=change), self.assertRaises(agent.DeployError):
                 agent.validate_request({**base, **change}, config)
@@ -138,6 +141,82 @@ class SigningFixture(unittest.TestCase):
         self.assertNotRegex(content, r"(?m)^\s+(?:command|entrypoint|volumes|privileged|devices|build):")
         with self.assertRaises(agent.DeployError):
             agent._build_override("ghcr.io/attacker/image@sha256:" + "a" * 64, payload["api_image_ref"], str(self.directory / "bad.yml"))
+
+
+class TrustedComposeConfigTests(unittest.TestCase):
+    def test_current_compose_hash_mismatch_fails_closed(self):
+        temp = tempfile.TemporaryDirectory(prefix="cqrtv-config-test-", dir=ROOT)
+        self.addCleanup(temp.cleanup)
+        root = pathlib.Path(temp.name)
+        project = root / "project"
+        project.mkdir()
+        state_dir = root / "state"
+        state_dir.mkdir(mode=0o700)
+        compose = project / "docker-compose.yml"
+        compose.write_text("services: {}\n")
+        env_file = project / ".env"
+        env_file.write_text("NONSECRET_TEST_VALUE=only\n")
+        signers = root / "allowed_signers"
+        signers.write_text("test fixture\n")
+        for path in (compose, env_file, signers):
+            os.chmod(path, 0o400)
+        config = {
+            "schema_version": 1,
+            "project_name": "playcqrtv",
+            "project_root": str(project),
+            "compose_file": str(compose),
+            "compose_sha256": "0" * 64,
+            "allowed_signers": str(signers),
+            "state_file": str(state_dir / "state.json"),
+            "volume_names": dict(agent.VOLUME_NAMES),
+        }
+        with mock.patch.object(agent, "PROJECT_ROOT", str(project)), \
+             mock.patch.object(agent, "COMPOSE_FILE", str(compose)), \
+             mock.patch.object(agent, "ENV_FILE", str(env_file)), \
+             mock.patch.object(agent, "ALLOWED_SIGNERS", str(signers)), \
+             mock.patch.object(agent, "STATE_FILE", config["state_file"]):
+            with self.assertRaisesRegex(agent.DeployError, "Compose file differs"):
+                agent.validate_config(config, owner_uid=os.getuid())
+
+
+class ContainerImageIdentityTests(unittest.TestCase):
+    def test_repo_digests_are_read_by_the_running_container_image_id(self):
+        image_id = "sha256:" + "1" * 64
+        previous_ref = "ghcr.io/fnatika1996/playcqrtv-api@sha256:82d39fad5c6b416ed27a1748a776aee14472aa2bccfdcf38a53a93742ae3ddf4"
+        outputs = [
+            ("container-123\t/playcqrtv-api-1\tplaycqrtv\tapi\t/docker/playcqrtv/docker-compose.yml\t/docker/playcqrtv\t" +
+             agent.LEGACY_IMAGE_REF["api"] + "\t" + image_id + "\trunning\thealthy\t0").encode(),
+            b"volume\tplaycqrtv_db_secret\t/run/db-secret\n",
+            json.dumps([previous_ref]).encode(),
+        ]
+        commands = []
+        def runner(args, **kwargs):
+            commands.append(args)
+            return subprocess.CompletedProcess(args, 0, stdout=outputs.pop(0), stderr=b"")
+        item = agent._inspect_container(
+            "container-123", "api",
+            {"project_name": "playcqrtv", "compose_file": "/docker/playcqrtv/docker-compose.yml",
+             "project_root": "/docker/playcqrtv"},
+            runner=runner,
+        )
+        self.assertEqual(item["configured_image"], agent.LEGACY_IMAGE_REF["api"])
+        self.assertEqual(item["repo_digests"], [previous_ref])
+        self.assertEqual(commands[-1][-1], image_id)
+
+    def test_unexpected_app_container_name_is_rejected(self):
+        image_id = "sha256:" + "1" * 64
+        line = ("container-123\t/other-api\tplaycqrtv\tapi\t/docker/playcqrtv/docker-compose.yml\t" +
+                "/docker/playcqrtv\t" + agent.LEGACY_IMAGE_REF["api"] + "\t" + image_id +
+                "\trunning\thealthy\t0").encode()
+        def runner(args, **kwargs):
+            return subprocess.CompletedProcess(args, 0, stdout=line, stderr=b"")
+        with self.assertRaisesRegex(agent.DeployError, "container name"):
+            agent._inspect_container(
+                "container-123", "api",
+                {"project_name": "playcqrtv", "compose_file": "/docker/playcqrtv/docker-compose.yml",
+                 "project_root": "/docker/playcqrtv"},
+                runner=runner,
+            )
 
 
 class StateAndComposePolicyTests(unittest.TestCase):
@@ -156,6 +235,48 @@ class StateAndComposePolicyTests(unittest.TestCase):
         self.assertEqual(agent._classify_refs(
             self.services("previous_api_ref", "previous_web_ref"), self.payload
         ), "previous")
+
+    def test_legacy_latest_handoff_requires_attestation_and_exact_observed_digest(self):
+        payload = request(
+            legacy_handoff_approved=True,
+            previous_web_ref="ghcr.io/fnatika1996/playcqrtv-platform@sha256:f92afb6a64a2d5f60b2f61cb7fda20a88ab5db77c26e7c6d239e1047f2e4608a",
+            previous_api_ref="ghcr.io/fnatika1996/playcqrtv-api@sha256:82d39fad5c6b416ed27a1748a776aee14472aa2bccfdcf38a53a93742ae3ddf4",
+        )
+        legacy = {
+            "api": {"configured_image": agent.LEGACY_IMAGE_REF["api"], "repo_digests": [payload["previous_api_ref"]]},
+            "caddy": {"configured_image": agent.LEGACY_IMAGE_REF["caddy"], "repo_digests": [payload["previous_web_ref"]]},
+        }
+        initial = {"schema_version": 2, "run_id": "0", "payload_sha256": "", "legacy_handoff_completed": False}
+        self.assertEqual(agent._validate_configured_app_images(legacy, payload, initial, "a" * 64), ("previous", True))
+        unapproved = dict(payload, legacy_handoff_approved=False)
+        with self.assertRaises(agent.DeployError):
+            agent._validate_configured_app_images(legacy, unapproved, initial, "a" * 64)
+        wrong_digest = dict(legacy)
+        wrong_digest["api"] = dict(legacy["api"], repo_digests=["ghcr.io/fnatika1996/playcqrtv-api@sha256:" + "9" * 64])
+        with self.assertRaises(agent.DeployError):
+            agent._validate_configured_app_images(wrong_digest, payload, initial, "a" * 64)
+        wrong_tag = dict(legacy)
+        wrong_tag["caddy"] = dict(legacy["caddy"], configured_image="ghcr.io/attacker/site:latest")
+        with self.assertRaises(agent.DeployError):
+            agent._validate_configured_app_images(wrong_tag, payload, initial, "a" * 64)
+
+    def test_handoff_repeat_is_idempotent_only_for_same_signed_run_then_denied(self):
+        payload = request(legacy_handoff_approved=True)
+        target = {
+            "api": {"configured_image": payload["api_image_ref"], "repo_digests": [payload["api_image_ref"]]},
+            "caddy": {"configured_image": payload["web_image_ref"], "repo_digests": [payload["web_image_ref"]]},
+        }
+        state = {"schema_version": 2, "run_id": payload["run_id"], "payload_sha256": "a" * 64, "legacy_handoff_completed": True}
+        self.assertEqual(agent._validate_configured_app_images(target, payload, state, "a" * 64), ("target", True))
+        later = dict(payload, run_id="12346")
+        with self.assertRaisesRegex(agent.DeployError, "already completed"):
+            agent._validate_configured_app_images(target, later, state, "b" * 64)
+        legacy_again = {
+            "api": {"configured_image": agent.LEGACY_IMAGE_REF["api"], "repo_digests": [payload["previous_api_ref"]]},
+            "caddy": {"configured_image": agent.LEGACY_IMAGE_REF["caddy"], "repo_digests": [payload["previous_web_ref"]]},
+        }
+        with self.assertRaises(agent.DeployError):
+            agent._validate_configured_app_images(legacy_again, later, state, "b" * 64)
 
     def test_mixed_or_unknown_digests_are_rejected(self):
         with self.assertRaises(agent.DeployError):
@@ -264,16 +385,18 @@ class DeploymentFlowTests(unittest.TestCase):
             return b""
         raise AssertionError("Unexpected Docker command: " + " ".join(args))
 
-    def execute_flow(self, inventories, *, command=None, attempts=1):
+    def execute_flow(self, inventories, *, command=None, attempts=1, payload=None, state=None):
+        active_payload = payload or self.payload
+        initial_state = state or {"schema_version": 2, "run_id": "0", "payload_sha256": "", "legacy_handoff_completed": False}
         with mock.patch.object(agent, "LOCK_FILE", self.lock_path), \
              mock.patch.object(agent, "_safe_project_files"), \
-             mock.patch.object(agent, "_read_state", return_value={"schema_version": 1, "run_id": "0", "payload_sha256": ""}), \
+             mock.patch.object(agent, "_read_state", return_value=initial_state), \
              mock.patch.object(agent, "_write_state") as write_state, \
              mock.patch.object(agent, "_compose_base", return_value=["/usr/bin/docker", "compose"]), \
              mock.patch.object(agent, "_inventory", side_effect=inventories), \
              mock.patch.object(agent, "_command", side_effect=command or self.command):
             result = agent.perform_deployment(
-                self.payload, "a" * 64, self.config, attempts=attempts, sleep=lambda _seconds: None,
+                active_payload, "a" * 64, self.config, attempts=attempts, sleep=lambda _seconds: None,
                 owner_uid=os.getuid(),
             )
         return result, write_state
@@ -286,6 +409,32 @@ class DeploymentFlowTests(unittest.TestCase):
         self.assertTrue(any(command[-6:] == ["up", "-d", "--no-build", "--no-deps", "api", "caddy"] for command in self.commands))
         self.assertFalse(any("down" in command or "db" in command for command in self.commands))
         write_state.assert_called_once()
+
+    def test_first_legacy_handoff_uses_observed_repo_digests_and_only_app_up(self):
+        payload = request(
+            legacy_handoff_approved=True,
+            previous_web_ref="ghcr.io/fnatika1996/playcqrtv-platform@sha256:f92afb6a64a2d5f60b2f61cb7fda20a88ab5db77c26e7c6d239e1047f2e4608a",
+            previous_api_ref="ghcr.io/fnatika1996/playcqrtv-api@sha256:82d39fad5c6b416ed27a1748a776aee14472aa2bccfdcf38a53a93742ae3ddf4",
+        )
+        legacy = json.loads(json.dumps(self.previous))
+        legacy["api"]["configured_image"] = agent.LEGACY_IMAGE_REF["api"]
+        legacy["api"]["repo_digests"] = [payload["previous_api_ref"]]
+        legacy["caddy"]["configured_image"] = agent.LEGACY_IMAGE_REF["caddy"]
+        legacy["caddy"]["repo_digests"] = [payload["previous_web_ref"]]
+        result, write_state = self.execute_flow([legacy, self.target], payload=payload)
+        self.assertIn("target digests are running", result)
+        self.assertTrue(write_state.call_args.args[1]["legacy_handoff_completed"])
+        self.assertTrue(any(command[-3:] == ["pull", "api", "caddy"] for command in self.commands))
+        self.assertTrue(any(command[-6:] == ["up", "-d", "--no-build", "--no-deps", "api", "caddy"] for command in self.commands))
+        self.assertFalse(any("latest" in " ".join(command) for command in self.commands))
+
+    def test_repeated_same_handoff_request_is_target_noop(self):
+        payload = request(legacy_handoff_approved=True)
+        completed = {"schema_version": 2, "run_id": payload["run_id"], "payload_sha256": "a" * 64, "legacy_handoff_completed": True}
+        result, write_state = self.execute_flow([self.target], payload=payload, state=completed)
+        self.assertIn("no-op success", result)
+        self.assertEqual(len(self.commands), 1)
+        self.assertTrue(write_state.call_args.args[1]["legacy_handoff_completed"])
 
     def test_repeat_on_healthy_target_is_noop(self):
         result, write_state = self.execute_flow([self.target])

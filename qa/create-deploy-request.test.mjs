@@ -17,6 +17,7 @@ const env = {
   CQRTV_PROJECT_ROOT: "/docker/playcqrtv",
   RELEASE_SHA: "c".repeat(40),
   GITHUB_RUN_ID: "123456",
+  LEGACY_HANDOFF_APPROVED: "false",
   WEB_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-platform@" + webDigest,
   API_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-api@" + apiDigest,
   PREVIOUS_WEB_REF: "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "d".repeat(64),
@@ -52,6 +53,8 @@ test("request builder binds fixed project, exact digest refs and manifest hash",
   const result = invoke(manifestPath);
   assert.equal(result.status, 0, result.stderr);
   const payload = JSON.parse(result.stdout);
+  assert.equal(payload.schema_version, 2);
+  assert.equal(payload.legacy_handoff_approved, false);
   assert.equal(payload.project_root, "/docker/playcqrtv");
   assert.equal(payload.web_image_ref, env.WEB_IMAGE_REF);
   assert.equal(payload.api_image_ref, env.API_IMAGE_REF);
@@ -71,4 +74,8 @@ test("request builder rejects symlinks, mutable images and mismatched refs", t =
   fs.writeFileSync(realPath, validManifest());
   assert.notEqual(invoke(realPath, { CQRTV_PROJECT_ROOT: "/tmp/attacker" }).status, 0);
   assert.notEqual(invoke(realPath, { WEB_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-platform:latest" }).status, 0);
+  assert.notEqual(invoke(realPath, { LEGACY_HANDOFF_APPROVED: "yes" }).status, 0);
+  const approved = invoke(realPath, { LEGACY_HANDOFF_APPROVED: "true" });
+  assert.equal(approved.status, 0, approved.stderr);
+  assert.equal(JSON.parse(approved.stdout).legacy_handoff_approved, true);
 });

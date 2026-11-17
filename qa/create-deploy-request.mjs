@@ -19,6 +19,7 @@ if (env.PROJECT_NAME !== "playcqrtv" ||
     env.CQRTV_PROJECT_ROOT !== "/docker/playcqrtv" ||
     !shaPattern.test(env.RELEASE_SHA || "") ||
     !/^[1-9][0-9]{0,19}$/.test(env.GITHUB_RUN_ID || "") ||
+    !["true", "false"].includes(env.LEGACY_HANDOFF_APPROVED || "") ||
     !webPattern.test(env.WEB_IMAGE_REF || "") ||
     !apiPattern.test(env.API_IMAGE_REF || "") ||
     !webPattern.test(env.PREVIOUS_WEB_REF || "") ||
@@ -43,7 +44,7 @@ if ((text.match(new RegExp(expectedWebLine.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"
     !text.includes("pull_policy: missing")) fail();
 
 const payload = {
-  schema_version: 1,
+  schema_version: 2,
   release_sha: env.RELEASE_SHA,
   run_id: env.GITHUB_RUN_ID,
   project_root: env.CQRTV_PROJECT_ROOT,
@@ -51,6 +52,7 @@ const payload = {
   web_image_ref: env.WEB_IMAGE_REF,
   api_image_ref: env.API_IMAGE_REF,
   previous_web_ref: env.PREVIOUS_WEB_REF,
-  previous_api_ref: env.PREVIOUS_API_REF
+  previous_api_ref: env.PREVIOUS_API_REF,
+  legacy_handoff_approved: env.LEGACY_HANDOFF_APPROVED === "true"
 };
 process.stdout.write(JSON.stringify(payload) + "\n");

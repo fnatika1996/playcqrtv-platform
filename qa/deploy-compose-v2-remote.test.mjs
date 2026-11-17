@@ -16,9 +16,11 @@ test("root gate verifies signed stdin and rejects caller-selected commands", () 
   assert.match(agent, /This fixed entrypoint accepts no command-line arguments/);
   assert.match(agent, /"-Y", "verify"/);
   assert.match(agent, /len\(sys\.argv\) != 1/);
-  assert.match(workflow, /CQRTV-DEPLOY-REQUEST-V1/);
+  assert.match(workflow, /CQRTV-DEPLOY-REQUEST-V2/);
   assert.match(workflow, /ssh-keygen -Y sign/);
   assert.match(workflow, /ClearAllForwardings=yes/);
+  assert.match(workflow, /legacy_handoff_approved/);
+  assert.match(agent, /legacy_handoff_completed/);
   assert.doesNotMatch(workflow, /\bscp\b|bash -s|sudoers|docker group/i);
 });
 
