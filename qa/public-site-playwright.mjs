@@ -128,3 +128,5 @@ try{
 }finally{
   await browser.close();
 }
+
+await import("./i18n-playwright.mjs");
