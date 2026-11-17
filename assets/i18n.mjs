@@ -47,7 +47,7 @@ function translateText(node) {
   if (!key || !Object.prototype.hasOwnProperty.call(dictionaries.ru, key)) return;
   const leading = raw.match(/^\s*/)?.[0] || "";
   const trailing = raw.match(/\s*$/)?.[0] || "";
-  node.nodeValue = leading + t(key, textParams.get(node) || {}) + trailing;
+  const translated = leading + t(key, textParams.get(node) || {}) + trailing;\n  if (node.nodeValue !== translated) node.nodeValue = translated;
 }
 function translateAttributes(root = document) {
   const nodes = [];
