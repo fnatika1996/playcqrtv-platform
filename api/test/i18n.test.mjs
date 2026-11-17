@@ -62,27 +62,27 @@ function decodeHtml(value) {
     .replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&#x27;/gi, "'");
 }
 function isHumanText(value) {
-  const normalized = decodeHtml(value).replace(/\\s+/g, " ").trim();
-  if (!normalized || !/[\\p{L}]/u.test(normalized)) return false;
+  const normalized = decodeHtml(value).replace(/\s+/g, " ").trim();
+  if (!normalized || !/[\p{L}]/u.test(normalized)) return false;
   return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO)$/i.test(normalized);
 }
 function inspectMarkup(html, path, catalogs = dictionaries) {
   const errors = [];
-  const source = html.replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi, " ")
-    .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi, " ")
-    .replace(/<!--[\\s\\S]*?-->/g, " ");
-  for (const match of source.matchAll(/<([a-z][\\w:-]*)(\\s[^<>]*?)?>([^<>]+)</gi)) {
+  const source = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
+  for (const match of source.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>([^<>]+)</gi)) {
     const attrs = match[2] || "";
-    const text = decodeHtml(match[3]).replace(/\\s+/g, " ").trim();
+    const text = decodeHtml(match[3]).replace(/\s+/g, " ").trim();
     if (!isHumanText(text)) continue;
-    const binding = attrs.match(/\\bdata-i18n="([^"]+)"/i)?.[1];
+    const binding = attrs.match(/\bdata-i18n="([^"]+)"/i)?.[1];
     if (binding) {
       for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
     } else if (!Object.hasOwn(catalogs.ru || {}, text)) errors.push(`${path}: unbound UI text “${text}”`);
   }
-  for (const match of source.matchAll(/<([a-z][\\w:-]*)(\\s[^<>]*?)?>/gi)) {
+  for (const match of source.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>/gi)) {
     const attrs = match[2] || "";
-    const values = Object.fromEntries([...attrs.matchAll(/([\\w:-]+)="([^"]*)"/g)].map((item) => [item[1], item[2]]));
+    const values = Object.fromEntries([...attrs.matchAll(/([\w:-]+)="([^"]*)"/g)].map((item) => [item[1], item[2]]));
     for (const attr of ["aria-label", "title", "placeholder", "alt"]) {
       const value = values[attr];
       if (!value || !isHumanText(value)) continue;
@@ -101,9 +101,9 @@ test("all root HTML entrypoints are discovered and localized, including attribut
   const errors = [];
   for (const path of pages) {
     const html = await read(path);
-    const language = html.match(/<html\\b[^>]*\\blang="([^"]+)"/i)?.[1];
+    const language = html.match(/<html\b[^>]*\blang="([^"]+)"/i)?.[1];
     assert.ok(locales.includes(language), `${path}: html lang must use a supported locale`);
-    assert.match(html, /<script\\b[^>]*src="[^"]*assets\\/i18n\\.mjs[^"]*"[^>]*>/i, `${path}: routed page must load the localization runtime`);
+    assert.match(html, /<script\b[^>]*src="[^"]*assets\/i18n\.mjs[^"]*"[^>]*>/i, `${path}: routed page must load the localization runtime`);
     errors.push(...inspectMarkup(html, path));
   }
   assert.deepEqual(errors, [], "all authored UI text and translatable attributes must be bound to a locale catalog");
@@ -117,14 +117,14 @@ test("a future raw UI literal is rejected while a semantically keyed new page pa
     en: { "fixture.dashboard.title": "New competitive dashboard" },
     ro: { "fixture.dashboard.title": "Panou competitiv nou" }
   };
-  const semantic = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1 data-i18n=\"fixture.dashboard.title\">Новая соревновательная панель</h1></main></body></html>", "future-page.html");
+  const semantic = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1 data-i18n=\"fixture.dashboard.title\">Новая соревновательная панель</h1></main></body></html>", "future-page.html", catalogs);
   // Validate fixture catalog parity through the same key contract as production catalogs.
   for (const locale of locales) assert.equal(typeof catalogs[locale]["fixture.dashboard.title"], "string");
   assert.deepEqual(semantic, [], "a new page with an authored semantic key should pass");
 });
 
 test("locale catalogs preserve interpolation parameters", () => {
-  const placeholders = (value) => [...value.matchAll(/\\{([\\w]+)\\}/g)].map((match) => match[1]).sort();
+  const placeholders = (value) => [...value.matchAll(/\{([\w]+)\}/g)].map((match) => match[1]).sort();
   for (const [key, russian] of Object.entries(dictionaries.ru)) {
     for (const locale of locales) {
       assert.deepEqual(placeholders(dictionaries[locale][key]), placeholders(russian), `${locale}: placeholder parity for ${key}`);
