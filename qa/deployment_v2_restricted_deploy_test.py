@@ -261,7 +261,7 @@ class DeploymentFlowTests(unittest.TestCase):
             return b""
         raise AssertionError("Unexpected Docker command: " + " ".join(args))
 
-    def run(self, inventories, *, command=None, attempts=1):
+    def execute_flow(self, inventories, *, command=None, attempts=1):
         with mock.patch.object(agent, "LOCK_FILE", self.lock_path), \
              mock.patch.object(agent, "_safe_project_files"), \
              mock.patch.object(agent, "_read_state", return_value={"schema_version": 1, "run_id": "0", "payload_sha256": ""}), \
@@ -276,7 +276,7 @@ class DeploymentFlowTests(unittest.TestCase):
         return result, write_state
 
     def test_correct_digest_apply_only_pulls_and_recreates_app_services(self):
-        result, write_state = self.run([self.previous, self.target])
+        result, write_state = self.execute_flow([self.previous, self.target])
         self.assertIn("target digests are running", result)
         self.assertEqual(len(self.commands), 5)
         self.assertTrue(any(command[-3:] == ["pull", "api", "caddy"] for command in self.commands))
@@ -285,7 +285,7 @@ class DeploymentFlowTests(unittest.TestCase):
         write_state.assert_called_once()
 
     def test_repeat_on_healthy_target_is_noop(self):
-        result, write_state = self.run([self.target])
+        result, write_state = self.execute_flow([self.target])
         self.assertIn("no-op success", result)
         self.assertFalse(any(command[-3:] == ["pull", "api", "caddy"] or "up" in command for command in self.commands))
         write_state.assert_called_once()
@@ -294,7 +294,7 @@ class DeploymentFlowTests(unittest.TestCase):
         mixed = dict(self.previous)
         mixed["caddy"] = self.target["caddy"]
         with self.assertRaises(agent.DeployError):
-            self.run([mixed])
+            self.execute_flow([mixed])
         self.assertFalse(any("pull" in command or "up" in command for command in self.commands))
 
     def test_pull_error_never_reaches_compose_up(self):
@@ -303,7 +303,7 @@ class DeploymentFlowTests(unittest.TestCase):
                 raise agent.DeployError("simulated pull failure")
             return self.command(args, runner=runner, timeout=timeout)
         with self.assertRaises(agent.DeployError):
-            self.run([self.previous], command=fail_pull)
+            self.execute_flow([self.previous], command=fail_pull)
         self.assertFalse(any("up" in command for command in self.commands))
 
     def test_lost_up_response_reconciles_observed_target_without_retry(self):
@@ -318,7 +318,7 @@ class DeploymentFlowTests(unittest.TestCase):
             if len(args) >= 3 and args[1:3] == ["image", "inspect"]:
                 return json.dumps([args[-1]]).encode()
             raise AssertionError("Unexpected Docker command")
-        result, _ = self.run([self.previous, self.target], command=uncertain_up, attempts=1)
+        result, _ = self.execute_flow([self.previous, self.target], command=uncertain_up, attempts=1)
         self.assertIn("target digests are running", result)
         self.assertEqual(sum("up" in command for command in self.commands), 1)
 
