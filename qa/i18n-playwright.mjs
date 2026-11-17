@@ -43,10 +43,36 @@ async function check(page,route,locale,width,height,screenshot=false) {
   await selector.selectOption(locale);
   await page.waitForFunction(expected=>document.documentElement.lang===expected,locale);
   await page.waitForTimeout(60);
-  const state=await page.evaluate(()=>({title:document.title,scrollWidth:document.documentElement.scrollWidth,width:innerWidth}));
+  const state=await page.evaluate(()=>{
+    const ignored='[data-i18n-ignore],.user-generated,.custom-announcement,.social-links,#header-user-nickname,#profile-nickname,.profile-header-nickname,.profile-nickname,.profile-about-list dd,#social-links a,.social-item strong,.social-item small';
+    const texts=[];
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+    while(walker.nextNode()){const node=walker.currentNode;if(node.parentElement?.closest(ignored))continue;const value=node.nodeValue?.trim();if(value)texts.push(value)}
+    const attributes=[];
+    for(const element of document.querySelectorAll('[placeholder],[title],[aria-label],[alt]')){if(element.closest(ignored))continue;for(const attr of ['placeholder','title','aria-label','alt']){const value=element.getAttribute(attr);if(value)attributes.push(value)}}
+    return {title:document.title,scrollWidth:document.documentElement.scrollWidth,width:innerWidth,texts,attributes};
+  });
   assert.ok(state.title,`localized title missing on ${route}`);
   assert.ok(state.scrollWidth<=state.width+1,`horizontal overflow at ${width}px on ${route}: ${state.scrollWidth}`);
-  if(locale!=="ru")assert.ok(!/[\u0400-\u04ff]/.test(state.title),`title remains Russian: ${state.title}`);
+  if(locale!=="ru"){
+    assert.ok(!/[\\u0400-\\u04ff]/.test(state.title),`title remains Russian: ${state.title}`);
+    const residual=[...state.texts,...state.attributes].filter(value=>/[\\u0400-\\u04ff]/.test(value));
+    assert.deepEqual(residual,[],`unlocalized rendered text or attributes on ${route}: ${residual.join(" | ")}`);
+  }
+  if(route==="/auth.html"){
+    const probe=await page.evaluate(()=>{
+      const host=document.createElement('div');host.hidden=true;
+      const label=document.createElement('span');label.dataset.i18n='common.language.label';label.dataset.i18nFallback='Язык';
+      const input=document.createElement('input');input.dataset.i18nPlaceholder='common.language.choose';input.placeholder='Выбрать язык';
+      host.append(label,input);document.body.append(host);window.CQRTVI18n.bind(host);
+      const first={label:label.textContent,placeholder:input.placeholder};
+      label.textContent='Язык';input.placeholder='Выбрать язык';window.CQRTVI18n.bind(host);
+      return {first,repeat:{label:label.textContent,placeholder:input.placeholder}};
+    });
+    const expected=locale==='ru'?{label:'Язык',placeholder:'Выбрать язык'}:locale==='en'?{label:'Language',placeholder:'Choose language'}:{label:'Limbă',placeholder:'Alege limba'};
+    assert.deepEqual(probe.first,expected,`semantic dynamic binding for ${locale}`);
+    assert.deepEqual(probe.repeat,expected,`repeated dynamic binding for ${locale}`);
+  }
   assert.deepEqual(errors,[],`browser errors on ${route}: ${errors.join("; ")}`);
   if(route==="/admin.html"||route==="/site-control-admin.html")assert.ok(adminRequests.length>0,`synthetic authorized fixture was not used for ${route}`);
   if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-390.png`,artifactDir).pathname,fullPage:true});
