@@ -81,7 +81,7 @@ try{
  await recovery.getByLabel("Пароль",{exact:true}).fill("qa-only-password");
  await recovery.getByRole("button",{name:"Войти в панель"}).click();
  await recovery.waitForURL(url=>url.pathname==="/",{timeout:5000});
- assert.equal(await recovery.title(),"CQRTV - CS2 Matchmaking","successful login from the offline page returns to the public homepage");
+ assert.equal(await recovery.title(),"CQRTV — CS2 matchmaking, ELO и турниры","successful login from the offline page returns to the public homepage");
  const validCookie=(await recoveryContext.cookies()).find(cookie=>cookie.name==="cqrtv_qa_admin");
  assert.equal(validCookie?.value,"valid","successful mock login should set the expected admin session cookie");
  await recoveryContext.close();
