@@ -203,6 +203,31 @@ class ContainerImageIdentityTests(unittest.TestCase):
         self.assertEqual(item["repo_digests"], [previous_ref])
         self.assertEqual(commands[-1][-1], image_id)
 
+    def test_secret_init_requires_exact_compose_labels_and_named_mount(self):
+        line = (
+            "secret-init-id\t/playcqrtv-secret-init-1\tplaycqrtv\tsecret-init"
+            "\t/docker/playcqrtv/docker-compose.yml\t/docker/playcqrtv"
+            "\talpine:3.21\tsha256:" + "2" * 64 + "\texited\tnone\t0"
+        ).encode()
+        mount = b"volume\tplaycqrtv_db_secret\t/run/db-secret\n"
+        outputs = [line, mount]
+        def runner(args, **kwargs):
+            return subprocess.CompletedProcess(args, 0, stdout=outputs.pop(0), stderr=b"")
+        config = {"project_name": "playcqrtv", "compose_file": "/docker/playcqrtv/docker-compose.yml",
+                  "project_root": "/docker/playcqrtv"}
+        item = agent._inspect_container("secret-init-id", "secret-init", config, runner=runner)
+        self.assertEqual(item["configured_image"], "alpine:3.21")
+
+        for index, field in ((2, "project"), (3, "service"), (4, "config file"), (5, "working directory")):
+            fields = line.decode().split("\t")
+            fields[index] = "unexpected"
+            wrong_line = ("\\t".join(fields)).encode()
+            responses = [wrong_line]
+            def bad_runner(args, **kwargs):
+                return subprocess.CompletedProcess(args, 0, stdout=responses.pop(0), stderr=b"")
+            with self.subTest(field=field), self.assertRaisesRegex(agent.DeployError, "labels"):
+                agent._inspect_container("secret-init-id", "secret-init", config, runner=bad_runner)
+
     def test_unexpected_app_container_name_is_rejected(self):
         image_id = "sha256:" + "1" * 64
         line = ("container-123\t/other-api\tplaycqrtv\tapi\t/docker/playcqrtv/docker-compose.yml\t" +
@@ -410,6 +435,13 @@ class DeploymentFlowTests(unittest.TestCase):
         self.assertFalse(any("down" in command or "db" in command for command in self.commands))
         write_state.assert_called_once()
 
+    def test_secret_init_image_mismatch_stops_before_apply(self):
+        before = json.loads(json.dumps(self.previous))
+        before["secret-init"]["configured_image"] = "alpine:latest"
+        with self.assertRaisesRegex(agent.DeployError, "Database/secret-init image"):
+            self.execute_flow([before])
+        self.assertFalse(any("pull" in command or "up" in command for command in self.commands))
+
     def test_first_legacy_handoff_uses_observed_repo_digests_and_only_app_up(self):
         payload = request(
             legacy_handoff_approved=True,
@@ -427,6 +459,14 @@ class DeploymentFlowTests(unittest.TestCase):
         self.assertTrue(any(command[-3:] == ["pull", "api", "caddy"] for command in self.commands))
         self.assertTrue(any(command[-6:] == ["up", "-d", "--no-build", "--no-deps", "api", "caddy"] for command in self.commands))
         self.assertFalse(any("latest" in " ".join(command) for command in self.commands))
+
+    def test_completed_handoff_denies_new_request_in_full_deployment_flow(self):
+        payload = request(legacy_handoff_approved=True, run_id="12346")
+        completed = {"schema_version": 2, "run_id": "12345", "payload_sha256": "b" * 64,
+                     "legacy_handoff_completed": True}
+        with self.assertRaisesRegex(agent.DeployError, "already completed"):
+            self.execute_flow([self.target], payload=payload, state=completed)
+        self.assertFalse(any("pull" in command or "up" in command for command in self.commands))
 
     def test_repeated_same_handoff_request_is_target_noop(self):
         payload = request(legacy_handoff_approved=True)
