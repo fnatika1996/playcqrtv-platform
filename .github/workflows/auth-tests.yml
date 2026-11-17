@@ -130,8 +130,11 @@ jobs:
 
       - name: Validate immutable release Compose generation (non-production)
         run: |
-          node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs qa/deployment-v2-policy.test.mjs qa/deployment-v2-smoke.test.mjs qa/deployment-v2-inventory.test.mjs qa/deploy-compose-v2-remote.test.mjs
-          bash -n qa/deploy-compose-v2-remote.sh qa/deployment-v2-compose.test.sh
+          node --test qa/pin-compose-digests.test.mjs qa/hostinger-deploy.test.mjs qa/site-control-static.test.mjs qa/deployment-v2-policy.test.mjs qa/deployment-v2-smoke.test.mjs qa/deployment-v2-inventory.test.mjs qa/deploy-compose-v2-remote.test.mjs qa/create-deploy-request.test.mjs qa/create-staging-deploy-request.test.mjs qa/staging-artifacts.test.mjs
+          python3 -m py_compile qa/deployment-v2-restricted-deploy.py qa/deployment_v2_restricted_deploy_test.py qa/deployment-v2-staging-gate.py qa/deployment_v2_staging_deploy_test.py
+          python3 qa/deployment_v2_restricted_deploy_test.py
+          python3 qa/deployment_v2_staging_deploy_test.py
+          bash -n qa/deploy-compose-v2-remote.sh qa/deployment-v2-compose.test.sh qa/vps-staging-compose-smoke.sh
 
       - name: Run disposable Docker Compose deployment and volume-preservation check
         run: bash qa/deployment-v2-compose.test.sh
