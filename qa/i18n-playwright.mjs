@@ -82,14 +82,14 @@ async function check(page,route,locale,width,height,screenshot=false) {
   }
   assert.deepEqual(errors,[],`browser errors on ${route}: ${errors.join("; ")}`);
   if(route==="/admin.html"||route==="/site-control-admin.html")assert.ok(adminRequests.length>0,`synthetic authorized fixture was not used for ${route}`);
-  if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-390.png`,artifactDir).pathname,fullPage:true});
+  if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-${width}.png`,artifactDir).pathname,fullPage:true});
   return true;
 }
 try {
   for(const locale of locales){
     const context=await browser.newContext({locale:locale==="ru"?"ru-RU":locale==="ro"?"ro-RO":"en-US",viewport:{width:1440,height:1000}});
     const page=await context.newPage();
-    for(const route of routes)try{await check(page,route,locale,1440,1000)}catch(error){failures.push(`${route} ${locale} desktop: ${error.message}`)}
+    for(const route of routes)try{await check(page,route,locale,1440,1000,true)}catch(error){failures.push(`${route} ${locale} desktop: ${error.message}`)}
     for(const route of routes)for(const width of [390,320])try{await check(page,route,locale,width,844,width===390)}catch(error){failures.push(`${route} ${locale} ${width}px: ${error.message}`)}
     await context.close();
   }
