@@ -86,7 +86,7 @@ function inspectMarkup(html, path, catalogs = dictionaries, baseline = legacyHtm
       for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
     } else if (!Object.hasOwn(catalogs.ru || {}, text) || !baseline.pages?.[path]?.text?.includes(text)) errors.push(`${path}: unbound UI text “${text}”`);
   }
-  for (const match of source.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>/gi)) {
+  for (const meta of source.matchAll(/<meta\b([^>]*)>/gi)) {\n    const attrs = Object.fromEntries([...meta[1].matchAll(/([\w:-]+)="([^"]*)"/g)].map((item) => [item[1], item[2]]));\n    if (attrs.name?.toLowerCase() !== "description") continue;\n    const key = attrs["data-i18n-content"];\n    const content = decodeHtml(attrs.content || "").trim();\n    if (key) {\n      for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, key)) errors.push(`${path}: missing ${locale} meta translation for ${key}`);\n    } else if (!Object.hasOwn(catalogs.ru || {}, content) || !baseline.pages?.[path]?.metaDescription?.includes(content)) {\n      errors.push(`${path}: unbound meta description “${content}”`);\n    }\n  }\n  for (const match of source.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>/gi)) {
     const attrs = match[2] || "";
     const values = Object.fromEntries([...attrs.matchAll(/([\w:-]+)="([^"]*)"/g)].map((item) => [item[1], item[2]]));
     for (const attr of ["aria-label", "title", "placeholder", "alt"]) {
@@ -120,13 +120,13 @@ test("a future raw UI literal is rejected while a semantically keyed new page pa
   const raw = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1>New competitive dashboard</h1></main></body></html>", "future-page.html");
   assert.ok(raw.some((item) => item.includes("unbound UI text")), "new raw page text must fail CI even if someone adds it to the legacy Russian-keyed catalog");
   const catalogs = {
-    ru: { "fixture.dashboard.title": "Новая соревновательная панель", "New competitive dashboard": "Новая панель" },
-    en: { "fixture.dashboard.title": "New competitive dashboard" },
-    ro: { "fixture.dashboard.title": "Panou competitiv nou" }
+    ru: { "fixture.dashboard.title": "Новая соревновательная панель", "New competitive dashboard": "Новая панель", "fixture.meta": "Описание" },
+    en: { "fixture.dashboard.title": "New competitive dashboard", "fixture.meta": "Description" },
+    ro: { "fixture.dashboard.title": "Panou competitiv nou", "fixture.meta": "Descriere" }
   };
   const catalogOnlyRaw = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1>New competitive dashboard</h1></main></body></html>", "future-page.html", catalogs, { pages: {} });
   assert.ok(catalogOnlyRaw.some((item) => item.includes("unbound UI text")), "adding an untranslated literal to the legacy-key catalog cannot bypass semantic binding");
-  const semantic = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1 data-i18n=\"fixture.dashboard.title\">Новая соревновательная панель</h1></main></body></html>", "future-page.html", catalogs);
+  const semantic = inspectMarkup("<!doctype html><html lang=\"ru\"><head><meta name=\"description\" content=\"Описание\" data-i18n-content=\"fixture.meta\"></head><body><main><h1 data-i18n=\"fixture.dashboard.title\">Новая соревновательная панель</h1></main></body></html>", "future-page.html", catalogs);
   // Validate fixture catalog parity through the same key contract as production catalogs.
   for (const locale of locales) assert.equal(typeof catalogs[locale]["fixture.dashboard.title"], "string");
   assert.deepEqual(semantic, [], "a new page with an authored semantic key should pass");
