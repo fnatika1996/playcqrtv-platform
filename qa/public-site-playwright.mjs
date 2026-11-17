@@ -37,7 +37,7 @@ try{
     assert.equal(await page.locator("#auth-user-menu").isVisible(),false);
     assert.equal(await page.locator("#login-link").getAttribute("href"),"/auth.html");
     assert.equal(await page.locator('.home-hero-actions a[href="/auth.html"]').count(),1);
-    for(const href of ["/rules.html","/privacy.html"])assert.equal(await page.locator(`a[href="${href}"]`).count(),1,`footer should keep ${href}`);
+    for(const href of ["/rules.html","/privacy.html"])assert.equal(await page.locator(`footer.v31-footer a[href="${href}"]`).count(),1,`footer should keep ${href}`);
     assert.equal(await page.locator(".site-rail,.site-rightbar,.mobile-bottom-nav,.home-dashboard-grid").count(),0,"homepage dashboard chrome must be removed");
     assert.equal(await page.locator(".site-nav-unavailable").count(),2,"unimplemented player catalogue must be truthfully marked in both navs");
     for(const forbidden of ["CQRTV Open #1","1 246","игроков онлайн","матчей сегодня","Начать играть через Steam","Смотреть трейлер"])
