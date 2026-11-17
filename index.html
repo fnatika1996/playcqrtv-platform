@@ -101,7 +101,7 @@
 <body>
   <header class="topbar site-topbar">
     <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-label="Открыть меню" aria-controls="mobile-navigation" aria-expanded="false"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/reorder.svg" aria-hidden="true"></span></button>
-    <a class="brand" href="#home" aria-label="CQRTV — главная"><span class="brand-mark">C</span><span class="brand-name">CQ<span>R</span>TV</span></a>
+    <a class="brand" href="#home" aria-label="CQRTV — главная"><span class="brand-mark" data-i18n-ignore>C</span><span class="brand-name" data-i18n-ignore>CQ<span>R</span>TV</span></a>
     <nav class="topnav site-nav" aria-label="Основная навигация">
       <a href="#home" aria-current="page">Главная</a>
       <a href="#play">Матчмейкинг</a>
@@ -153,7 +153,7 @@
 
       <section class="home-section v31-benefits" aria-labelledby="benefits-title">
         <div class="v31-section-heading">
-          <div><span class="section-kicker">CQRTV PLATFORM</span><h2 id="benefits-title">Всё для соревновательной игры</h2></div>
+          <div><span class="section-kicker" data-i18n="home.kicker.platform">ПЛАТФОРМА CQRTV</span><h2 id="benefits-title">Всё для соревновательной игры</h2></div>
         </div>
         <div class="v31-benefit-grid">
           <article class="v31-benefit is-primary" id="play">
@@ -210,13 +210,13 @@
     <div class="signup-shell">
       <div class="signup-header">
         <div class="signup-art" aria-hidden="true"><img src="/assets/signup-registration-banner.png" alt=""></div>
-        <div class="signup-title-group"><span class="signup-kicker">CS2 MATCHMAKING</span><h2 class="signup-heading" id="signup-title">Создать аккаунт CQRTV</h2><p class="signup-intro">Создай профиль игрока и готовься к матчам.</p></div>
+        <div class="signup-title-group"><span class="signup-kicker" data-i18n="signup.kicker.cs2">CS2 MATCHMAKING</span><h2 class="signup-heading" id="signup-title">Создать аккаунт CQRTV</h2><p class="signup-intro">Создай профиль игрока и готовься к матчам.</p></div>
         <button class="signup-close" id="signup-close" type="button" aria-label="Закрыть окно регистрации" title="Закрыть окно"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
       </div>
       <form id="signup-form">
         <div class="signup-fields">
           <label class="signup-field"><span>Игровой никнейм</span><input id="signup-nickname" name="nickname" autocomplete="nickname" minlength="3" maxlength="24" placeholder="Например, PlayerOne" aria-describedby="nickname-status" required><small class="signup-help nickname-status" id="nickname-status" role="status" aria-live="polite">Уникальный игровой ник. Бесплатная смена — раз в 3 месяца.</small></label>
-          <label class="signup-field"><span>Email</span><input name="email" type="email" autocomplete="email" placeholder="name@example.com" required><small class="signup-help">На почту придёт подтверждение и ссылка для восстановления доступа.</small></label>
+          <label class="signup-field"><span data-i18n="common.email.label">Email</span><input name="email" type="email" autocomplete="email" placeholder="player@example.com" data-i18n-placeholder="common.email.placeholder" required><small class="signup-help">На почту придёт подтверждение и ссылка для восстановления доступа.</small></label>
           <label class="signup-field"><span>Пароль</span><div class="password-input-wrap"><input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="Не менее 12 символов" required><button class="password-visibility" type="button" data-password-toggle="password" aria-label="Показать пароль" aria-pressed="false"><svg class="eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11.2 11.2 0 0 1 12 5c6.4 0 10 7 10 7s-1 2-3.1 4.1M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1.2 0 2.2-.2 3.2-.6"/></svg></button></div><small class="signup-help">Пароль должен соответствовать всем условиям:</small><ul class="password-rules" id="password-rules" aria-live="polite"><li data-password-rule="length">Не менее 12 символов</li><li data-password-rule="uppercase">Первый символ — заглавная буква</li><li data-password-rule="lowercase">Есть строчная буква</li><li data-password-rule="number">Есть цифра</li><li data-password-rule="symbol">Есть специальный символ, например ! или #</li></ul></label>
           <label class="signup-field"><span>Повторите пароль</span><div class="password-input-wrap"><input name="passwordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="Введите пароль ещё раз" required><button class="password-visibility" type="button" data-password-toggle="passwordConfirm" aria-label="Показать пароль" aria-pressed="false"><svg class="eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A11.2 11.2 0 0 1 12 5c6.4 0 10 7 10 7s-1 2-3.1 4.1M6.2 6.2C3.5 8 2 12 2 12s3.6 7 10 7c1.2 0 2.2-.2 3.2-.6"/></svg></button></div><small class="signup-help">Повторите пароль из поля выше.</small></label>
           <label class="signup-field country-field"><span>Страна</span><select name="country" id="signup-country" autocomplete="country-name" tabindex="-1" aria-hidden="true"><option value="">Выберите страну</option></select><div class="country-picker"><button class="country-picker-button" id="country-picker-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-describedby="country-status" aria-required="true"><img id="country-selected-flag" src="https://flagcdn.com/w40/un.png" alt="🌐" width="20" height="15"><span id="country-selected-name">Выберите страну</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="country-menu" id="country-menu" hidden><input id="country-search" type="search" placeholder="Найти страну…" autocomplete="off" aria-label="Поиск страны"><div class="country-options" id="country-options" role="listbox" aria-label="Список стран"></div></div></div><small class="signup-help country-status" id="country-status" role="status" aria-live="polite">Страна нужна для подбора игроков по региону.</small></label>
