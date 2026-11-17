@@ -12,7 +12,8 @@ const browser=await chromium.launch({headless:true,args:["--host-resolver-rules=
 try{
  for(const width of [1440,1024,760,390,375,320]){
   const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900},reducedMotion:width===390?"reduce":"no-preference",extraHTTPHeaders:{"X-QA-Site-Mode":"coming_soon","X-CQRTV-Site-Mode":"open"}});
-  const page=await context.newPage();
+  await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
+const page=await context.newPage();
   const response=await page.goto(baseUrl+"/",{waitUntil:"domcontentloaded"});
   assert.equal(response?.status(),200);
   assert.equal(await page.title(),"CQRTV — скоро");
@@ -101,7 +102,8 @@ try{
  for(const width of [1440,760,390,320]){
   const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900}});
   await context.addCookies([{name:"cqrtv_qa_admin",value:"valid",domain:"playcqrtv.com",path:"/"}]);
-  const page=await context.newPage();
+  await context.addInitScript(()=>localStorage.setItem("cqrtv.locale","ru"));
+const page=await context.newPage();
   let socialPayload=null;
   const siteControlState={settings:{mode:"open",heading:"Heading",subtitle:"Subtitle",description:"Description",statusLabel:"READY",maintenanceHeading:"Maintenance",maintenanceSubtitle:"Back soon",maintenanceDescription:"Updating.",maintenanceStatusLabel:"MAINTENANCE",launchAt:"",countdownEnabled:false,aboutButtonLabel:"About CQRTV",aboutTitle:"CQRTV",aboutBody:"Players, teams and matches.",animationEnabled:false,backgroundAssetId:null},socialLinks:[{id:"11111111-1111-4111-8111-111111111111",label:"Telegram QA",url:"https://t.me/cqrtv",iconKey:"chat",iconAssetId:"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",enabled:true,sortOrder:0}]};
   await page.route("**/api/site-control/media/**",route=>route.fulfill({status:200,contentType:"image/png",body:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pZcAAAAASUVORK5CYII=","base64")}));
