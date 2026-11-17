@@ -219,6 +219,7 @@ class DeploymentFlowTests(unittest.TestCase):
         self.payload = request()
         self.config = {"project_name": "playcqrtv", "project_root": "/docker/playcqrtv",
                        "compose_file": "/docker/playcqrtv/docker-compose.yml",
+                       "state_file": "/var/lib/cqrtv-deploy/state.json",
                        "volume_names": dict(agent.VOLUME_NAMES)}
         self.document = {
             "services": {
