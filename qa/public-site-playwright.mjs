@@ -16,7 +16,7 @@ try{
   const beforeBaseUrl=process.env.CQRTV_QA_BEFORE_URL;
   if(!beforeBaseUrl)throw new Error("CQRTV_QA_BEFORE_URL must point to an isolated baseline built from the PR base.");
   for(const width of [1440,390]){
-    const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});
+    const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900},deviceScaleFactor:1});
     await context.route("**/api/**",async route=>{
       const body=route.request().url().endsWith("/api/auth/me")?{user:null}:{};
       await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(body)});
@@ -31,7 +31,7 @@ try{
     console.log(`PASS baseline homepage screenshot at ${width}px`);
   }
   for(const width of widths){
-    const context=await browser.newContext({viewport:{width,height:900},deviceScaleFactor:1});
+    const context=await browser.newContext({locale:"ru-RU",viewport:{width,height:900},deviceScaleFactor:1});
     let user=null,registerPosts=0,logoutPosts=0,meCalls=0;
     await context.route("**/api/auth/me",async route=>{meCalls++;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({user})})});
     await context.route("**/api/auth/register",async route=>{registerPosts++;await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"registration unavailable in QA"})})});
@@ -114,7 +114,7 @@ try{
     await context.close();
     console.log(`PASS approved home v3.1 at ${width}px`);
   }
-  const offlineContext=await browser.newContext({viewport:{width:390,height:844}});
+  const offlineContext=await browser.newContext({locale:"ru-RU",viewport:{width:390,height:844}});
   await offlineContext.setExtraHTTPHeaders({"X-QA-Site-Mode":"coming_soon"});
   const offline=await offlineContext.newPage();
   const offlineResponse=await offline.goto(baseUrl,{waitUntil:"domcontentloaded"});
