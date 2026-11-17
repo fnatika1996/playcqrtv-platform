@@ -18,20 +18,23 @@ function node(initial={}) {
   },initial);
 }
 
-test("public page contains no fabricated stats, match results, friends, or demo profile",async()=>{
+test("approved home v3.1 avoids fabricated activity and preserves compact private account data",async()=>{
   const html=await readFile(new URL("../../index.html",import.meta.url),"utf8");
-  for(const fake of ["Демо игрок","Демонстрационный профиль","1 246","Золотой ранг I","vlad.exe","M0ld0van","62.5% win rate","+24 ELO","#284","12 мин"]){
+  for(const fake of ["Демо игрок","Демонстрационный профиль","1 246","Золотой ранг I","vlad.exe","M0ld0van","62.5% win rate","+24 ELO","#284","12 мин","CQRTV Open #1","Игроков онлайн","Матчей сегодня"]){
     assert.equal(html.includes(fake),false,`public page must not ship fabricated data: ${fake}`);
   }
+  assert.match(html,/<h1 id="home-title">Твой путь в соревновательный <span>CS2<\/span><\/h1>/);
+  assert.match(html,/Матчмейкинг 5×5, собственный ELO, турниры и статистика — в одной платформе/);
+  assert.equal((html.match(/class="v31-benefit(?: is-primary)?"/g)||[]).length,4);
+  assert.equal((html.match(/class="v31-step"/g)||[]).length,3);
+  assert.match(html,/id="tournament-title">Турниры — скоро/);
+  assert.match(html,/Следите за анонсами/);
   assert.match(html,/id="player-profile"[^>]*hidden/);
   assert.match(html,/id="profile-nickname"/);
   assert.match(html,/id="profile-country-flag"/);
   assert.match(html,/id="profile-role"/);
   assert.match(html,/id="profile-secondary-roles"/);
-  assert.match(html,/Матчмейкинг пока недоступен/);
-  assert.match(html,/История и статистика появятся после запуска игровых серверов/);
-  assert.match(html,/Поиск игроков — в разработке[^>]*disabled/);
-  assert.match(html,/Уведомления — в разработке[^>]*disabled/);
+  assert.match(html,/Матчмейкинг 5×5<\/h3>[\s\S]*?В разработке/);
 });
 
 test("public navigation links resolve to real sections and mobile controls are labelled",async()=>{
@@ -44,18 +47,19 @@ test("public navigation links resolve to real sections and mobile controls are l
   assert.match(html,/aria-label="Мобильная навигация"/);
 });
 
-test("public design uses the existing CQRTV hero art and responsive breakpoints",async()=>{
+test("approved home v3.1 uses current CQRTV hero art and responsive breakpoints",async()=>{
   const [html,css]=await Promise.all([
     readFile(new URL("../../index.html",import.meta.url),"utf8"),
     readFile(new URL("../../assets/public-site.css",import.meta.url),"utf8")
   ]);
   assert.match(html,/\/assets\/public-site\.css/);
-  assert.match(css,/auth\/login-hero\.jpg/);
-  assert.match(html,/class="rail-label">ПЛАТФОРМА/);
-  assert.match(html,/Команды и сообщество/);
-  assert.match(html,/id="player-profile"[^>]*hidden[\s\S]*?<\/section>[\s\S]*?<section class="home-section overview-section"/);
-  assert.match(html,/class="home-dashboard-grid"/);
-  for(const width of ["1180px","1024px","760px","390px","340px"])assert.ok(css.includes(`max-width:${width}`),`missing responsive rule at ${width}`);
+  assert.match(css,/\/assets\/auth\/login-hero\.jpg/);
+  assert.match(html,/class="v31-benefit-grid"/);
+  assert.match(html,/class="v31-step-list"/);
+  assert.match(html,/class="v31-tournament"/);
+  assert.match(html,/id="mobile-menu-toggle"/);
+  assert.match(html,/aria-label="Мобильная навигация"/);
+  for(const width of ["1180px","1120px","1024px","760px","390px","340px"])assert.ok(css.includes(`max-width:${width}`),`missing responsive rule at ${width}`);
   assert.match(css,/prefers-reduced-motion/);
 });
 
