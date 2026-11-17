@@ -200,7 +200,7 @@ label_compose=(docker compose --project-name "$label_project" --project-director
 label_api_id_before=$("${label_compose[@]}" ps -q api)
 label_caddy_id_before=$("${label_compose[@]}" ps -q caddy)
 label_db_id=$("${label_compose[@]}" ps -q db)
-label_secret_id=$("${label_compose[@]}" ps -q secret-init)
+label_secret_id=$("${label_compose[@]}" ps -aq secret-init)
 test -n "$label_api_id_before" && test -n "$label_caddy_id_before" && test -n "$label_db_id" && test -n "$label_secret_id"
 label_base_api=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_api_id_before")
 label_base_db=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_db_id")
@@ -219,7 +219,7 @@ echo "Observed Compose config_files after two-file up: api=$label_after_api cadd
 test "$label_after_api" = "$expected_label_files"
 test "$label_after_caddy" = "$expected_label_files"
 test "$("${label_compose[@]}" ps -q db)" = "$label_db_id"
-test "$("${label_compose[@]}" ps -q secret-init)" = "$label_secret_id"
+test "$("${label_compose[@]}" ps -aq secret-init)" = "$label_secret_id"
 label_db_mounts=$(docker inspect --format '{{range .Mounts}}{{.Name}}:{{.Destination}};{{end}}' "$label_db_id")
 [[ "$label_db_mounts" == *"$label_project_db_secret:/run/db-secret;"* ]]
 [[ "$label_db_mounts" == *"$label_project_postgres_data:/var/lib/postgresql/data;"* ]]
@@ -231,7 +231,7 @@ label_caddy_target_id=$label_caddy_id_after
 test "$("${label_compose[@]}" ps -q api)" = "$label_api_target_id"
 test "$("${label_compose[@]}" ps -q caddy)" = "$label_caddy_target_id"
 test "$("${label_compose[@]}" ps -q db)" = "$label_db_id"
-test "$("${label_compose[@]}" ps -q secret-init)" = "$label_secret_id"
+test "$("${label_compose[@]}" ps -aq secret-init)" = "$label_secret_id"
 test "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$label_api_target_id")" = "$expected_label_files"
 
 echo "PASS disposable loopback staging; existing data/volumes preserved; Compose labels observed across base+stable override and repeat; DB/secret-init identities untouched."
