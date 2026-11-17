@@ -426,7 +426,7 @@ class DeploymentFlowTests(unittest.TestCase):
         self.commands.append(list(args))
         if args[-3:] == ["config", "--format", "json"]:
             return json.dumps(self.document).encode()
-        if args[-3:] == ["pull", "api", "caddy"]:
+        if len(args) == 3 and args[:2] == [agent.DOCKER, "pull"]:
             return b""
         if len(args) >= 3 and args[1:3] == ["image", "inspect"]:
             return json.dumps([self.payload["api_image_ref"] if args[-1] == self.payload["api_image_ref"]
@@ -455,8 +455,9 @@ class DeploymentFlowTests(unittest.TestCase):
     def test_correct_digest_apply_only_pulls_and_recreates_app_services(self):
         result, write_state = self.execute_flow([self.previous, self.target])
         self.assertIn("target digests are running", result)
-        self.assertEqual(len(self.commands), 5)
-        self.assertTrue(any(command[-3:] == ["pull", "api", "caddy"] for command in self.commands))
+        self.assertEqual(len(self.commands), 6)
+        self.assertEqual([command[2] for command in self.commands if command[:2] == [agent.DOCKER, "pull"]],
+                         [self.payload["api_image_ref"], self.payload["web_image_ref"]])
         self.assertTrue(any(command[-6:] == ["up", "-d", "--no-build", "--no-deps", "api", "caddy"] for command in self.commands))
         self.assertFalse(any("down" in command or "db" in command for command in self.commands))
         write_state.assert_called_once()
@@ -482,7 +483,8 @@ class DeploymentFlowTests(unittest.TestCase):
         result, write_state = self.execute_flow([legacy, self.target], payload=payload)
         self.assertIn("target digests are running", result)
         self.assertTrue(write_state.call_args.args[1]["legacy_handoff_completed"])
-        self.assertTrue(any(command[-3:] == ["pull", "api", "caddy"] for command in self.commands))
+        self.assertEqual([command[2] for command in self.commands if command[:2] == [agent.DOCKER, "pull"]],
+                         [payload["api_image_ref"], payload["web_image_ref"]])
         self.assertTrue(any(command[-6:] == ["up", "-d", "--no-build", "--no-deps", "api", "caddy"] for command in self.commands))
         self.assertFalse(any("latest" in " ".join(command) for command in self.commands))
 
@@ -505,7 +507,7 @@ class DeploymentFlowTests(unittest.TestCase):
     def test_repeat_on_healthy_target_is_noop(self):
         result, write_state = self.execute_flow([self.target])
         self.assertIn("no-op success", result)
-        self.assertFalse(any(command[-3:] == ["pull", "api", "caddy"] or "up" in command for command in self.commands))
+        self.assertFalse(any("pull" in command or "up" in command for command in self.commands))
         write_state.assert_called_once()
 
     def test_mixed_state_stops_before_pull(self):
@@ -517,7 +519,7 @@ class DeploymentFlowTests(unittest.TestCase):
 
     def test_pull_error_never_reaches_compose_up(self):
         def fail_pull(args, *, runner=subprocess.run, timeout=30):
-            if args[-3:] == ["pull", "api", "caddy"]:
+            if len(args) == 3 and args[:2] == [agent.DOCKER, "pull"]:
                 raise agent.DeployError("simulated pull failure")
             return self.command(args, runner=runner, timeout=timeout)
         with self.assertRaises(agent.DeployError):
@@ -531,7 +533,7 @@ class DeploymentFlowTests(unittest.TestCase):
                 raise agent.DeployError("simulated lost response")
             if args[-3:] == ["config", "--format", "json"]:
                 return json.dumps(self.document).encode()
-            if args[-3:] == ["pull", "api", "caddy"]:
+            if len(args) == 3 and args[:2] == [agent.DOCKER, "pull"]:
                 return b""
             if len(args) >= 3 and args[1:3] == ["image", "inspect"]:
                 return json.dumps([args[-1]]).encode()
