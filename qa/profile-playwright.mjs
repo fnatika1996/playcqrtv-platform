@@ -9,7 +9,7 @@ const baseUrl=process.env.CQRTV_QA_BASE_URL||"http://playcqrtv.com:8765";
 const screenshotDir=fileURLToPath(new URL("../qa-artifacts/",import.meta.url));
 await mkdir(screenshotDir,{recursive:true});
 const widths=[1440,1024,760,390,375,320],browser=await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
-let user=null,nicknamePosts=0,lastNicknamePayload=null;
+let user=null,nicknamePosts=0,lastNicknamePayload=null,registrationPosts=0;
 const fixture={nickname:"ClutchAce",country:"MD",primary_role:"awper",secondary_roles:["rifler","support"],nickname_available_at:null};
 try{
   for(const width of widths){
@@ -17,6 +17,7 @@ try{
     const context=await browser.newContext({viewport:{width,height:900},reducedMotion:"reduce"});
     await context.route("**/api/auth/me",async route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({user})}));
     await context.route("**/api/auth/logout",async route=>{user=null;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Вы вышли."})})});
+    await context.route("**/api/auth/register",async route=>{registrationPosts++;await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"registration is stubbed in QA"})})});
     await context.route("**/api/account/nickname",async route=>{nicknamePosts++;const body=JSON.parse(route.request().postData()||"{}");lastNicknamePayload=body.nickname;fixture.nickname=body.nickname;user={...fixture};await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({message:"Никнейм изменён.",nickname:body.nickname,nicknameAvailableAt:null})})});
     const page=await context.newPage(),errors=[];page.on("pageerror",error=>errors.push(error.message));
     const response=await page.goto(baseUrl+"/profile.html",{waitUntil:"domcontentloaded"});
@@ -25,6 +26,19 @@ try{
     assert.equal(await page.locator("#profile-guest-login").getAttribute("href"),"/auth.html");
     assert.equal(await page.locator("#profile-guest-signup").getAttribute("href"),"/#signup-dialog");
     assert.equal(await page.locator("#profile-guest-signup").isVisible(),true);
+    if(width===390){
+      await page.locator("#profile-guest-signup").click();
+      await page.waitForURL(url=>url.pathname==="/"&&url.hash==="#signup-dialog");
+      await page.locator("#signup-dialog").waitFor({state:"visible"});
+      assert.equal(await page.locator("#signup-dialog").evaluate(dialog=>dialog.open),true,"profile signup deep link should open the existing registration dialog");
+      assert.equal(await page.locator("#signup-dialog").count(),1,"homepage should keep one registration dialog");
+      assert.equal(registrationPosts,0,"opening registration must not submit its form");
+      await page.locator("#signup-close").click();
+      await page.waitForFunction(()=>location.hash==="");
+      assert.equal(await page.locator("#signup-dialog").evaluate(dialog=>dialog.open),false);
+      await page.goto(baseUrl+"/profile.html",{waitUntil:"domcontentloaded"});
+      await page.locator("#profile-guest:not([hidden])").waitFor({state:"visible"});
+    }
     assert.equal(await page.locator("#profile-content").isVisible(),false);
     assert.match(await page.locator("#profile-guest-title").textContent(),/Войдите/);
     const overflow=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth,offenders:[...document.querySelectorAll("body *")].map(node=>{const rect=node.getBoundingClientRect();return{id:node.id,className:typeof node.className==="string"?node.className:"",tag:node.tagName,left:Math.round(rect.left),right:Math.round(rect.right),scrollWidth:node.scrollWidth,clientWidth:node.clientWidth}}).filter(node=>node.right>innerWidth+1||node.left< -1||node.scrollWidth>node.clientWidth+12).slice(0,12)}));

@@ -291,7 +291,28 @@ document.getElementById("profile-edit-btn").addEventListener("click",async()=>{n
 nicknameChangeForm.addEventListener("submit",async event=>{event.preventDefault();if(!nicknameChangeForm.reportValidity()||nicknameSaveButton.disabled)return;nicknameChangeBlocked=true;nicknameSaveButton.disabled=true;nicknameChangeStatus.textContent="Сохраняем никнейм…";try{const response=await fetch("/api/account/nickname",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nickname:nicknameChangeInput.value})}),data=await response.json();nicknameChangeStatus.textContent=data.message||data.error||"Не удалось изменить никнейм.";if(response.ok){nicknameChangeBlocked=true;const newName=data.nickname;document.getElementById("profile-nickname").textContent=newName;document.querySelector(".user-label").textContent=newName;document.getElementById("header-avatar-initial").textContent=newName.trim().charAt(0).toLocaleUpperCase("ru");document.getElementById("profile-avatar-letter").textContent=newName.trim().charAt(0).toLocaleUpperCase("ru");nicknameCurrent.textContent="Сейчас установлен ник: "+newName;if(data.nicknameAvailableAt)nicknameChangeStatus.textContent="Ник изменён. Бесплатная смена будет доступна "+new Date(data.nicknameAvailableAt).toLocaleDateString("ru-RU")+"."}else if(data.nicknameAvailableAt){nicknameChangeBlocked=true;nicknameChangeStatus.textContent=data.error+" Следующая смена: "+new Date(data.nicknameAvailableAt).toLocaleDateString("ru-RU")+"."}else{nicknameChangeBlocked=false}}catch{nicknameChangeBlocked=false;nicknameChangeStatus.textContent="Не удалось связаться с сервером. Попробуйте позже."}finally{nicknameSaveButton.disabled=nicknameChangeBlocked}});
 
   </script>
-<script type="module">import { bindRegistrationRoles } from "/assets/registration-roles.mjs";import { bindAuthHeader } from "/assets/auth-header.mjs";import { bindPlayerExperience } from "/assets/player-experience.mjs";bindRegistrationRoles(document.getElementById("signup-form"));const authHeader=bindAuthHeader(document);bindPlayerExperience(document,authHeader);</script></body>
+<script type="module">
+import { bindRegistrationRoles } from "/assets/registration-roles.mjs";
+import { bindAuthHeader } from "/assets/auth-header.mjs";
+import { bindPlayerExperience } from "/assets/player-experience.mjs";
+bindRegistrationRoles(document.getElementById("signup-form"));
+const authHeader=bindAuthHeader(document);
+bindPlayerExperience(document,authHeader);
+const registrationDialog=document.getElementById("signup-dialog");
+function openSignupDeepLink(){
+  if(location.hash!=="#signup-dialog")return;
+  authHeader.ready.then(user=>{
+    if(location.hash!=="#signup-dialog"||user)return;
+    if(document.getElementById("auth-header-status").textContent.includes("Не удалось проверить аккаунт."))return;
+    if(!registrationDialog.open)registrationDialog.showModal();
+  });
+}
+window.addEventListener("hashchange",openSignupDeepLink);
+registrationDialog.addEventListener("close",()=>{
+  if(location.hash==="#signup-dialog")history.replaceState(null,"",location.pathname+location.search);
+});
+openSignupDeepLink();
+</script></body>
 </html>
 
 
