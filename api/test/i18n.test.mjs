@@ -138,11 +138,11 @@ test("fixed client UI literals and semantic references are covered", async () =>
   const missing=[];
   for(const path of clientFiles){
     const source=await read(path);
-    for(const literal of source.matchAll(/["'`]([^"'`\\n]*[\\u0400-\\u04ff][^"'`\\n]*)["'`]/g)){
+    for(const literal of source.matchAll(/["'`]([^"'`\n]*[\u0400-\u04ff][^"'`\n]*)["'`]/g)){
       const phrase=literal[1].trim();
       if(phrase.length>1&&!phrase.includes("${")&&!Object.hasOwn(dictionaries.ru,phrase)&&!allValues.has(phrase))missing.push(`${path}: ${phrase}`);
     }
-    for(const reference of source.matchAll(/(?:\\.t|data-i18n(?:-[\\w-]+)?)\\s*(?:\\(|=)\\s*["']([\\w.-]+)["']/g)){
+    for(const reference of source.matchAll(/(?:\.t|data-i18n(?:-[\w-]+)?)\s*(?:\(|=)\s*["']([\w.-]+)["']/g)){
       const key=reference[1];
       if(!Object.values(dictionaries).every((catalog)=>Object.hasOwn(catalog,key)))missing.push(`${path}: unknown translation key ${key}`);
     }
