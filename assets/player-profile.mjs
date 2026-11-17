@@ -35,9 +35,9 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
     try{
       const response=await fetchImpl("/api/auth/me",{cache:"no-store",credentials:"same-origin"}),data=await response.json();
       if(!response.ok||!data?.user){current.textContent="Не удалось проверить аккаунт. Войдите ещё раз.";return}
-      user=data.user;input.value=user.nickname;current.textContent="Сейчас установлен ник: "+user.nickname;checked=true;
+      user=data.user;input.value=user.nickname;current.textContent=window.CQRTVI18n?.t("Сейчас установлен ник: {nickname}",{nickname:user.nickname})||("Сейчас установлен ник: "+user.nickname);checked=true;
       const availableAt=user.nickname_available_at?new Date(user.nickname_available_at):null;
-      if(availableAt&&availableAt>Date.now()){status.textContent="Бесплатная смена будет доступна "+availableAt.toLocaleDateString(dateLocale())+".";blocked=true}
+      if(availableAt&&availableAt>Date.now()){status.textContent=window.CQRTVI18n?.t("Бесплатная смена будет доступна {date}.",{date:availableAt.toLocaleDateString(dateLocale())})||("Бесплатная смена будет доступна "+availableAt.toLocaleDateString(dateLocale())+".");blocked=true}
       else{status.textContent="Бесплатная смена доступна.";blocked=false}
     }catch{current.textContent="Не удалось загрузить аккаунт. Попробуйте ещё раз."}
     finally{input.disabled=!checked;save.disabled=blocked}
@@ -57,8 +57,8 @@ export function bindPlayerProfile(document,session,fetchImpl=globalThis.fetch){
         const initial=[...data.nickname.trim()][0]?.toLocaleUpperCase("ru")||"";
         byId("profile-nickname").textContent=data.nickname;byId("profile-avatar-letter").textContent=initial;
         byId("header-user-nickname").textContent=data.nickname;byId("header-avatar-initial").textContent=initial;
-        current.textContent="Сейчас установлен ник: "+data.nickname;
-        if(data.nicknameAvailableAt)status.textContent="Ник изменён. Бесплатная смена будет доступна "+new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())+".";
+        current.textContent=window.CQRTVI18n?.t("Сейчас установлен ник: {nickname}",{nickname:data.nickname})||("Сейчас установлен ник: "+data.nickname);
+        if(data.nicknameAvailableAt)status.textContent=window.CQRTVI18n?.t("Ник изменён. Бесплатная смена будет доступна {date}.",{date:new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())})||("Ник изменён. Бесплатная смена будет доступна "+new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())+".");
       }else if(data.nicknameAvailableAt){status.textContent=(data.error||"Никнейм пока нельзя изменить.")+" Следующая смена: "+new Date(data.nicknameAvailableAt).toLocaleDateString(dateLocale())+".";blocked=true}
       else blocked=false;
     }catch{status.textContent="Не удалось связаться с сервером. Попробуйте позже.";blocked=false}
