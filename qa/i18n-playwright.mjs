@@ -111,7 +111,7 @@ try {
     await page.waitForFunction(()=>document.documentElement.lang==="ru");
     await page.route("**/api/auth/verify",route=>route.abort("failed"));
     await page.goto(new URL("/auth.html?mode=verify&token=cqrtv-invalid-qa&lang=en",base).href,{waitUntil:"domcontentloaded"});
-    await page.waitForFunction(()=>document.querySelector("#verify-error-message")?.textContent?.length>0,{timeout:10000});
+    await page.waitForFunction(()=>{const failure=document.querySelector("#verify-failure"),message=document.querySelector("#verify-error-message")?.textContent||"";return failure&&!failure.hidden&&message&&message!=="Ссылка недействительна или устарела."},{timeout:10000});
     const verifyState=await page.evaluate(()=>({lang:document.documentElement.lang,text:document.querySelector("#verify-error-message")?.textContent||"",switcher:!!document.querySelector("[data-cqrtv-language-switcher] select")}));
     assert.equal(verifyState.lang,"en","auth link locale overrides prior preference");
     assert.ok(verifyState.text&&!/[\\u0400-\\u04ff]/.test(verifyState.text),"network error is visible and localized");
