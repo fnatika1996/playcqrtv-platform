@@ -64,7 +64,7 @@ function decodeHtml(value) {
 function isHumanText(value) {
   const normalized = decodeHtml(value).replace(/\s+/g, " ").trim();
   if (!normalized || !/[\p{L}]/u.test(normalized)) return false;
-  return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO|ID|K\\/D|© CQRTV)$/i.test(normalized);
+  return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO|ID|K\/D|© CQRTV)$/i.test(normalized);
 }
 function inspectMarkup(html, path, catalogs = dictionaries) {
   const errors = [];
