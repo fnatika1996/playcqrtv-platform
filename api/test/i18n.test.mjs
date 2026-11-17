@@ -4,6 +4,7 @@ import { test } from "node:test";
 
 const read = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 const moduleSource = await read("assets/i18n.mjs");
+const legacyHtmlBaseline = JSON.parse(await read("docs/i18n-legacy-html-baseline.json"));
 const match = moduleSource.match(/const dictionaries = (\{[\s\S]*?\});\nconst ui =/);
 assert.ok(match, "localization dictionaries are embedded in the first-party module");
 const dictionaries = JSON.parse(match[1]);
@@ -71,7 +72,7 @@ function isHumanText(value) {
   if (!normalized || !/[\p{L}]/u.test(normalized)) return false;
   return !/^(CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO|ID|K\/D|© CQRTV)$/i.test(normalized);
 }
-function inspectMarkup(html, path, catalogs = dictionaries) {
+function inspectMarkup(html, path, catalogs = dictionaries, baseline = legacyHtmlBaseline) {
   const errors = [];
   const source = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
@@ -83,7 +84,7 @@ function inspectMarkup(html, path, catalogs = dictionaries) {
     const binding = attrs.match(/\bdata-i18n="([^"]+)"/i)?.[1];
     if (binding) {
       for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
-    } else if (!Object.hasOwn(catalogs.ru || {}, text)) errors.push(`${path}: unbound UI text “${text}”`);
+    } else if (!Object.hasOwn(catalogs.ru || {}, text) || !baseline.pages?.[path]?.text?.includes(text)) errors.push(`${path}: unbound UI text “${text}”`);
   }
   for (const match of source.matchAll(/<([a-z][\w:-]*)(\s[^<>]*?)?>/gi)) {
     const attrs = match[2] || "";
@@ -94,7 +95,7 @@ function inspectMarkup(html, path, catalogs = dictionaries) {
       const binding = values[`data-i18n-${attr}`];
       if (binding) {
         for (const locale of locales) if (!Object.hasOwn(catalogs[locale] || {}, binding)) errors.push(`${path}: missing ${locale} translation for ${binding}`);
-      } else if (!Object.hasOwn(catalogs.ru || {}, decodeHtml(value).trim())) errors.push(`${path}: unbound ${attr} “${value}”`);
+      } else if (!Object.hasOwn(catalogs.ru || {}, decodeHtml(value).trim()) || !baseline.pages?.[path]?.attributes?.includes(decodeHtml(value).trim())) errors.push(`${path}: unbound ${attr} “${value}”`);
     }
   }
   return errors;
@@ -117,9 +118,9 @@ test("all root HTML entrypoints are discovered and localized, including attribut
 test("a future raw UI literal is rejected while a semantically keyed new page passes", () => {
   assert.ok(selectRootHtmlEntrypoints([{name:"index.html",isFile:()=>true},{name:"future-page.html",isFile:()=>true},{name:"notes.md",isFile:()=>true}]).includes("future-page.html"),"new root HTML routes are discovered automatically");
   const raw = inspectMarkup("<!doctype html><html lang=\"ru\"><body><main><h1>New competitive dashboard</h1></main></body></html>", "future-page.html");
-  assert.ok(raw.some((item) => item.includes("unbound UI text")), "new raw page text must fail CI");
+  assert.ok(raw.some((item) => item.includes("unbound UI text")), "new raw page text must fail CI even if someone adds it to the legacy Russian-keyed catalog");
   const catalogs = {
-    ru: { "fixture.dashboard.title": "Новая соревновательная панель" },
+    ru: { "fixture.dashboard.title": "Новая соревновательная панель", "New competitive dashboard": "Новая панель" },
     en: { "fixture.dashboard.title": "New competitive dashboard" },
     ro: { "fixture.dashboard.title": "Panou competitiv nou" }
   };
