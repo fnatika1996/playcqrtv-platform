@@ -20,9 +20,6 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
           ref: ${{ github.sha }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
       - name: Test exact immutable main checkout
         run: |
           set -euo pipefail
@@ -218,6 +215,8 @@ jobs:
           PROJECT_NAME: playcqrtv
           WEB_IMAGE_REF: ${{ needs.build-release.outputs.web_ref }}
           API_IMAGE_REF: ${{ needs.build-release.outputs.api_ref }}
+          PREVIOUS_WEB_REF: ${{ steps.status.outputs.previous_web_ref }}
+          PREVIOUS_API_REF: ${{ steps.status.outputs.previous_api_ref }}
           BACKUP_REFERENCE: ${{ steps.status.outputs.backup_reference }}
           BACKUP_SHA256: ${{ steps.status.outputs.backup_sha256 }}
           BACKUP_VERIFIED: "true"
@@ -230,7 +229,6 @@ jobs:
           : "${CQRTV_PROJECT_ROOT:?Set the verified Compose project root}"
           : "${CQRTV_SSH_PRIVATE_KEY:?Configure the restricted forced-command SSH key}"
           : "${CQRTV_RELEASE_SIGNING_KEY:?Configure the separate cqrtv-release signing key}"
-          : "${LEGACY_HANDOFF_APPROVED:?Set the explicit legacy handoff attestation input}"
           key_file="$RUNNER_TEMP/cqrtv-deploy-key"
           signing_key="$RUNNER_TEMP/cqrtv-release-signing-key"
           known_hosts="$RUNNER_TEMP/cqrtv-known-hosts"
