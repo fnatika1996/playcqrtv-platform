@@ -24,7 +24,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_SHA" = "$(git rev-parse HEAD)"
-          node --test qa/create-deploy-request.test.mjs qa/deployment-v2-policy.test.mjs qa/pin-compose-digests.test.mjs
+          node --test qa/create-deploy-request.test.mjs qa/create-deploy-status-request.test.mjs qa/deployment-v2-policy.test.mjs qa/pin-compose-digests.test.mjs
           python -m unittest qa/deployment_v2_restricted_deploy_test.py
 
   build-release:
