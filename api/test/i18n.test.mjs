@@ -297,7 +297,7 @@ test("flag-only language switcher and dynamic locale diagnostics remain part of 
   assert.match(runtime, /observer\.observe\(document\.body, \{[^}]*attributes:true/);
   assert.match(runtime, /function auditUnboundUi/);
   assert.match(runtime, /qa:\$\{finding\.kind\}/);
-  for (const key of ["common.language.name.ru","common.language.name.en","common.language.name.ro","common.language.current.ru","common.language.current.en","common.language.current.ro"]) {
+  for (const key of ["language.name.ru","language.name.en","language.name.ro","common.language.current.ru","common.language.current.en","common.language.current.ro"]) {
     for (const locale of locales) assert.ok(dictionaries[locale][key], `${locale}: ${key}`);
   }
   const uncovered = inspectMarkup('<html lang="ru"><body><input aria-label="Sign in"></body></html>', "future-page.html", dictionaries, {pages:{}});
