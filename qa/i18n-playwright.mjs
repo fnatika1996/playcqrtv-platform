@@ -78,7 +78,7 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
   const switcher=page.locator("[data-cqrtv-language-switcher]");
   const trigger=switcher.locator(".cqrtv-language-trigger");
   if(adminRequests)assert.ok(adminRequests.some(path=>path==="/api/admin/me"),`synthetic authorized fixture must protect and load ${route}`);
-  try{await selector.waitFor({state:"visible",timeout:8000});}catch(error){const state=await page.evaluate(()=>({url:location.href,title:document.title,lang:document.documentElement.lang,hasRuntime:!!window.CQRTVI18n,scriptUrls:[...document.scripts].map(script=>script.src)}));throw new Error(`${error.message}; locale fixture diagnostics: ${JSON.stringify(state)}; page errors: ${errors.join("; ")}`)}
+  try{await trigger.waitFor({state:"visible",timeout:8000});}catch(error){const state=await page.evaluate(()=>({url:location.href,title:document.title,lang:document.documentElement.lang,hasRuntime:!!window.CQRTVI18n,scriptUrls:[...document.scripts].map(script=>script.src)}));throw new Error(`${error.message}; locale fixture diagnostics: ${JSON.stringify(state)}; page errors: ${errors.join("; ")}`)}
   for(const nextLocale of [...locales,locale]){
     await trigger.click();
     await switcher.locator(`[role="option"][data-locale="${nextLocale}"]`).click();
