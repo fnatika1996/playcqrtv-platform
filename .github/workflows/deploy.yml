@@ -179,7 +179,7 @@ jobs:
           if (data.status_version !== 1 || data.run_id !== process.env.GITHUB_RUN_ID) throw new Error("Server status identity mismatch.");
           validateReleaseEvidence(evidence);
           const keys = ["BACKUP_REFERENCE","BACKUP_SHA256","PREVIOUS_WEB_REF","PREVIOUS_API_REF"];
-          for (const key of keys) if (/[\\r\\n=]/.test(evidence[key])) throw new Error("Invalid attestation field.");
+          for (const key of keys) if (/[\r\n=]/.test(evidence[key])) throw new Error("Invalid attestation field.");
           appendFileSync(process.env.GITHUB_OUTPUT,
             "backup_reference="+evidence.BACKUP_REFERENCE+"\nbackup_sha256="+evidence.BACKUP_SHA256+
             "\nprevious_web_ref="+evidence.PREVIOUS_WEB_REF+"\nprevious_api_ref="+evidence.PREVIOUS_API_REF+"\n");
