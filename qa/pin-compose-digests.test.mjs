@@ -89,12 +89,14 @@ test("release workflow third-party actions are pinned to immutable commit SHAs",
   assert.ok(uses.every(ref=>/@[a-f0-9]{40}$/.test(ref)),uses.join("\n"));
 });
 
-test("production workflow is manual, protected and uses immutable Compose refs", () => {
+test("production workflow auto-starts on main pushes, remains manually dispatchable, protected and digest-pinned", () => {
   const deployClient = fs.readFileSync(path.join(repoRoot, "qa", "hostinger-deploy.mjs"), "utf8");
   const remoteScript = fs.readFileSync(path.join(repoRoot, "qa", "deploy-compose-v2-remote.sh"), "utf8");
   assert.match(deploymentWorkflow, /workflow_dispatch:/);
-  assert.doesNotMatch(deploymentWorkflow, /^  push:/m);
-  assert.match(deploymentWorkflow, /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'workflow_dispatch'/);
+  assert.match(deploymentWorkflow, /^  push:\s*\n    branches:\s*\n      - main/m);
+  assert.match(deploymentWorkflow, /^  workflow_dispatch: \{\}/m);
+  assert.equal((deploymentWorkflow.match(/if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)/g) || []).length, 3);
+  assert.match(deploymentWorkflow, /concurrency:\s*\n  group: cqrtv-production-release\s*\n  cancel-in-progress: false/);
   assert.match(deploymentWorkflow, /environment:\s*\n\s+name: release-artifacts/);
   assert.match(deploymentWorkflow, /environment:\s*\n\s+name: production/);
   assert.match(deploymentWorkflow, /steps\.build-web\.outputs\.digest/);
