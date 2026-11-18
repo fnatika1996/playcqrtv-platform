@@ -26,6 +26,9 @@ def request(**overrides):
         "manifest_sha256": "c" * 64,
         "web_image_ref": "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "b" * 64,
         "api_image_ref": "ghcr.io/fnatika1996/playcqrtv-api@sha256:" + "d" * 64,
+        "backup_reference": "qa-backup-123",
+        "backup_sha256": "9" * 64,
+        "backup_verified": True,
         "previous_web_ref": "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "e" * 64,
         "previous_api_ref": "ghcr.io/fnatika1996/playcqrtv-api@sha256:" + "f" * 64,
         "legacy_handoff_approved": False,
@@ -546,3 +549,47 @@ class DeploymentFlowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class BackupManifestPolicyTests(unittest.TestCase):
+    def manifest(self, **overrides):
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        value = {
+            "schema_version": 1,
+            "backup_reference": "pg-backup-2026-11-18T10-00Z",
+            "backup_sha256": "a" * 64,
+            "created_at": now.isoformat(),
+            "rpo_seconds": 86400,
+            "isolated_restore_verified": True,
+            "restore_verified_at": now.isoformat(),
+            "restore_sha256": "a" * 64,
+        }
+        value.update(overrides)
+        return value
+
+    def test_fresh_backup_and_matching_isolated_restore_are_required(self):
+        result = agent._validate_backup_manifest(self.manifest())
+        self.assertTrue(result["backup_verified"])
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(self.manifest(backup_sha256="b" * 64))
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(self.manifest(isolated_restore_verified=False))
+
+    def test_stale_missing_or_future_backup_fails_closed(self):
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        stale = self.manifest(created_at=(now-timedelta(days=2)).isoformat(),
+                              restore_verified_at=(now-timedelta(days=1)).isoformat())
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(stale, now=now)
+        future = self.manifest(created_at=(now+timedelta(days=1)).isoformat(),
+                               restore_verified_at=(now+timedelta(days=1)).isoformat())
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(future, now=now)
+
+    def test_rpo_and_restore_checksum_are_not_caller_overridable(self):
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(self.manifest(rpo_seconds=86401))
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(self.manifest(restore_sha256="c" * 64))
