@@ -248,9 +248,9 @@ def _verified_backup_manifest(*, owner_uid=0, now=None):
 
 
 def _decode_status_frame(raw, allowed_signers, *, runner=subprocess.run, owner_uid=0):
-    if not raw or len(raw) > MAX_FRAME or b"\\r" in raw:
+    if not raw or len(raw) > MAX_FRAME or b"\r" in raw:
         raise DeployError("Signed status request frame is invalid.")
-    lines = raw.split(b"\\n")
+    lines = raw.split(b"\n")
     if lines and lines[-1] == b"":
         lines.pop()
     if len(lines) != 3 or lines[0] != b"CQRTV-DEPLOY-STATUS-V1":
@@ -264,7 +264,7 @@ def _decode_status_frame(raw, allowed_signers, *, runner=subprocess.run, owner_u
         type(payload["schema_version"]) is not int or payload["schema_version"] != 1 or payload["operation"] != "status" or
         not isinstance(payload["run_id"], str) or not re.fullmatch(r"[1-9][0-9]{0,19}", payload["run_id"])):
         raise DeployError("Signed status request schema is invalid.")
-    canonical = (json.dumps(payload, separators=(",", ":"), ensure_ascii=False) + "\\n").encode()
+    canonical = (json.dumps(payload, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
     if canonical != payload_bytes:
         raise DeployError("Signed status request is not canonical.")
     return payload
@@ -756,7 +756,7 @@ def main():
         config = _read_root_json(CONFIG_PATH, limit=MAX_CONFIG)
         validate_config(config)
         raw = sys.stdin.buffer.read(MAX_FRAME + 1)
-        if raw.startswith(b"CQRTV-DEPLOY-STATUS-V1\\n"):
+        if raw.startswith(b"CQRTV-DEPLOY-STATUS-V1\n"):
             request = _decode_status_frame(raw, config["allowed_signers"])
             print(json.dumps(read_release_status(config, request["run_id"]), separators=(",", ":"), ensure_ascii=False))
             return 0
