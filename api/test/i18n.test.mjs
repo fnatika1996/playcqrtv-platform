@@ -284,3 +284,24 @@ test("inline page scripts use catalogued fixed UI text and known translation ref
   }
   assert.deepEqual(missing,[],"inline dynamic UI must use authored translations and known semantic keys");
 });
+
+test("flag-only language switcher and dynamic locale diagnostics remain part of the runtime contract", () => {
+  const runtime = moduleSource.slice(moduleSource.indexOf("const ui ="));
+  assert.doesNotMatch(runtime, /cqrtv-language-label/);
+  assert.ok(!Object.hasOwn(dictionaries.ru,"common.language.label"),"obsolete visible language label key is removed from all catalogs");
+  assert.match(runtime, /function createFlag\(code\)/);
+  assert.match(runtime, /setAttribute\("viewBox", "0 0 60 36"\)/);
+  assert.match(runtime, /data-i18n-aria-label/);
+  assert.match(runtime, /role", "listbox"/);
+  assert.match(runtime, /ArrowDown/);
+  assert.match(runtime, /observer\.observe\(document\.body, \{[^}]*attributes:true/);
+  assert.match(runtime, /function auditUnboundUi/);
+  assert.match(runtime, /qa:\$\{finding\.kind\}/);
+  for (const key of ["common.language.name.ru","common.language.name.en","common.language.name.ro","common.language.current.ru","common.language.current.en","common.language.current.ro"]) {
+    for (const locale of locales) assert.ok(dictionaries[locale][key], `${locale}: ${key}`);
+  }
+  const uncovered = inspectMarkup('<html lang="ru"><body><input aria-label="Sign in"></body></html>', "future-page.html", dictionaries, {pages:{}});
+  assert.ok(uncovered.some(error => error.includes('unbound aria-label')), "new accessibility attributes without semantic binding fail CI");
+  const unknownDynamic = inspectRawSourceLiterals('node.setAttribute("title", "Untranslated status");', "assets/future-status.mjs");
+  assert.ok(unknownDynamic.some(error => error.includes("new raw source literal")), "new dynamic attribute copy fails source lint");
+});
