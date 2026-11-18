@@ -250,8 +250,14 @@ try {
     assert.equal(defaultLocale,"ru","unsupported browser locales fall back to Russian");
     for(const next of ["en","ro","ru"]){
       const switcher=page.locator("[data-cqrtv-language-switcher]");
-      await switcher.locator(".cqrtv-language-trigger").click();
-      await switcher.locator(`[role="option"][data-locale="${next}"]`).click();
+      const trigger=switcher.locator(".cqrtv-language-trigger");
+      await trigger.click();
+      await page.waitForFunction(()=>document.querySelector("[data-cqrtv-language-switcher] .cqrtv-language-trigger")?.getAttribute("aria-expanded")==="true");
+      const selected=switcher.locator('[role="option"][aria-selected="true"]');
+      await selected.waitFor({state:"visible"});
+      assert.equal(await selected.evaluate(option=>document.activeElement===option),true,"opening the switcher focuses the active locale option");
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
       await page.waitForFunction(expected=>document.documentElement.lang===expected,next);
       assert.equal(await page.evaluate(()=>localStorage.getItem("cqrtv.locale")),next,"active language choice persists");
     }
