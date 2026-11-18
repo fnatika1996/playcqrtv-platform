@@ -22,6 +22,9 @@ if (env.PROJECT_NAME !== "playcqrtv" ||
     !["true", "false"].includes(env.LEGACY_HANDOFF_APPROVED || "") ||
     !webPattern.test(env.WEB_IMAGE_REF || "") ||
     !apiPattern.test(env.API_IMAGE_REF || "") ||
+    !/^[A-Za-z0-9._-]{1,120}$/.test(env.BACKUP_REFERENCE || "") ||
+    !/^[a-f0-9]{64}$/.test(env.BACKUP_SHA256 || "") ||
+    env.BACKUP_VERIFIED !== "true" ||
     !webPattern.test(env.PREVIOUS_WEB_REF || "") ||
     !apiPattern.test(env.PREVIOUS_API_REF || "")) fail();
 
@@ -51,6 +54,9 @@ const payload = {
   manifest_sha256: crypto.createHash("sha256").update(manifest).digest("hex"),
   web_image_ref: env.WEB_IMAGE_REF,
   api_image_ref: env.API_IMAGE_REF,
+  backup_reference: env.BACKUP_REFERENCE,
+  backup_sha256: env.BACKUP_SHA256,
+  backup_verified: true,
   previous_web_ref: env.PREVIOUS_WEB_REF,
   previous_api_ref: env.PREVIOUS_API_REF,
   legacy_handoff_approved: env.LEGACY_HANDOFF_APPROVED === "true"
