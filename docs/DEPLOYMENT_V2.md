@@ -42,15 +42,13 @@ The VPS must already have root-scoped read-only GHCR credential access for image
 
 ## Controlled release
 
-1. Ensure required PR-only checks are green on the exact main SHA. Review the intended site mode and approved PRs.
-2. In GitHub Actions select CQRTV gated release, choose ref main, enter that same exact SHA as release_sha, and provide the freshly read-only observed web/API RepoDigests. Leave `legacy_handoff_approved=false` except for the separately owner-approved initial migration described below.
-3. Before approving release-artifacts, verify a protected PostgreSQL backup is available, its checksum matches, its age fits the agreed RPO, and an isolated restore test exists. The backup reference/checksum inputs are owner attestations; they do not independently prove the backup.
-4. Approve release-artifacts. The workflow builds and publishes commit-tagged images (no latest), captures Buildx digests, renders the tracked Compose with those exact refs and retains the manifest as a same-run artifact.
-5. Inspect the digest summary and approve the production Environment only if the release SHA, backup and previous refs are correct.
-6. Runner signs the same-run manifest hash and digest refs, then sends only the signed request over pinned SSH stdin. The forced command verifies the signature and replay state. The root gate combines the request’s two strict image digests with the pinned root-owned Compose file; it never runs the uploaded manifest. It validates service set, image refs, .env permissions, required persistent volumes and current mounts before pulling either app image.
-7. It pulls both immutable app refs before changing services, then runs only docker compose up -d --no-build --no-deps api caddy. It never stops/removes the project or updates the database service.
-8. Read-only reconciliation checks actual image RepoDigests and runtime health. Already-running target refs produce no-op success. Exact previous refs plus healthy containers permit first apply. Mixed, unknown or unhealthy state stops without retry or rollback.
-9. Read-only public smoke checks homepage (open or closed gate), /api/health, /auth.html, /admin/login and SVG MIME.
+1. Review the intended site mode and approved PRs. Start the no-input workflow only from `main`; it pins the release to that run's immutable `github.sha`.
+2. The release-preflight job checks out that exact commit and runs the request, policy, digest-pinning, and restricted-gate tests. Image building cannot start unless these tests pass on that SHA.
+3. Approve the protected `release-artifacts` Environment. The workflow builds commit-tagged images (no `latest`), captures Buildx digests, renders the tracked Compose file with those refs, and retains the same-run artifact.
+4. Approve the protected `production` Environment. The runner then sends a signed, run-scoped read-only status request through the pinned-host-key forced SSH command. It receives only sanitized backup evidence and current web/API RepoDigests.
+5. Policy checks bind the server evidence to this run's exact release SHA. If evidence is absent/stale, the services are unhealthy, refs are mixed, or the SSH status check fails, deployment stops.
+6. The runner signs the same-run manifest hash, attested backup reference/checksum, and exact current image RepoDigests. The root gate checks signature and replay state, reacquires the exclusive deployment lock, and revalidates the backup and current services before pulling images. Any status-to-deploy drift stops before Compose changes.
+7. The root gate combines only the two strict image digests with the pinned root-owned Compose file; it never executes the uploaded manifest. It validates service set, image refs, `.env` permissions, persistent volumes, and current mounts before pulling either app image.
 
 ## One-time legacy image handoff
 
