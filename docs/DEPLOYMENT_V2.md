@@ -13,7 +13,9 @@ Preferred target: standard Docker Compose on the existing VPS through a dedicate
 
 ## Required GitHub setup
 
-The workflow has no push trigger. Merging a PR to main runs PR/main CI only. Production release can start only from manual workflow_dispatch on main, with the exact release_sha, previous running web/API RepoDigests and backup attestation supplied. Every external action in the production release workflow is pinned to an immutable upstream commit SHA; the PR CI checks this invariant.
+The release workflow has a no-input workflow_dispatch and is enabled only on main. It checks out the immutable `github.sha` selected by that run; users cannot provide an arbitrary SHA or image reference. A preflight job tests that exact checkout before any image is built. The protected release-artifacts and production environments remain mandatory.
+
+After production approval, the runner makes an authenticated read-only status request through the pinned-host-key, forced-command SSH channel. The root-owned gate returns only the run ID, the current running web/API RepoDigests, and a fresh backup manifest reference/checksum. The runner validates their formats and binds them into the signed release request. The deployment gate rechecks the backup manifest and observed RepoDigests under the same exclusive deployment lock before image pulls or Compose changes; stale evidence, state drift, overlap, or missing state fails closed. It never accepts caller-provided refs or executes caller shell commands. External production actions remain pinned to immutable upstream commit SHAs.
 
 Before enabling release, the owner must create GitHub Environments `release-artifacts` and `production`, set required owner reviewers, disable administrator bypass, and store SSH credentials only in the production Environment. A YAML environment name alone does not create reviewer protection. Read-only GitHub Environment metadata was unavailable to this audit connection, so existence/protection are unverified.
 
@@ -102,3 +104,14 @@ This is a separate owner-approved maintenance-window task, not part of PR merge 
 References:
 - Hostinger VPS Docker Manager API: https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSDockerManagerApi.md
 - GitHub Actions deployment environments: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments
+
+
+## One-click workflow migration gate
+
+The PR's GitHub workflow is not compatible with the currently installed root gate until the owner installs the reviewed gate revision on the VPS. Do not merge or start a release before that separately approved migration. This repository change does not connect to or change the VPS.
+
+The server status request uses a signed, canonical, run-scoped `CQRTV-DEPLOY-STATUS-V1` frame over the existing forced-command SSH identity. The host key is still pinned. The root gate acquires the same exclusive lock used by deployments, checks the trusted Compose/project/mount identities, and returns sanitized JSON only. The subsequent signed deploy request still carries those exact values; the root gate repeats all checks under lock, closing the status-to-deploy race. No arbitrary SSH command, shell string, credential, or backup content is sent or returned.
+
+Before enabling this workflow, the owner must install the reviewed root gate and configure the backup producer to atomically write `/var/lib/cqrtv-deploy/backup-manifest.json` as a root-owned file in a protected root-owned directory. Schema 1 contains only: `schema_version`, `backup_reference`, `backup_sha256`, `created_at` (timezone-aware ISO-8601), `rpo_seconds` (1–86400), `isolated_restore_verified` (`true`), `restore_verified_at`, and `restore_sha256`. The trusted backup job must write this manifest only after checksum verification and a successful isolated PostgreSQL restore of that exact backup. The release gate rejects missing/malformed evidence, a checksum mismatch, future timestamps, backup age beyond its RPO, and restore evidence older than 30 days. It logs no secret, dump content, or checksum source path.
+
+Gate migration should be performed only after reviewing the exact VPS Compose, backup producer, ownership/mode, and forced-command wrapper. Install the new root-owned script/config atomically with a retained copy of the prior script and verified SHA-256; test the signed status operation and release refusal cases against an isolated staging project; then enable the GitHub workflow. Rollback is restoring the prior root-owned script/config atomically and disabling the input-free workflow until its old schema is restored. No implicit configuration replacement or production deployment is included in this PR.
