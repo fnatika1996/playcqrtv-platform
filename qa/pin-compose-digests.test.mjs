@@ -116,3 +116,14 @@ test("production workflow auto-starts on main pushes, remains manually dispatcha
   assert.match(prWorkflow, /pull_request:/);
   assert.doesNotMatch(prWorkflow, /secrets\.HOSTINGER_API_KEY|CQRTV_SSH_PRIVATE_KEY|packages:\s*write|docker login|workflow_dispatch:/);
 });
+
+test("signed STATUS evidence rejects only CR/LF/equals, not letters in digest refs", () => {
+  const expected = String.raw`/[\r\n=]/.test(evidence[key])`;
+  const broken = String.raw`/[\\r\\n=]/.test(evidence[key])`;
+  assert.ok(deploymentWorkflow.includes(expected), "STATUS validation must test actual CR/LF");
+  assert.ok(!deploymentWorkflow.includes(broken), "double-escaped character class rejects ordinary letters");
+  const invalidField = /[\r\n=]/;
+  assert.equal(invalidField.test("ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "a".repeat(64)), false);
+  assert.equal(invalidField.test("cqrtv-20261118-205941.dump"), false);
+  for (const unsafe of ["a\nb", "a\rb", "a=b"]) assert.equal(invalidField.test(unsafe), true);
+});
