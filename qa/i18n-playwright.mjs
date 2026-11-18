@@ -236,7 +236,7 @@ try {
     await page.goto(new URL(`/auth.html?mode=verify&token=qa-invalid-token-1234567890123456&lang=${locale}`,base).href,{waitUntil:"domcontentloaded"});
     await page.locator("#verify-failure").waitFor({state:"visible",timeout:10000});
     const verifyFailure=await page.locator("#verify-error-message").innerText();
-    assert.equal(verifyFailure,locale==="ru"?"Ссылка недействительна или устарела.":locale==="en"?"This link is invalid or has expired.":"Acest link este invalid sau a expirat.",`invalid verify token is localized for ${locale}`);
+    assert.equal(verifyFailure,locale==="ru"?"Ссылка недействительна или устарела.":locale==="en"?"This link is invalid or has expired.":"Acest link nu este valid sau a expirat.",`invalid verify token is localized for ${locale}`);
     assert.ok(authRequests.some(request=>request.path==="/api/auth/login")&&authRequests.some(request=>request.path==="/api/auth/forgot")&&authRequests.some(request=>request.path==="/api/auth/reset")&&authRequests.filter(request=>request.path==="/api/auth/verify").length===2,`synthetic auth fixture exercised every expected endpoint for ${locale}`);
     assert.deepEqual(errors,[],`auth flow browser errors for ${locale}: ${errors.join("; ")}`);
     await context.close();
