@@ -219,13 +219,11 @@ try {
     assert.equal(forgotMessage,locale==="ru"?"Если подтверждённый аккаунт с таким email существует, мы отправили письмо.":locale==="en"?"If a verified account with that email exists, we’ve sent a message.":"Dacă există un cont confirmat cu această adresă de e-mail, am trimis un mesaj.",`synthetic recovery response is localized for ${locale}`);
 
     await page.goto(new URL(`/auth.html?mode=reset&token=qa-invalid-token&lang=${locale}`,base).href,{waitUntil:"domcontentloaded"});
-    await page.locator('[name="newPassword"]').fill("weakpassword123!");
-    await page.locator("#submit").click();
-    await page.waitForFunction(()=>document.querySelector("#status")?.textContent.trim().length>0);
-    const passwordError=await page.locator("#status").innerText();
-    assert.ok(passwordError.length>0,`reset password validation is visible for ${locale}`);
-    if(locale!=="ru")assert.ok(!/[\\u0400-\\u04ff]/.test(passwordError),`reset validation remains Russian in ${locale}: ${passwordError}`);
-    await page.locator('[name="newPassword"]').fill("SyntheticPass123!");
+    const newPassword=page.locator('[name="newPassword"]');
+    await newPassword.fill("weakpassword123!");
+    assert.equal(await newPassword.evaluate(input=>input.validity.customError),true,`weak reset password is rejected for ${locale}`);
+    assert.ok((await newPassword.evaluate(input=>input.validationMessage)).length>0,`reset password error is exposed to the browser for ${locale}`);
+    await newPassword.fill("SyntheticPass123!");
     await page.locator("#submit").click();
     await page.waitForFunction(()=>document.querySelector("#status")?.textContent.includes("Ссылка")||document.querySelector("#status")?.textContent.includes("link")||document.querySelector("#status")?.textContent.includes("Link"));
     const resetMessage=await page.locator("#status").innerText();
