@@ -96,7 +96,7 @@ This is a separate owner-approved maintenance-window task, not part of PR merge 
 - Earlier deployment notes recorded production run #63 stopping at an unknown provider action state and a PostgreSQL backup owner reported on 2026-11-16. Those are historical owner/report observations only; this task made no production API, SSH, backup or site checks.
 - This PR introduces a signed, restricted deployment entrypoint and does not invoke it. GitHub Environment protections and secret presence remain unverified; configure and verify them privately before any release.
 - SSH access, current server environment path, live Compose labels and volume identities are intentionally not guessed. No secret/token belongs in Issue #4.
-- Current deployment workflow is manual-only (workflow_dispatch) on main. PR CI validates its configuration but never starts it. A future release still requires isolated staging proof, current read-only inventory, protected backup evidence, exact main SHA and separate owner approval.
+- This PR removes repeated workflow-dispatch fields and binds release identity to the selected main workflow SHA. It does not invoke a release. The new signed status protocol is not usable until the owner separately installs and stages the reviewed root gate; protected environments, staging, live inventory, and backup producer still require owner verification.
 - This PR does not authorize merge or deployment. Release remains blocked until the restricted account and root-owned gate are installed and verified by an authorized operator, GitHub Environment protection is confirmed, and staging/inventory/backup gates pass.
 
 References:
