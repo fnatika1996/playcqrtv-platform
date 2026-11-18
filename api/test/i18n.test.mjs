@@ -294,6 +294,8 @@ test("flag-only language switcher and dynamic locale diagnostics remain part of 
   assert.match(runtime, /data-i18n-aria-label/);
   assert.match(runtime, /role", "listbox"/);
   assert.match(runtime, /ArrowDown/);
+  assert.match(runtime, /event\.stopPropagation\(\)/, "switcher click stays inside its own open/close interaction");
+  assert.match(runtime, /event\.composedPath\(\)\.includes\(wrap\)/, "outside click detection respects the composed event path");
   assert.match(runtime, /observer\.observe\(document\.body, \{[^}]*attributes:true/);
   assert.match(runtime, /function auditUnboundUi/);
   assert.match(runtime, /qa:\$\{finding\.kind\}/);
