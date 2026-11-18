@@ -1,33 +1,7 @@
 name: CQRTV gated release
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_sha:
-        description: Exact green main commit approved for release
-        required: true
-        type: string
-      backup_reference:
-        description: Owner-verified protected backup identifier only; no secret or path
-        required: true
-        type: string
-      backup_sha256:
-        description: SHA-256 recorded by backup owner
-        required: true
-        type: string
-      backup_verified:
-        description: Confirm backup availability, protection, age/RPO and isolated restore evidence
-        required: true
-        type: boolean
-        default: false
-      previous_web_ref:
-        description: Previously observed running web RepoDigest
-        required: true
-        type: string
-      previous_api_ref:
-        description: Previously observed running API RepoDigest
-        required: true
-        type: string
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -37,7 +11,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-preflight:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Confirm immutable main release identity
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { validateReleaseEvidence } from "./qa/deployment-v2-policy.mjs";
+          validateReleaseEvidence(process.env);
+          NODE
+      - name: Run release policy, request and restricted-gate tests
+        run: |
+          set -euo pipefail
+          node --test qa/create-deploy-request.test.mjs qa/deployment-v2-policy.test.mjs qa/pin-compose-digests.test.mjs
+          python -m unittest qa/deployment_v2_restricted_deploy_test.py
+
   build-release:
+    needs: release-preflight
     if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
@@ -51,17 +54,12 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ github.sha }}
 
-      - name: Validate exact release and backup evidence
+      - name: Validate immutable workflow release identity
         env:
-          RELEASE_SHA: ${{ inputs.release_sha }}
+          RELEASE_SHA: ${{ github.sha }}
           WORKFLOW_SHA: ${{ github.sha }}
-          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
-          BACKUP_SHA256: ${{ inputs.backup_sha256 }}
-          BACKUP_VERIFIED: ${{ inputs.backup_verified }}
-          PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
-          PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
           LEGACY_HANDOFF_APPROVED: "false"
         run: |
           set -euo pipefail
@@ -97,7 +95,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/fnatika1996/playcqrtv-platform:${{ inputs.release_sha }}
+          tags: ghcr.io/fnatika1996/playcqrtv-platform:${{ github.sha }}
 
       - name: Verify web image by exact digest
         env:
@@ -114,7 +112,7 @@ jobs:
         with:
           context: ./api
           push: true
-          tags: ghcr.io/fnatika1996/playcqrtv-api:${{ inputs.release_sha }}
+          tags: ghcr.io/fnatika1996/playcqrtv-api:${{ github.sha }}
 
       - name: Render exact digest-pinned Compose release
         env:
@@ -152,17 +150,12 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ github.sha }}
 
       - name: Re-check exact release and backup evidence
         env:
-          RELEASE_SHA: ${{ inputs.release_sha }}
+          RELEASE_SHA: ${{ github.sha }}
           WORKFLOW_SHA: ${{ github.sha }}
-          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
-          BACKUP_SHA256: ${{ inputs.backup_sha256 }}
-          BACKUP_VERIFIED: ${{ inputs.backup_verified }}
-          PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
-          PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
@@ -183,12 +176,10 @@ jobs:
           CQRTV_PROJECT_ROOT: ${{ vars.CQRTV_PROJECT_ROOT }}
           CQRTV_SSH_PRIVATE_KEY: ${{ secrets.CQRTV_SSH_PRIVATE_KEY }}
           CQRTV_RELEASE_SIGNING_KEY: ${{ secrets.CQRTV_RELEASE_SIGNING_KEY }}
-          RELEASE_SHA: ${{ inputs.release_sha }}
+          RELEASE_SHA: ${{ github.sha }}
           PROJECT_NAME: playcqrtv
           WEB_IMAGE_REF: ${{ needs.build-release.outputs.web_ref }}
           API_IMAGE_REF: ${{ needs.build-release.outputs.api_ref }}
-          PREVIOUS_WEB_REF: ${{ inputs.previous_web_ref }}
-          PREVIOUS_API_REF: ${{ inputs.previous_api_ref }}
           LEGACY_HANDOFF_APPROVED: "false"
         run: |
           set -euo pipefail
@@ -213,7 +204,7 @@ jobs:
           ssh-keygen -Y sign -f "$signing_key" -n cqrtv-release "$request_file" >/dev/null
           payload_b64=$(base64 --wrap=0 "$request_file")
           signature_b64=$(base64 --wrap=0 "$request_file.sig")
-          printf 'CQRTV-DEPLOY-REQUEST-V2\n%s\n%s\n' "$signature_b64" "$payload_b64" |
+          printf 'CQRTV-DEPLOY-REQUEST-V3\n%s\n%s\n' "$signature_b64" "$payload_b64" |
             ssh -i "$key_file" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
               -o UserKnownHostsFile="$known_hosts" -o ConnectTimeout=10 -o ClearAllForwardings=yes -T \
               "$CQRTV_SSH_USER@$CQRTV_SSH_HOST"
