@@ -152,7 +152,7 @@ class SigningFixture(unittest.TestCase):
         framed = b"CQRTV-DEPLOY-STATUS-V1\n" + base64.b64encode(signature) + b"\n" + base64.b64encode(raw) + b"\n"
         self.assertEqual(agent._decode_status_frame(framed, str(self.allowed_signers), owner_uid=os.getuid()), payload)
         with self.assertRaises(agent.DeployError):
-            agent._decode_status_frame(framed.replace(b"12345", b"12346"), str(self.allowed_signers), owner_uid=os.getuid())
+            agent._decode_status_frame(framed.replace(base64.b64encode(raw), base64.b64encode(raw.replace(b"12345", b"12346")) ), str(self.allowed_signers), owner_uid=os.getuid())
 
 class TrustedComposeConfigTests(unittest.TestCase):
     def test_current_compose_hash_mismatch_fails_closed(self):
