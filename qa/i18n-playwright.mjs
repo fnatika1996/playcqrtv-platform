@@ -232,7 +232,7 @@ try {
     await page.goto(new URL(`/auth.html?mode=verify&token=qa-success-token-12345678901234567890&lang=${locale}`,base).href,{waitUntil:"domcontentloaded"});
     await page.locator("#verify-success").waitFor({state:"visible",timeout:10000});
     const verifySuccess=await page.locator("#verify-success").innerText();
-    if(locale!=="ru")assert.ok(!/[\\u0400-\\u04ff]/.test(verifySuccess),`verify success remains Russian in ${locale}: ${verifySuccess}`);
+    if(locale!=="ru")assert.ok(!/[\u0400-\u04ff]/.test(verifySuccess),`verify success remains Russian in ${locale}: ${verifySuccess}`);
     await page.goto(new URL(`/auth.html?mode=verify&token=qa-invalid-token-1234567890123456&lang=${locale}`,base).href,{waitUntil:"domcontentloaded"});
     await page.locator("#verify-failure").waitFor({state:"visible",timeout:10000});
     const verifyFailure=await page.locator("#verify-error-message").innerText();
