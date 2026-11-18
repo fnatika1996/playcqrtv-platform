@@ -92,5 +92,5 @@ test("routine GitHub release has no obsolete legacy handoff checkbox", () => {
   const workflow = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "deploy.yml"), "utf8");
   assert.doesNotMatch(workflow, /^\s+legacy_handoff_approved:\s*$/m);
   assert.doesNotMatch(workflow, /inputs\.legacy_handoff_approved/);
-  assert.equal((workflow.match(/LEGACY_HANDOFF_APPROVED: "false"/g) || []).length, 2);
+  assert.equal((workflow.match(/LEGACY_HANDOFF_APPROVED: "false"/g) || []).length, 1);
 });
