@@ -290,6 +290,9 @@ test("flag-only language switcher and dynamic locale diagnostics remain part of 
   assert.doesNotMatch(runtime, /cqrtv-language-label/);
   assert.ok(!Object.hasOwn(dictionaries.ru,"common.language.label"),"obsolete visible language label key is removed from all catalogs");
   assert.match(runtime, /function createFlag\(code\)/);
+  assert.match(runtime, /\.admin-app aside \.brand/);
+  assert.ok(Object.hasOwn(dictionaries.ru,"home.tagline")&&Object.hasOwn(dictionaries.en,"home.tagline")&&Object.hasOwn(dictionaries.ro,"home.tagline"));
+  assert.ok(Object.hasOwn(dictionaries.ru,"common.copyright")&&Object.hasOwn(dictionaries.en,"common.copyright")&&Object.hasOwn(dictionaries.ro,"common.copyright"));
   assert.match(runtime, /setAttribute\("viewBox", "0 0 60 36"\)/);
   assert.match(runtime, /data-i18n-aria-label/);
   assert.match(runtime, /role", "listbox"/);
