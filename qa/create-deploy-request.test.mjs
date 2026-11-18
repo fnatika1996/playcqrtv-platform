@@ -18,6 +18,9 @@ const env = {
   RELEASE_SHA: "c".repeat(40),
   GITHUB_RUN_ID: "123456",
   LEGACY_HANDOFF_APPROVED: "false",
+  BACKUP_REFERENCE: "qa-backup-123",
+  BACKUP_SHA256: "f".repeat(64),
+  BACKUP_VERIFIED: "true",
   WEB_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-platform@" + webDigest,
   API_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-api@" + apiDigest,
   PREVIOUS_WEB_REF: "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "d".repeat(64),
@@ -58,6 +61,9 @@ test("request builder binds fixed project, exact digest refs and manifest hash",
   assert.equal(payload.project_root, "/docker/playcqrtv");
   assert.equal(payload.web_image_ref, env.WEB_IMAGE_REF);
   assert.equal(payload.api_image_ref, env.API_IMAGE_REF);
+  assert.equal(payload.backup_reference, env.BACKUP_REFERENCE);
+  assert.equal(payload.backup_sha256, env.BACKUP_SHA256);
+  assert.equal(payload.backup_verified, true);
   assert.equal(payload.manifest_sha256, crypto.createHash("sha256").update(manifest).digest("hex"));
 });
 
