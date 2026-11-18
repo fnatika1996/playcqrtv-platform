@@ -257,8 +257,11 @@ try {
       await selected.waitFor({state:"visible"});
       assert.equal(await selected.evaluate(option=>document.activeElement===option),true,"opening the switcher focuses the active locale option");
       await page.keyboard.press("ArrowDown");
+      const focusedLocale=await page.evaluate(()=>document.activeElement?.dataset.locale||null);
+      assert.equal(focusedLocale,next,`ArrowDown should focus ${next} from the current locale`);
       await page.keyboard.press("Enter");
-      await page.waitForFunction(expected=>document.documentElement.lang===expected,next);
+      await page.waitForFunction(expected=>document.documentElement.lang===expected,next,{timeout:5000});
+      assert.equal(await page.evaluate(()=>document.documentElement.lang),next,`Enter should select ${next}`);
       assert.equal(await page.evaluate(()=>localStorage.getItem("cqrtv.locale")),next,"active language choice persists");
     }
     await page.goto(new URL("/rules.html",base).href,{waitUntil:"domcontentloaded"});
