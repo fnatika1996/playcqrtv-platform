@@ -81,6 +81,8 @@ test("request builder rejects symlinks, mutable images and mismatched refs", t =
   assert.notEqual(invoke(realPath, { CQRTV_PROJECT_ROOT: "/tmp/attacker" }).status, 0);
   assert.notEqual(invoke(realPath, { WEB_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-platform:latest" }).status, 0);
   assert.notEqual(invoke(realPath, { LEGACY_HANDOFF_APPROVED: "yes" }).status, 0);
+  assert.notEqual(invoke(realPath, { BACKUP_VERIFIED: "false" }).status, 0);
+  assert.notEqual(invoke(realPath, { BACKUP_SHA256: "latest" }).status, 0);
   const approved = invoke(realPath, { LEGACY_HANDOFF_APPROVED: "true" });
   assert.equal(approved.status, 0, approved.stderr);
   assert.equal(JSON.parse(approved.stdout).legacy_handoff_approved, true);
