@@ -228,7 +228,9 @@ function addSwitcher() {
     option.className = "cqrtv-language-option";
     option.setAttribute("role", "option");
     option.dataset.locale = code;
-    option.addEventListener("click", () => {
+    option.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       setLocale(code, true);
       popup.hidden = true;
       refreshSwitcher();
@@ -236,7 +238,9 @@ function addSwitcher() {
     });
     popup.append(option);
   }
-  trigger.addEventListener("click", () => {
+  trigger.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
     popup.hidden = !popup.hidden;
     refreshSwitcher();
     if (!popup.hidden) popup.querySelector('[aria-selected="true"]')?.focus();
@@ -255,7 +259,7 @@ function addSwitcher() {
       options[event.key === "Home" ? 0 : options.length - 1].focus();
     }
   });
-  document.addEventListener("click", event => { if (!wrap.contains(event.target) && !popup.hidden) { popup.hidden = true; refreshSwitcher(); } });
+  document.addEventListener("click", event => { if (!event.composedPath().includes(wrap) && !popup.hidden) { popup.hidden = true; refreshSwitcher(); } });
   wrap.append(trigger, popup);
   if (host === document.body) document.body.prepend(wrap);
   else host.append(wrap);
