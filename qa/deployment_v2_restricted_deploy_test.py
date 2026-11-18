@@ -26,6 +26,9 @@ def request(**overrides):
         "manifest_sha256": "c" * 64,
         "web_image_ref": "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "b" * 64,
         "api_image_ref": "ghcr.io/fnatika1996/playcqrtv-api@sha256:" + "d" * 64,
+        "backup_reference": "qa-backup-123",
+        "backup_sha256": "9" * 64,
+        "backup_verified": True,
         "previous_web_ref": "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "e" * 64,
         "previous_api_ref": "ghcr.io/fnatika1996/playcqrtv-api@sha256:" + "f" * 64,
         "legacy_handoff_approved": False,
@@ -142,6 +145,14 @@ class SigningFixture(unittest.TestCase):
         with self.assertRaises(agent.DeployError):
             agent._build_override("ghcr.io/attacker/image@sha256:" + "a" * 64, payload["api_image_ref"], str(self.directory / "bad.yml"))
 
+
+    def test_signed_status_request_is_canonical_and_run_scoped(self):
+        payload = {"schema_version": 1, "operation": "status", "run_id": "12345"}
+        raw, signature = self.sign(payload)
+        framed = b"CQRTV-DEPLOY-STATUS-V1\n" + base64.b64encode(signature) + b"\n" + base64.b64encode(raw) + b"\n"
+        self.assertEqual(agent._decode_status_frame(framed, str(self.allowed_signers), owner_uid=os.getuid()), payload)
+        with self.assertRaises(agent.DeployError):
+            agent._decode_status_frame(framed.replace(base64.b64encode(raw), base64.b64encode(raw.replace(b"12345", b"12346")) ), str(self.allowed_signers), owner_uid=os.getuid())
 
 class TrustedComposeConfigTests(unittest.TestCase):
     def test_current_compose_hash_mismatch_fails_closed(self):
@@ -439,6 +450,11 @@ class DeploymentFlowTests(unittest.TestCase):
         active_payload = payload or self.payload
         initial_state = state or {"schema_version": 2, "run_id": "0", "payload_sha256": "", "legacy_handoff_completed": False}
         with mock.patch.object(agent, "LOCK_FILE", self.lock_path), \
+             mock.patch.object(agent, "_verified_backup_manifest", return_value={
+                 "backup_reference": active_payload["backup_reference"],
+                 "backup_sha256": active_payload["backup_sha256"],
+                 "backup_verified": True,
+             }), \
              mock.patch.object(agent, "_safe_project_files"), \
              mock.patch.object(agent, "_read_state", return_value=initial_state), \
              mock.patch.object(agent, "_write_state") as write_state, \
@@ -546,3 +562,47 @@ class DeploymentFlowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class BackupManifestPolicyTests(unittest.TestCase):
+    def manifest(self, **overrides):
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        value = {
+            "schema_version": 1,
+            "backup_reference": "pg-backup-2026-11-18T10-00Z",
+            "backup_sha256": "a" * 64,
+            "created_at": now.isoformat(),
+            "rpo_seconds": 86400,
+            "isolated_restore_verified": True,
+            "restore_verified_at": now.isoformat(),
+            "restore_sha256": "a" * 64,
+        }
+        value.update(overrides)
+        return value
+
+    def test_fresh_backup_and_matching_isolated_restore_are_required(self):
+        result = agent._validate_backup_manifest(self.manifest())
+        self.assertTrue(result["backup_verified"])
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(self.manifest(backup_sha256="b" * 64))
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(self.manifest(isolated_restore_verified=False))
+
+    def test_stale_missing_or_future_backup_fails_closed(self):
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        stale = self.manifest(created_at=(now-timedelta(days=2)).isoformat(),
+                              restore_verified_at=(now-timedelta(days=1)).isoformat())
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(stale, now=now)
+        future = self.manifest(created_at=(now+timedelta(days=1)).isoformat(),
+                               restore_verified_at=(now+timedelta(days=1)).isoformat())
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(future, now=now)
+
+    def test_rpo_and_restore_checksum_are_not_caller_overridable(self):
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(self.manifest(rpo_seconds=86401))
+        with self.assertRaises(agent.DeployError):
+            agent._validate_backup_manifest(self.manifest(restore_sha256="c" * 64))

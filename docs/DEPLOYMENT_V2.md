@@ -13,7 +13,9 @@ Preferred target: standard Docker Compose on the existing VPS through a dedicate
 
 ## Required GitHub setup
 
-The workflow has no push trigger. Merging a PR to main runs PR/main CI only. Production release can start only from manual workflow_dispatch on main, with the exact release_sha, previous running web/API RepoDigests and backup attestation supplied. Every external action in the production release workflow is pinned to an immutable upstream commit SHA; the PR CI checks this invariant.
+The release workflow runs automatically on pushes to `main` and also supports no-input `workflow_dispatch` from `main`. It checks out the immutable `github.sha` selected by that run; users cannot provide an arbitrary SHA or image reference. A preflight job tests that exact checkout before any image is built. The protected release-artifacts and production environments remain mandatory.
+
+After production approval, the runner makes an authenticated read-only status request through the pinned-host-key, forced-command SSH channel. The root-owned gate returns only the run ID, the current running web/API RepoDigests, and a fresh backup manifest reference/checksum. The runner validates their formats and binds them into the signed release request. The deployment gate rechecks the backup manifest and observed RepoDigests under the same exclusive deployment lock before image pulls or Compose changes; stale evidence, state drift, overlap, or missing state fails closed. It never accepts caller-provided refs or executes caller shell commands. External production actions remain pinned to immutable upstream commit SHAs.
 
 Before enabling release, the owner must create GitHub Environments `release-artifacts` and `production`, set required owner reviewers, disable administrator bypass, and store SSH credentials only in the production Environment. A YAML environment name alone does not create reviewer protection. Read-only GitHub Environment metadata was unavailable to this audit connection, so existence/protection are unverified.
 
@@ -40,15 +42,13 @@ The VPS must already have root-scoped read-only GHCR credential access for image
 
 ## Controlled release
 
-1. Ensure required PR-only checks are green on the exact main SHA. Review the intended site mode and approved PRs.
-2. In GitHub Actions select CQRTV gated release, choose ref main, enter that same exact SHA as release_sha, and provide the freshly read-only observed web/API RepoDigests. Leave `legacy_handoff_approved=false` except for the separately owner-approved initial migration described below.
-3. Before approving release-artifacts, verify a protected PostgreSQL backup is available, its checksum matches, its age fits the agreed RPO, and an isolated restore test exists. The backup reference/checksum inputs are owner attestations; they do not independently prove the backup.
-4. Approve release-artifacts. The workflow builds and publishes commit-tagged images (no latest), captures Buildx digests, renders the tracked Compose with those exact refs and retains the manifest as a same-run artifact.
-5. Inspect the digest summary and approve the production Environment only if the release SHA, backup and previous refs are correct.
-6. Runner signs the same-run manifest hash and digest refs, then sends only the signed request over pinned SSH stdin. The forced command verifies the signature and replay state. The root gate combines the request’s two strict image digests with the pinned root-owned Compose file; it never runs the uploaded manifest. It validates service set, image refs, .env permissions, required persistent volumes and current mounts before pulling either app image.
-7. It pulls both immutable app refs before changing services, then runs only docker compose up -d --no-build --no-deps api caddy. It never stops/removes the project or updates the database service.
-8. Read-only reconciliation checks actual image RepoDigests and runtime health. Already-running target refs produce no-op success. Exact previous refs plus healthy containers permit first apply. Mixed, unknown or unhealthy state stops without retry or rollback.
-9. Read-only public smoke checks homepage (open or closed gate), /api/health, /auth.html, /admin/login and SVG MIME.
+1. Review the intended site mode and approved PRs. A push to `main` automatically starts the release workflow; it can also be manually dispatched from `main` without inputs. Each run pins the release to its immutable `github.sha`.
+2. The release-preflight job checks out that exact commit and runs the request, policy, digest-pinning, and restricted-gate tests. Image building cannot start unless these tests pass on that SHA.
+3. Approve the protected `release-artifacts` Environment. The workflow builds commit-tagged images (no `latest`), captures Buildx digests, renders the tracked Compose file with those refs, and retains the same-run artifact.
+4. Approve the protected `production` Environment. The runner then sends a signed, run-scoped read-only status request through the pinned-host-key forced SSH command. It receives only sanitized backup evidence and current web/API RepoDigests.
+5. Policy checks bind the server evidence to this run's exact release SHA. If evidence is absent/stale, the services are unhealthy, refs are mixed, or the SSH status check fails, deployment stops.
+6. The runner signs the same-run manifest hash, attested backup reference/checksum, and exact current image RepoDigests. The root gate checks signature and replay state, reacquires the exclusive deployment lock, and revalidates the backup and current services before pulling images. Any status-to-deploy drift stops before Compose changes.
+7. The root gate combines only the two strict image digests with the pinned root-owned Compose file; it never executes the uploaded manifest. It validates service set, image refs, `.env` permissions, persistent volumes, and current mounts before pulling either app image.
 
 ## One-time legacy image handoff
 
@@ -96,9 +96,24 @@ This is a separate owner-approved maintenance-window task, not part of PR merge 
 - Earlier deployment notes recorded production run #63 stopping at an unknown provider action state and a PostgreSQL backup owner reported on 2026-11-16. Those are historical owner/report observations only; this task made no production API, SSH, backup or site checks.
 - This PR introduces a signed, restricted deployment entrypoint and does not invoke it. GitHub Environment protections and secret presence remain unverified; configure and verify them privately before any release.
 - SSH access, current server environment path, live Compose labels and volume identities are intentionally not guessed. No secret/token belongs in Issue #4.
-- Current deployment workflow is manual-only (workflow_dispatch) on main. PR CI validates its configuration but never starts it. A future release still requires isolated staging proof, current read-only inventory, protected backup evidence, exact main SHA and separate owner approval.
+- This PR removes repeated workflow-dispatch fields, adds automatic release triggering on `main` pushes, and binds release identity to the selected main workflow SHA. It does not invoke a release. The new signed status protocol is not usable until the owner separately installs and stages the reviewed root gate; protected environments, staging, live inventory, and backup producer still require owner verification.
 - This PR does not authorize merge or deployment. Release remains blocked until the restricted account and root-owned gate are installed and verified by an authorized operator, GitHub Environment protection is confirmed, and staging/inventory/backup gates pass.
 
 References:
 - Hostinger VPS Docker Manager API: https://github.com/hostinger/api-python-sdk/blob/main/docs/VPSDockerManagerApi.md
 - GitHub Actions deployment environments: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/control-deployments
+
+
+## One-click workflow migration gate
+
+The PR's GitHub workflow is not compatible with the currently installed root gate until the owner installs the reviewed gate revision on the VPS. Do not merge or start a release before that separately approved migration. This repository change does not connect to or change the VPS.
+
+The server status request uses a signed, canonical, run-scoped `CQRTV-DEPLOY-STATUS-V1` frame over the existing forced-command SSH identity. The host key is still pinned. The root gate acquires the same exclusive lock used by deployments, checks the trusted Compose/project/mount identities, and returns sanitized JSON only. The subsequent signed deploy request still carries those exact values; the root gate repeats all checks under lock, closing the status-to-deploy race. No arbitrary SSH command, shell string, credential, or backup content is sent or returned.
+
+Before enabling this workflow, the owner must install the reviewed root gate and configure the backup producer to atomically write `/var/lib/cqrtv-deploy/backup-manifest.json` as a root-owned file in a protected root-owned directory. Schema 1 contains only: `schema_version`, `backup_reference`, `backup_sha256`, `created_at` (timezone-aware ISO-8601), `rpo_seconds` (1–86400), `isolated_restore_verified` (`true`), `restore_verified_at`, and `restore_sha256`. The trusted backup job must write this manifest only after checksum verification and a successful isolated PostgreSQL restore of that exact backup. The release gate rejects missing/malformed evidence, a checksum mismatch, future timestamps, backup age beyond its RPO, and restore evidence older than 30 days. It logs no secret, dump content, or checksum source path.
+
+Gate migration should be performed only after reviewing the exact VPS Compose, backup producer, ownership/mode, and forced-command wrapper. Install the new root-owned script/config atomically with a retained copy of the prior script and verified SHA-256; test the signed status operation and release refusal cases against an isolated staging project; then enable the GitHub workflow. Rollback is restoring the prior root-owned script/config atomically and disabling the input-free workflow until its old schema is restored. No implicit configuration replacement or production deployment is included in this PR.
+
+## Automatic main-push trigger
+
+The workflow triggers on `push` to `main` as well as manual `workflow_dispatch`. All three release jobs require `main` and one of these two events; release concurrency remains serialized. The build job still uses protected `release-artifacts`, and deployment still uses protected `production`, with the same mandatory evidence checks. This is **automatic pipeline initiation**, not authorization to bypass environment approvals. Ensure environment approval rules, branch restrictions and secrets are verified before merging. A push to `main` will begin this workflow immediately once this PR is merged. Until the root gate migration and protected Environments are complete, do not merge or deploy.

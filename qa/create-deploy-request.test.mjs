@@ -18,6 +18,9 @@ const env = {
   RELEASE_SHA: "c".repeat(40),
   GITHUB_RUN_ID: "123456",
   LEGACY_HANDOFF_APPROVED: "false",
+  BACKUP_REFERENCE: "qa-backup-123",
+  BACKUP_SHA256: "f".repeat(64),
+  BACKUP_VERIFIED: "true",
   WEB_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-platform@" + webDigest,
   API_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-api@" + apiDigest,
   PREVIOUS_WEB_REF: "ghcr.io/fnatika1996/playcqrtv-platform@sha256:" + "d".repeat(64),
@@ -58,6 +61,9 @@ test("request builder binds fixed project, exact digest refs and manifest hash",
   assert.equal(payload.project_root, "/docker/playcqrtv");
   assert.equal(payload.web_image_ref, env.WEB_IMAGE_REF);
   assert.equal(payload.api_image_ref, env.API_IMAGE_REF);
+  assert.equal(payload.backup_reference, env.BACKUP_REFERENCE);
+  assert.equal(payload.backup_sha256, env.BACKUP_SHA256);
+  assert.equal(payload.backup_verified, true);
   assert.equal(payload.manifest_sha256, crypto.createHash("sha256").update(manifest).digest("hex"));
 });
 
@@ -75,6 +81,8 @@ test("request builder rejects symlinks, mutable images and mismatched refs", t =
   assert.notEqual(invoke(realPath, { CQRTV_PROJECT_ROOT: "/tmp/attacker" }).status, 0);
   assert.notEqual(invoke(realPath, { WEB_IMAGE_REF: "ghcr.io/fnatika1996/playcqrtv-platform:latest" }).status, 0);
   assert.notEqual(invoke(realPath, { LEGACY_HANDOFF_APPROVED: "yes" }).status, 0);
+  assert.notEqual(invoke(realPath, { BACKUP_VERIFIED: "false" }).status, 0);
+  assert.notEqual(invoke(realPath, { BACKUP_SHA256: "latest" }).status, 0);
   const approved = invoke(realPath, { LEGACY_HANDOFF_APPROVED: "true" });
   assert.equal(approved.status, 0, approved.stderr);
   assert.equal(JSON.parse(approved.stdout).legacy_handoff_approved, true);
@@ -84,5 +92,5 @@ test("routine GitHub release has no obsolete legacy handoff checkbox", () => {
   const workflow = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "deploy.yml"), "utf8");
   assert.doesNotMatch(workflow, /^\s+legacy_handoff_approved:\s*$/m);
   assert.doesNotMatch(workflow, /inputs\.legacy_handoff_approved/);
-  assert.equal((workflow.match(/LEGACY_HANDOFF_APPROVED: "false"/g) || []).length, 2);
+  assert.equal((workflow.match(/LEGACY_HANDOFF_APPROVED: "false"/g) || []).length, 1);
 });

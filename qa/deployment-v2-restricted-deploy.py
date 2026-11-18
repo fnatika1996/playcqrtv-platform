@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Root-only CQRTV deploy gate. Never executes an uploaded Compose document."""
 import base64
+from datetime import datetime, timedelta, timezone
 import fcntl
 import hashlib
 import json
@@ -27,6 +28,9 @@ MAX_FRAME = 32768
 MAX_PAYLOAD = 8192
 MAX_CONFIG = 8192
 MAX_STATE = 4096
+BACKUP_MANIFEST = "/var/lib/cqrtv-deploy/backup-manifest.json"
+MAX_BACKUP_AGE_SECONDS = 86400
+MAX_RESTORE_EVIDENCE_AGE_SECONDS = 2592000
 SERVICES = ("api", "caddy", "db", "secret-init")
 LEGACY_IMAGE_REF = {
     "api": "ghcr.io/fnatika1996/playcqrtv-api:latest",
@@ -66,8 +70,8 @@ EXPECTED_IMAGE = {
 }
 REQUEST_KEYS = (
     "schema_version", "release_sha", "run_id", "project_root", "manifest_sha256",
-    "web_image_ref", "api_image_ref", "previous_web_ref", "previous_api_ref",
-    "legacy_handoff_approved",
+    "web_image_ref", "api_image_ref", "backup_reference", "backup_sha256",
+    "backup_verified", "previous_web_ref", "previous_api_ref", "legacy_handoff_approved",
 )
 ROOT_ENV = {"PATH": "/usr/bin:/bin", "HOME": "/root", "LC_ALL": "C"}
 
@@ -199,6 +203,104 @@ def _file_sha256(path):
     return digest.hexdigest()
 
 
+
+def _timestamp(value, label):
+    if not isinstance(value, str) or len(value) > 40:
+        raise DeployError(label + " timestamp is invalid.")
+    try:
+        result = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise DeployError(label + " timestamp is invalid.") from error
+    if result.tzinfo is None:
+        raise DeployError(label + " timestamp must include a timezone.")
+    return result.astimezone(timezone.utc)
+
+
+def _validate_backup_manifest(manifest, *, now=None):
+    keys = {"schema_version", "backup_reference", "backup_sha256", "created_at",
+            "rpo_seconds", "isolated_restore_verified", "restore_verified_at", "restore_sha256"}
+    if not isinstance(manifest, dict) or set(manifest) != keys or type(manifest.get("schema_version")) is not int or manifest["schema_version"] != 1:
+        raise DeployError("Protected backup manifest schema is invalid.")
+    ref, checksum = manifest["backup_reference"], manifest["backup_sha256"]
+    if not isinstance(ref, str) or not re.fullmatch(r"[A-Za-z0-9._-]{1,120}", ref):
+        raise DeployError("Protected backup reference is invalid.")
+    if not isinstance(checksum, str) or not re.fullmatch(r"[a-f0-9]{64}", checksum):
+        raise DeployError("Protected backup checksum is invalid.")
+    rpo = manifest["rpo_seconds"]
+    if type(rpo) is not int or not 1 <= rpo <= MAX_BACKUP_AGE_SECONDS:
+        raise DeployError("Protected backup RPO is outside the release policy.")
+    if manifest["isolated_restore_verified"] is not True or manifest["restore_sha256"] != checksum:
+        raise DeployError("Protected backup lacks matching isolated restore evidence.")
+    current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    created, restored = _timestamp(manifest["created_at"], "Backup"), _timestamp(manifest["restore_verified_at"], "Restore")
+    if created > current + timedelta(minutes=5) or restored > current + timedelta(minutes=5):
+        raise DeployError("Protected backup evidence is from the future.")
+    if (current - created).total_seconds() < 0 or (current - created).total_seconds() > min(rpo, MAX_BACKUP_AGE_SECONDS):
+        raise DeployError("Protected PostgreSQL backup is stale or outside its RPO.")
+    if restored < created or (current - restored).total_seconds() < 0 or (current - restored).total_seconds() > MAX_RESTORE_EVIDENCE_AGE_SECONDS:
+        raise DeployError("Isolated restore evidence is stale or predates the backup.")
+    return {"backup_reference": ref, "backup_sha256": checksum, "backup_verified": True}
+
+
+def _verified_backup_manifest(*, owner_uid=0, now=None):
+    _trusted_file(BACKUP_MANIFEST, owner_uid, max_size=8192)
+    return _validate_backup_manifest(_read_root_json(BACKUP_MANIFEST, limit=8192, owner_uid=owner_uid), now=now)
+
+
+def _decode_status_frame(raw, allowed_signers, *, runner=subprocess.run, owner_uid=0):
+    if not raw or len(raw) > MAX_FRAME or b"\r" in raw:
+        raise DeployError("Signed status request frame is invalid.")
+    lines = raw.split(b"\n")
+    if lines and lines[-1] == b"":
+        lines.pop()
+    if len(lines) != 3 or lines[0] != b"CQRTV-DEPLOY-STATUS-V1":
+        raise DeployError("Signed status request version mismatch.")
+    signature, payload_bytes = _safe_b64(lines[1]), _safe_b64(lines[2])
+    if not signature or len(signature) > 4096 or not payload_bytes or len(payload_bytes) > 2048:
+        raise DeployError("Signed status request size is invalid.")
+    _verify_signature(payload_bytes, signature, allowed_signers, runner=runner, owner_uid=owner_uid)
+    payload = _json(payload_bytes, 2048, "Signed status request")
+    if (not isinstance(payload, dict) or set(payload) != {"schema_version", "operation", "run_id"} or
+        type(payload["schema_version"]) is not int or payload["schema_version"] != 1 or payload["operation"] != "status" or
+        not isinstance(payload["run_id"], str) or not re.fullmatch(r"[1-9][0-9]{0,19}", payload["run_id"])):
+        raise DeployError("Signed status request schema is invalid.")
+    canonical = (json.dumps(payload, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
+    if canonical != payload_bytes:
+        raise DeployError("Signed status request is not canonical.")
+    return payload
+
+
+def _status_digest(services, service, repository):
+    item = services.get(service)
+    if not isinstance(item, dict) or item.get("status") != "running" or item.get("health") not in ("healthy", "none"):
+        raise DeployError("A running application service is unhealthy.")
+    digests = item.get("repo_digests")
+    pattern = re.compile(r"^" + re.escape(repository) + r"@sha256:[a-f0-9]{64}$")
+    matches = sorted({value for value in digests or [] if isinstance(value, str) and pattern.fullmatch(value)})
+    if len(matches) != 1:
+        raise DeployError("Running application must resolve to exactly one immutable image digest.")
+    return matches[0]
+
+
+def read_release_status(config, run_id, *, runner=subprocess.run, owner_uid=0):
+    _safe_project_files(config, owner_uid=owner_uid)
+    lock_fd = os.open(LOCK_FILE, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    st = os.fstat(lock_fd)
+    if st.st_uid != owner_uid or not stat.S_ISREG(st.st_mode) or st.st_mode & 0o077:
+        os.close(lock_fd)
+        raise DeployError("Deployment lock file ownership or permissions are unsafe.")
+    with os.fdopen(lock_fd, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        backup = _verified_backup_manifest(owner_uid=owner_uid)
+        services = _inventory(config, runner=runner)
+        web = _status_digest(services, "caddy", "ghcr.io/fnatika1996/playcqrtv-platform")
+        api = _status_digest(services, "api", "ghcr.io/fnatika1996/playcqrtv-api")
+        if web == api:
+            raise DeployError("Observed application image identities are not distinct.")
+        return {"status_version": 1, "run_id": run_id, **backup,
+                "previous_web_ref": web, "previous_api_ref": api}
+
+
 def _verify_signature(payload_bytes, signature_bytes, allowed_signers, *, runner=subprocess.run, owner_uid=0):
     _trusted_file(allowed_signers, owner_uid, max_size=4096)
     with tempfile.TemporaryDirectory(prefix="cqrtv-verify-") as work:
@@ -256,6 +358,12 @@ def validate_request(payload, config):
         raise DeployError("Workflow run ID is invalid.")
     if not isinstance(payload["manifest_sha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", payload["manifest_sha256"]):
         raise DeployError("Same-run manifest SHA-256 is invalid.")
+    if not isinstance(payload["backup_reference"], str) or not re.fullmatch(r"[A-Za-z0-9._-]{1,120}", payload["backup_reference"]):
+        raise DeployError("Backup reference is invalid.")
+    if not isinstance(payload["backup_sha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", payload["backup_sha256"]):
+        raise DeployError("Backup checksum is invalid.")
+    if payload["backup_verified"] is not True:
+        raise DeployError("Protected backup verification is required.")
     for key, service in (("web_image_ref", "caddy"), ("previous_web_ref", "caddy"),
                          ("api_image_ref", "api"), ("previous_api_ref", "api")):
         value = payload[key]
@@ -574,6 +682,9 @@ def perform_deployment(payload, payload_hash, config, *, runner=subprocess.run, 
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         state = _read_state(config["state_file"], owner_uid=owner_uid)
         _check_replay(state, payload, payload_hash)
+        backup = _verified_backup_manifest(owner_uid=owner_uid)
+        if backup["backup_reference"] != payload["backup_reference"] or backup["backup_sha256"] != payload["backup_sha256"]:
+            raise DeployError("Protected backup evidence changed after the authenticated status check.")
         _build_override(payload["web_image_ref"], payload["api_image_ref"], OVERRIDE_FILE, owner_uid=owner_uid)
         override = OVERRIDE_FILE
         base = _compose_base(config)
@@ -645,6 +756,10 @@ def main():
         config = _read_root_json(CONFIG_PATH, limit=MAX_CONFIG)
         validate_config(config)
         raw = sys.stdin.buffer.read(MAX_FRAME + 1)
+        if raw.startswith(b"CQRTV-DEPLOY-STATUS-V1\n"):
+            request = _decode_status_frame(raw, config["allowed_signers"])
+            print(json.dumps(read_release_status(config, request["run_id"]), separators=(",", ":"), ensure_ascii=False))
+            return 0
         payload, payload_hash = decode_frame(raw, config["allowed_signers"])
         validate_request(payload, config)
         result = perform_deployment(payload, payload_hash, config)
