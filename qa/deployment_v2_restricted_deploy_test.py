@@ -442,6 +442,11 @@ class DeploymentFlowTests(unittest.TestCase):
         active_payload = payload or self.payload
         initial_state = state or {"schema_version": 2, "run_id": "0", "payload_sha256": "", "legacy_handoff_completed": False}
         with mock.patch.object(agent, "LOCK_FILE", self.lock_path), \
+             mock.patch.object(agent, "_verified_backup_manifest", return_value={
+                 "backup_reference": active_payload["backup_reference"],
+                 "backup_sha256": active_payload["backup_sha256"],
+                 "backup_verified": True,
+             }), \
              mock.patch.object(agent, "_safe_project_files"), \
              mock.patch.object(agent, "_read_state", return_value=initial_state), \
              mock.patch.object(agent, "_write_state") as write_state, \
