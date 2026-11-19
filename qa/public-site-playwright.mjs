@@ -44,7 +44,7 @@ const page=await context.newPage();
     const response=await page.goto(baseUrl,{waitUntil:"domcontentloaded"});
     assert.equal(response?.status(),200,`public home should load at ${width}px`);
     assert.match(await page.title(),/CQRTV/);
-    assert.equal((await page.locator("#home-title").innerText()).replace(/\\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
+    assert.equal((await page.locator("#home-title").innerText()).replace(/\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
     await page.locator(".home-hero").waitFor({state:"visible"});
     assert.equal(await page.locator(".home-feature").count(),4);
     assert.equal(await page.locator(".home-metric").count(),4);
