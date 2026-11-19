@@ -189,7 +189,11 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
     await page.locator("#cancel").click();
     assert.ok(await page.locator("#modal").evaluate(element=>element.classList.contains("hidden")),"cancel closes the synthetic confirmation dialog without an API mutation");
   }
-  if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-${statusMode||"default"}-${width}.png`,artifactDir).pathname,fullPage:true});
+  if(screenshot){
+    const filename=`i18n-${route.replaceAll("/","")||"home"}-${locale}-${statusMode||"default"}-${width}`;
+    if(route==="/"&&(width===1440||width===390))await page.screenshot({path:new URL(`${filename}-viewport.png`,artifactDir).pathname,fullPage:false});
+    await page.screenshot({path:new URL(`${filename}-full.png`,artifactDir).pathname,fullPage:true});
+  }
   return true;
 }
 try {
