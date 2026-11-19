@@ -12,7 +12,8 @@ const approvedHome='<html><main id="home"><h1 id="home-title"><span>ТВОЯ И�
 test("smoke accepts current main, Phase 1 and closed gate",()=>{
   assert.ok(["current-main-public","phase1-public","home-v3.1-public","approved-home-desktop-mobile"].includes(classifyHomepage(currentMain)));
   assert.equal(classifyHomepage(phase1),"phase1-public");
-  assert.equal(classifyHomepage(homeV31),"home-v3.1-public");\n  assert.equal(classifyHomepage(approvedHome),"approved-home-desktop-mobile");
+  assert.equal(classifyHomepage(homeV31),"home-v3.1-public");
+  assert.equal(classifyHomepage(approvedHome),"approved-home-desktop-mobile");
   assert.equal(classifyHomepage(closedGate),"closed-gate");
 });
 
