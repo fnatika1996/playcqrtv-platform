@@ -95,10 +95,9 @@ const page=await context.newPage();
         const heightOverflow=await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth);
         assert.equal(heightOverflow,true,`no horizontal overflow at 390x${height}`);
       }
+      await page.setViewportSize({width:195,height:450});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth),true,"half-width CSS viewport should remain usable at simulated 200% zoom");
       await page.setViewportSize({width,height:900});
-      await page.evaluate(()=>{document.documentElement.style.zoom="2"});
-      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth),true,"page should not overflow at simulated 200% zoom");
-      await page.evaluate(()=>{document.documentElement.style.zoom=""});
       await page.emulateMedia({reducedMotion:"reduce"});
       assert.equal(await page.evaluate(()=>matchMedia("(prefers-reduced-motion: reduce)").matches),true);
       assert.equal(await page.locator(".home-feature").first().evaluate(element=>getComputedStyle(element).transitionDuration.split(",").every(value=>parseFloat(value)===0)),true,"reduced-motion should disable feature transitions");
