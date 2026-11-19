@@ -44,21 +44,27 @@ const page=await context.newPage();
     const response=await page.goto(baseUrl,{waitUntil:"domcontentloaded"});
     assert.equal(response?.status(),200,`public home should load at ${width}px`);
     assert.match(await page.title(),/CQRTV/);
-    assert.equal(await page.getByRole("heading",{level:1}).textContent(),"Твой путь в соревновательный CS2");
+    assert.equal((await page.locator("#home-title").innerText()).replace(/\\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
     await page.locator(".home-hero").waitFor({state:"visible"});
-    assert.equal(await page.locator(".v31-benefit").count(),4);
-    assert.equal(await page.locator(".v31-step").count(),3);
-    assert.equal(await page.locator("#tournaments").isVisible(),true);
-    assert.match(await page.locator("#tournament-title").textContent(),/Турниры — скоро/);
-    assert.equal(await page.locator(".v31-tournament-cta").isDisabled(),true);
+    assert.equal(await page.locator(".home-feature").count(),4);
+    assert.equal(await page.locator(".home-metric").count(),4);
+    assert.deepEqual(await page.locator(".home-metric strong").allTextContents(),["—","—","—","—"],"unverified platform figures must remain placeholders");
+    assert.equal(await page.locator(".home-roadmap-list li").count(),4);
+    assert.equal(await page.locator(".home-platform-status .status-development").textContent(),"В разработке");
+    assert.equal(await page.locator(".home-feature .status-soon").count(),4);
+    assert.equal(await page.locator(".home-hero-actions a[href=\"#features\"]").count(),1);
+    assert.equal(await page.locator(".home-hero-art img").evaluate(image=>image.complete&&image.naturalWidth>0),true,"approved local hero art should load");
     assert.equal(await page.locator("#guest-actions").isVisible(),true);
     assert.equal(await page.locator("#player-profile").isVisible(),false);
     assert.equal(await page.locator("#auth-user-menu").isVisible(),false);
     assert.equal(await page.locator("#login-link").getAttribute("href"),"/auth.html");
-    assert.equal(await page.locator('.home-hero-actions a[href="/auth.html"]').count(),1);
-    for(const href of ["/rules.html","/privacy.html"])assert.equal(await page.locator(`footer.v31-footer a[href="${href}"]`).count(),1,`footer should keep ${href}`);
-    assert.equal(await page.locator(".site-rail,.site-rightbar,.mobile-bottom-nav,.home-dashboard-grid").count(),0,"homepage dashboard chrome must be removed");
-    assert.equal(await page.locator(".site-nav-unavailable").count(),2,"unimplemented player catalogue must be truthfully marked in both navs");
+    assert.equal(await page.locator('.home-hero-actions a[href="/profile.html"]').count(),1);
+    for(const href of ["/rules.html","/privacy.html"])assert.equal(await page.locator(`footer.home-footer a[href="${href}"]`).count(),1,`footer should keep ${href}`);
+    assert.equal(await page.locator(".site-rail").count(),1,"the desktop navigation rail should be available");
+    assert.equal(await page.locator(".site-rightbar,.mobile-bottom-nav,.home-dashboard-grid").count(),0,"the new homepage must not introduce mock dashboard chrome");
+    assert.equal(await page.locator(".site-nav-unavailable").count(),2,"unimplemented settings must be truthfully marked in the rail and mobile nav");
+    for(const href of ["#home","#play","#leaderboard","#tournaments","#teams","#community","#features"])
+      assert.equal(await page.locator(`[id="${href.slice(1)}"]`).count(),1,`in-page destination ${href} should resolve`);
     for(const forbidden of ["CQRTV Open #1","1 246","игроков онлайн","матчей сегодня","Начать играть через Steam","Смотреть трейлер"])
       assert.equal(await page.getByText(forbidden,{exact:false}).count(),0,`homepage must not promise ${forbidden}`);
     const iconCount=await page.locator(".pack-icon").count();
@@ -72,6 +78,8 @@ const page=await context.newPage();
       assert.equal(await page.locator("#mobile-menu-toggle").isVisible(),false);
     }else{
       assert.equal(await page.locator("#mobile-menu-toggle").isVisible(),true);
+      if(width<=760)assert.equal(await page.locator(".site-rail").isVisible(),false,"tablet and phone navigation should use the accessible menu");
+      else assert.equal(await page.locator(".site-rail").isVisible(),true,"tablet layout retains the side rail");
       await page.locator("#mobile-menu-toggle").focus();
       await page.keyboard.press("Enter");
       assert.equal(await page.locator("#mobile-navigation").isVisible(),true);
@@ -82,6 +90,19 @@ const page=await context.newPage();
       assert.equal(await page.locator("#mobile-menu-toggle").getAttribute("aria-expanded"),"false");
     }
     if(width===390){
+      for(const height of [667,1024]){
+        await page.setViewportSize({width,height});
+        const heightOverflow=await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth);
+        assert.equal(heightOverflow,true,`no horizontal overflow at 390x${height}`);
+      }
+      await page.setViewportSize({width,height:900});
+      await page.evaluate(()=>{document.documentElement.style.zoom="2"});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth),true,"page should not overflow at simulated 200% zoom");
+      await page.evaluate(()=>{document.documentElement.style.zoom=""});
+      await page.emulateMedia({reducedMotion:"reduce"});
+      assert.equal(await page.evaluate(()=>matchMedia("(prefers-reduced-motion: reduce)").matches),true);
+      assert.equal(await page.locator(".home-feature").first().evaluate(element=>getComputedStyle(element).transitionDuration.split(",").every(value=>parseFloat(value)===0)),true,"reduced-motion should disable feature transitions");
+      await page.emulateMedia({reducedMotion:"no-preference"});
       await page.locator("#hero-signup").click();
       assert.equal(await page.locator("#signup-dialog").evaluate(dialog=>dialog.open),true,"homepage signup should open the existing registration dialog");
       await page.locator("#signup-close").click();
@@ -114,7 +135,7 @@ const page=await context.newPage();
     }
     assert.deepEqual(errors,[],`uncaught browser errors at ${width}px: ${errors.join("; ")}`);
     await context.close();
-    console.log(`PASS approved home v3.1 at ${width}px`);
+    console.log(`PASS approved homepage at ${width}px`);
   }
   const offlineContext=await browser.newContext({locale:"ru-RU",viewport:{width:390,height:844}});
   await offlineContext.setExtraHTTPHeaders({"X-QA-Site-Mode":"coming_soon"});
