@@ -495,3 +495,51 @@
   .site-actions .cqrtv-language-switcher{margin-inline-start:0}
   .site-actions .cqrtv-language-trigger{width:32px;height:32px;padding:3px}
 }
+
+
+/* PR #36 visual review fixes — keep approved layout, correct rail sizing and responsive composition */
+.site-rail{min-height:0;align-items:stretch}
+.site-rail>.rail-label,.site-rail>.rail-divider{flex:none}
+.site-rail>.rail-btn{flex:0 0 42px;height:42px;min-height:42px;max-height:42px}
+.site-topbar .brand-name{display:block!important;visibility:visible;opacity:1;flex:none;max-width:none;overflow:visible;white-space:nowrap}
+.home-hero h1 span{white-space:nowrap}
+.home-hero h1 span:first-child{color:#f3f3f2}
+.home-hero h1 span:last-child{color:#ff7629}
+.home-feature-art .pack-icon{width:46px;height:46px}
+.rail-soon{font-size:10px}
+@media(max-width:760px){
+  .site-topbar .brand{flex:none;min-width:max-content}
+  .site-topbar .brand-name{font-size:20px}
+  .site-topbar .mobile-menu-toggle{width:42px;height:42px}
+  .site-actions .signup-trigger#login-link{min-height:40px;font-size:10px}
+  .auth-header-status{font-size:9px}
+  .home-hero{min-height:clamp(430px,118vw,500px);align-items:flex-end;background:#111214}
+  .home-hero-art{position:absolute;inset:0;z-index:-1;display:block;width:100%;height:100%;min-height:0;flex:none}
+  .home-hero-art img{width:100%;height:100%;object-fit:cover;object-position:70% center}
+  .home-hero::before{z-index:0;background:linear-gradient(0deg,#101113 0%,#101113e8 26%,#1011139c 55%,#10111318 100%),linear-gradient(90deg,#101113ad 0%,#10111338 72%,#10111305 100%)}
+  .home-hero-copy{position:relative;z-index:1;width:100%;padding:22px 18px 24px}
+  .home-hero h1{font-size:clamp(43px,10.2vw,58px);line-height:.9}
+  .home-intro{font-size:12px}
+  .home-feature-art .pack-icon{width:32px;height:32px}
+  .home-feature p,.home-value p{font-size:10px}
+  .status-badge,.rail-soon{font-size:10px}
+}
+@media(max-width:390px){
+  .site-topbar{padding-inline:9px;gap:7px}
+  .site-topbar .brand-mark{width:32px;height:32px}
+  .site-topbar .brand-name{font-size:18px}
+  .site-actions .signup-trigger#login-link{min-height:40px;padding-inline:9px;font-size:10px}
+  .auth-header-status{max-width:58px;font-size:9px}
+  .home-hero{min-height:clamp(430px,125vw,485px)}
+  .home-hero-copy{padding:18px 14px 21px}
+  .home-hero h1{font-size:clamp(40px,10.25vw,48px)}
+}
+@media(max-width:340px){
+  .site-topbar{gap:5px;padding-inline:7px}
+  .site-topbar .brand-mark{width:30px;height:30px}
+  .site-topbar .brand-name{font-size:17px}
+  .site-topbar .mobile-menu-toggle{width:42px;height:42px}
+  .site-actions .signup-trigger#login-link{min-height:40px;padding-inline:8px;font-size:10px}
+  .auth-header-status{max-width:45px;font-size:9px}
+  .home-hero h1{font-size:clamp(36px,11.2vw,41px)}
+}
