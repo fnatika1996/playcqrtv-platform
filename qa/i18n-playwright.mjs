@@ -158,9 +158,9 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
       const fallback=window.CQRTVI18n.t('qa.fixture.unknown',{},'Safe fallback');window.removeEventListener('cqrtv:i18nmissing',onMissing);
       const auditFixture=document.createElement('section');
       auditFixture.dataset.i18nAuditFixture='first-party';
-      for(const labelText of ['PLAY','register']){const label=document.createElement('span');label.textContent=labelText;auditFixture.append(label)}
+      for(const labelText of ['REGISTER','register']){const label=document.createElement('span');label.textContent=labelText;auditFixture.append(label)}
       document.body.append(auditFixture);
-      const unbound=window.CQRTVI18n.audit().filter(item=>item.kind==='unbound-text'&&['PLAY','register'].includes(item.value));
+      const unbound=window.CQRTVI18n.audit().filter(item=>item.kind==='unbound-text'&&['REGISTER','register'].includes(item.value));
       auditFixture.remove();
       return {first,second,interpolation,fallback,missing,unbound};
     });
@@ -169,7 +169,7 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
     assert.equal(probe.interpolation,locale==='ru'?'С возвращением, QA_PLAYER':locale==='en'?'Welcome back, QA_PLAYER':'Bine ai revenit, QA_PLAYER',`interpolation in ${locale}`);
     assert.equal(probe.fallback,'Safe fallback');
     assert.equal(probe.missing,'qa.fixture.unknown',`missing translation must be observable for ${locale}`);
-    if(locale==="en"||locale==="ro")for(const label of ["PLAY","register"])assert.ok(
+    if(locale==="en"||locale==="ro")for(const label of ["REGISTER","register"])assert.ok(
       probe.unbound.some(item=>item.value===label),
       `runtime audit must report untranslated ${label} first-party text in ${locale}`
     );
