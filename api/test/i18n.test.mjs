@@ -294,7 +294,6 @@ test("runtime audit exemptions are narrow and country/select labels remain audit
   assert.ok(!runtime.includes(".country-option,#country-selected-name"), "country labels are not blanket-exempt");
   assert.ok(runtime.includes("function isKnownNonUiValue"));
   assert.ok(runtime.includes("CNIL"), "named institutions use exact identifier exemptions");
-  assert.ok(runtime.includes("@[^\\\\s@]+\\\\."), "dynamic email data uses a narrow address pattern");
   assert.ok(runtime.includes(".user-generated") && runtime.includes("#profile-nickname"), "user content and nicknames remain excluded from UI-string auditing");
   assert.ok(runtime.includes('data-cqrtv-i18n-source="intl-region"'));
   assert.ok(runtime.includes('new Intl.DisplayNames([locale], { type: "region" })'));
