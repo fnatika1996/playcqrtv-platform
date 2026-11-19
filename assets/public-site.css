@@ -480,6 +480,9 @@
 
 @media(max-width:240px){
   .public-main{padding-inline:6px}
+  .section-heading>div{min-width:0;max-width:100%;width:100%}
+  .section-heading h2{font-size:24px;overflow-wrap:anywhere}
+  .section-description{overflow-wrap:anywhere}
   .home-hero h1{font-size:34px;overflow-wrap:anywhere}
   .site-topbar{gap:3px;padding-inline:4px}
   .site-topbar .mobile-menu-toggle{width:32px;height:32px}
