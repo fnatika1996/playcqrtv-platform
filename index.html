@@ -100,105 +100,140 @@
 </head>
 <body>
   <header class="topbar site-topbar">
-    <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-label="Открыть меню" aria-controls="mobile-navigation" aria-expanded="false"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/reorder.svg" aria-hidden="true"></span></button>
+    <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-label="Открыть меню" data-i18n-aria-label="home.nav.open_menu" aria-controls="mobile-navigation" aria-expanded="false"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/reorder.svg" aria-hidden="true"></span></button>
     <a class="brand" href="#home" aria-label="CQRTV — главная"><span class="brand-mark" data-i18n-ignore>C</span><span class="brand-name" data-i18n-ignore>CQ<span>R</span>TV</span></a>
-    <nav class="topnav site-nav" aria-label="Основная навигация">
-      <a href="#home" aria-current="page">Главная</a>
-      <a href="#play">Матчмейкинг</a>
-      <a href="#tournaments">Турниры</a>
-      <a href="#leaderboard">Лидерборд</a>
-      <span class="site-nav-unavailable" aria-disabled="true" title="Каталог игроков появится позже">Игроки <small>Скоро</small></span>
+    <nav class="topnav site-nav" aria-label="Основная навигация" data-i18n-aria-label="home.nav.primary">
+      <a href="#home" aria-current="page" data-i18n="home.nav.home">Главная</a>
+      <a href="#play" data-i18n="home.nav.matches">Матчи</a>
+      <a href="#leaderboard" data-i18n="home.nav.rating">Рейтинг</a>
+      <a href="#tournaments" data-i18n="home.nav.tournaments">Турниры</a>
+      <a href="#teams" data-i18n="home.nav.teams">Команды</a>
+      <a href="#community" data-i18n="home.nav.community">Сообщество</a>
     </nav>
     <div class="top-actions site-actions">
-      <button class="icon-btn" type="button" aria-label="Поиск игроков — скоро" title="Поиск игроков — скоро" disabled><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/search.svg" aria-hidden="true"></span></button>
-      <button class="icon-btn" type="button" aria-label="Уведомления — скоро" title="Уведомления — скоро" disabled><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/bell.svg" aria-hidden="true"></span></button>
-      <button class="signup-trigger js-open-signup" id="signup-open" type="button" hidden>Создать профиль</button>
-      <a class="signup-trigger" id="login-link" href="/auth.html" hidden>Войти</a>
-      <span class="auth-header-status" id="auth-header-status" role="status" aria-live="polite">Проверяем аккаунт…</span>
-      <div class="user-menu" id="auth-user-menu" hidden><a class="avatar" href="/profile.html" aria-label="Открыть профиль"><span id="header-avatar-initial" aria-hidden="true"></span></a><div class="user-copy"><div class="user-label" id="header-user-nickname"></div></div><button class="logout-btn" id="logout-btn" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/logout.svg" aria-hidden="true"></span>Выйти</button></div>
+      <button class="signup-trigger js-open-signup" id="signup-open" type="button" data-i18n="home.header.create_profile" hidden>Создать профиль</button>
+      <a class="signup-trigger" id="login-link" href="/auth.html" data-i18n="home.header.login" hidden>Войти</a>
+      <span class="auth-header-status" id="auth-header-status" role="status" aria-live="polite" data-i18n="home.header.checking">Проверяем аккаунт…</span>
+      <div class="user-menu" id="auth-user-menu" hidden>
+        <a class="avatar" href="/profile.html" aria-label="Открыть профиль" data-i18n-aria-label="home.header.open_profile"><span id="header-avatar-initial" aria-hidden="true"></span></a>
+        <div class="user-copy"><div class="user-label" id="header-user-nickname"></div></div>
+        <button class="logout-btn" id="logout-btn" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/logout.svg" aria-hidden="true"></span><span data-i18n="home.header.logout">Выйти</span></button>
+      </div>
     </div>
   </header>
-  <nav id="mobile-navigation" class="mobile-drawer site-nav" aria-label="Мобильная навигация" hidden>
-    <a href="#home">Главная</a><a href="#play">Матчмейкинг</a><a href="#tournaments">Турниры</a><a href="#leaderboard">Лидерборд</a>
-    <span class="site-nav-unavailable" aria-disabled="true" title="Каталог игроков появится позже">Игроки <small>Скоро</small></span>
-    <a id="mobile-menu-profile-link" href="#guest-actions">Профиль</a>
+  <nav id="mobile-navigation" class="mobile-drawer site-nav" aria-label="Мобильная навигация" data-i18n-aria-label="home.nav.mobile" hidden>
+    <a href="#home" data-i18n="home.nav.home">Главная</a>
+    <a href="#play" data-i18n="home.nav.matches">Матчи</a>
+    <a href="#leaderboard" data-i18n="home.nav.rating">Рейтинг</a>
+    <a href="#tournaments" data-i18n="home.nav.tournaments">Турниры</a>
+    <a href="#teams" data-i18n="home.nav.teams">Команды</a>
+    <a href="#community" data-i18n="home.nav.community">Сообщество</a>
+    <a id="mobile-menu-profile-link" href="#guest-actions" data-i18n="home.nav.profile">Профиль</a>
+    <span class="site-nav-unavailable" aria-disabled="true" title="Скоро" data-i18n-title="home.nav.soon"><span data-i18n="home.nav.settings">Настройки</span><small data-i18n="home.nav.soon">Скоро</small></span>
   </nav>
   <div class="layout site-layout">
+    <aside class="site-rail" aria-label="Навигация по платформе" data-i18n-aria-label="home.nav.sidebar">
+      <span class="rail-label" data-i18n="home.nav.sections">РАЗДЕЛЫ CQRTV</span>
+      <a class="rail-btn active" href="#home" aria-current="page"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span><span data-i18n="home.nav.home">Главная</span></a>
+      <a class="rail-btn" href="#play"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span><span data-i18n="home.nav.matches">Матчи</span><small class="rail-soon" data-i18n="home.nav.soon">Скоро</small></a>
+      <a class="rail-btn" href="#leaderboard"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/ranking.svg" aria-hidden="true"></span><span data-i18n="home.nav.rating">Рейтинг</span><small class="rail-soon" data-i18n="home.nav.soon">Скоро</small></a>
+      <a class="rail-btn" href="#tournaments"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/cup.svg" aria-hidden="true"></span><span data-i18n="home.nav.tournaments">Турниры</span><small class="rail-soon" data-i18n="home.nav.soon">Скоро</small></a>
+      <a class="rail-btn" href="#teams"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span><span data-i18n="home.nav.teams">Команды</span><small class="rail-soon" data-i18n="home.nav.soon">Скоро</small></a>
+      <a class="rail-btn" href="#community"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/shield-user.svg" aria-hidden="true"></span><span data-i18n="home.nav.community">Сообщество</span><small class="rail-soon" data-i18n="home.nav.soon">Скоро</small></a>
+      <span class="rail-divider" aria-hidden="true"></span>
+      <span class="rail-label" data-i18n="home.nav.sections">РАЗДЕЛЫ CQRTV</span>
+      <span class="rail-btn is-disabled" aria-disabled="true" title="Скоро" data-i18n-title="home.nav.soon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chart.svg" aria-hidden="true"></span><span data-i18n="home.nav.settings">Настройки</span><small class="rail-soon" data-i18n="home.nav.soon">Скоро</small></span>
+    </aside>
     <main class="main public-main" id="home">
       <section class="home-hero" aria-labelledby="home-title">
+        <div class="home-hero-art" aria-hidden="true"><img src="/assets/auth/login-hero.jpg" alt="" decoding="async" fetchpriority="high"></div>
         <div class="home-hero-copy">
-          <span class="home-kicker"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span><span data-i18n="home.tagline">CQRTV — CS2 PLATFORM</span></span>
+          <span class="home-kicker"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span><span data-i18n="home.hero.kicker">CQRTV — ПЛАТФОРМА МАТЧМЕЙКИНГА CS2</span></span>
           <p id="player-welcome" class="player-welcome" hidden></p>
-          <h1 id="home-title">Твой путь в соревновательный <span>CS2</span></h1>
-          <p class="home-intro">Матчмейкинг 5×5, собственный ELO, турниры и статистика — в одной платформе.</p>
-          <div id="guest-actions" class="home-hero-actions">
-            <button class="primary-btn js-open-signup" id="hero-signup" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user.svg" aria-hidden="true"></span>Создать профиль</button>
-            <a class="outline-btn" href="/auth.html"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/login.svg" aria-hidden="true"></span>Войти</a>
+          <h1 id="home-title"><span data-i18n="home.hero.title.first">ТВОЯ ИГРА.</span><span data-i18n="home.hero.title.second">ТВОЙ РЕЙТИНГ.</span></h1>
+          <p class="home-intro" data-i18n="home.hero.description">Создай профиль игрока, выбери роль и подготовься к соревновательным матчам CS2.</p>
+          <div id="guest-actions" class="home-hero-actions" aria-label="Действия на главном баннере" data-i18n-aria-label="home.hero.actions">
+            <button class="primary-btn js-open-signup" id="hero-signup" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user.svg" aria-hidden="true"></span><span data-i18n="home.hero.start">НАЧАТЬ ИГРАТЬ</span></button>
+            <a class="outline-btn" href="#features"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chart.svg" aria-hidden="true"></span><span data-i18n="home.hero.learn">КАК ЭТО РАБОТАЕТ</span></a>
           </div>
           <div id="member-actions" class="home-hero-actions" hidden>
-            <a class="primary-btn" href="/profile.html"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span>Мой профиль</a>
+            <a class="primary-btn" href="/profile.html"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span><span data-i18n="home.hero.profile">МОЙ ПРОФИЛЬ</span></a>
+            <a class="outline-btn" href="#features"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chart.svg" aria-hidden="true"></span><span data-i18n="home.hero.learn">КАК ЭТО РАБОТАЕТ</span></a>
           </div>
         </div>
       </section>
 
-      <section id="player-profile" class="home-section v31-account-summary" aria-labelledby="profile-title" hidden>
-        <div class="v31-account-avatar" aria-hidden="true"><span id="profile-avatar-letter"></span></div>
-        <div class="v31-account-copy">
-          <span class="section-kicker">АККАУНТ CQRTV</span>
-          <h2 id="profile-title"><span id="profile-nickname"></span><span class="verified" id="profile-email-verified" aria-label="Email подтверждён" hidden>✓</span></h2>
-          <p><span id="profile-country-flag" aria-label="Страна">—</span><span class="v31-account-separator" aria-hidden="true">·</span><span id="profile-role"></span><span id="profile-secondary-roles" class="secondary-roles"></span></p>
+      <section id="player-profile" class="home-section home-account-summary" aria-labelledby="profile-title" hidden>
+        <div class="home-account-avatar" aria-hidden="true"><span id="profile-avatar-letter"></span></div>
+        <div class="home-account-copy">
+          <span class="section-kicker" data-i18n="home.account.kicker">АККАУНТ CQRTV</span>
+          <h2 id="profile-title"><span id="profile-nickname"></span><span class="verified" id="profile-email-verified" aria-label="Email подтверждён" data-i18n-aria-label="home.account.verified" hidden>✓</span></h2>
+          <p><span id="profile-country-flag" aria-label="Страна игрока" data-i18n-aria-label="home.account.country">—</span><span class="home-account-separator" aria-hidden="true">·</span><span id="profile-role"></span><span id="profile-secondary-roles" class="secondary-roles"></span></p>
         </div>
-        <button class="outline-btn" id="profile-edit-btn" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/edit.svg" aria-hidden="true"></span>Изменить никнейм</button>
+        <button class="outline-btn" id="profile-edit-btn" type="button"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/edit.svg" aria-hidden="true"></span><span data-i18n="home.account.edit_nickname">Изменить никнейм</span></button>
       </section>
 
-      <section class="home-section v31-benefits" aria-labelledby="benefits-title">
-        <div class="v31-section-heading">
-          <div><span class="section-kicker" data-i18n="home.kicker.platform">ПЛАТФОРМА CQRTV</span><h2 id="benefits-title">Всё для соревновательной игры</h2></div>
+      <section class="home-metrics" aria-label="Показатели платформы" data-i18n-aria-label="home.metrics.label">
+        <article class="home-metric"><strong aria-label="Данные появятся после запуска платформы" data-i18n-aria-label="home.metrics.unavailable" data-i18n="home.metrics.empty">—</strong><span data-i18n="home.metrics.players">Игроков</span></article>
+        <article class="home-metric"><strong aria-label="Данные появятся после запуска платформы" data-i18n-aria-label="home.metrics.unavailable" data-i18n="home.metrics.empty">—</strong><span data-i18n="home.metrics.matches">Матчей</span></article>
+        <article class="home-metric"><strong aria-label="Данные появятся после запуска платформы" data-i18n-aria-label="home.metrics.unavailable" data-i18n="home.metrics.empty">—</strong><span data-i18n="home.metrics.tournaments">Турниров</span></article>
+        <article class="home-metric"><strong aria-label="Данные появятся после запуска платформы" data-i18n-aria-label="home.metrics.unavailable" data-i18n="home.metrics.empty">—</strong><span data-i18n="home.metrics.online">Онлайн</span></article>
+      </section>
+
+      <section class="home-section home-features" id="features" aria-labelledby="features-title">
+        <div class="section-heading">
+          <div><span class="section-kicker" data-i18n="home.features.eyebrow">ВОЗМОЖНОСТИ CQRTV</span><h2 id="features-title" data-i18n="home.features.title">Соревновательная игра — в одном месте</h2><p class="section-description" data-i18n="home.features.description">Основные игровые функции CQRTV готовятся к запуску. Показатели и активности появятся только при наличии подтверждённых данных.</p></div>
         </div>
-        <div class="v31-benefit-grid">
-          <article class="v31-benefit is-primary" id="play">
-            <span class="v31-benefit-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span></span>
-            <div><h3>Матчмейкинг 5×5</h3><p>Подбор равных команд для соревновательных матчей.</p><span class="status-badge status-soon">В разработке</span></div>
+        <div class="home-feature-grid">
+          <article class="home-feature home-feature-match" id="play" aria-labelledby="match-title">
+            <div class="home-feature-art"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span><span class="feature-art-mark" data-i18n-ignore>5×5</span></div>
+            <div class="home-feature-copy"><div class="home-feature-title-row"><h3 id="match-title" data-i18n="home.feature.matchmaking.title">Матчмейкинг 5×5</h3><span class="status-badge status-soon" data-i18n="home.status.soon">Скоро</span></div><p data-i18n="home.feature.matchmaking.body">Подбор равных команд для соревновательных матчей CS2.</p></div>
           </article>
-          <article class="v31-benefit" id="leaderboard">
-            <span class="v31-benefit-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/ranking.svg" aria-hidden="true"></span></span>
-            <div><h3>Собственный ELO</h3><p>Рейтинг будет отражать результаты матчей CQRTV.</p><span class="status-badge status-soon">Скоро</span></div>
+          <article class="home-feature home-feature-rating" id="leaderboard" aria-labelledby="rating-title">
+            <div class="home-feature-art"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/ranking.svg" aria-hidden="true"></span><span class="feature-art-mark" data-i18n-ignore>ELO</span></div>
+            <div class="home-feature-copy"><div class="home-feature-title-row"><h3 id="rating-title" data-i18n="home.feature.rating.title">Рейтинг ELO</h3><span class="status-badge status-soon" data-i18n="home.status.soon">Скоро</span></div><p data-i18n="home.feature.rating.body">Рейтинг будет отражать результаты матчей CQRTV.</p></div>
           </article>
-          <article class="v31-benefit" id="stats">
-            <span class="v31-benefit-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chart.svg" aria-hidden="true"></span></span>
-            <div><h3>Статистика</h3><p>История и показатели появятся после запуска матчей.</p><span class="status-badge status-soon">Скоро</span></div>
+          <article class="home-feature home-feature-tournament" id="tournaments" aria-labelledby="tournaments-title">
+            <div class="home-feature-art"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/cup.svg" aria-hidden="true"></span><span class="feature-art-mark" aria-hidden="true">01</span></div>
+            <div class="home-feature-copy"><div class="home-feature-title-row"><h3 id="tournaments-title" data-i18n="home.feature.tournaments.title">Турниры</h3><span class="status-badge status-soon" data-i18n="home.status.soon">Скоро</span></div><p data-i18n="home.feature.tournaments.body">Турнирные события появятся после запуска соревновательных матчей.</p></div>
           </article>
-          <article class="v31-benefit" id="anticheat">
-            <span class="v31-benefit-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/shield-user.svg" aria-hidden="true"></span></span>
-            <div><h3>Античит</h3><p>Защита матчей находится в разработке.</p><span class="status-badge status-soon">В разработке</span></div>
+          <article class="home-feature home-feature-statistics" id="stats" aria-labelledby="stats-title">
+            <div class="home-feature-art"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/chart.svg" aria-hidden="true"></span><span class="feature-art-mark" aria-hidden="true">K/D</span></div>
+            <div class="home-feature-copy"><div class="home-feature-title-row"><h3 id="stats-title" data-i18n="home.feature.stats.title">Статистика игрока</h3><span class="status-badge status-soon" data-i18n="home.status.soon">Скоро</span></div><p data-i18n="home.feature.stats.body">История игр и показатели откроются после первых матчей.</p></div>
           </article>
         </div>
       </section>
 
-      <section class="home-section v31-next-steps" aria-labelledby="steps-title">
-        <div class="v31-how-to">
-          <div class="v31-section-heading">
-            <div><span class="section-kicker">НАЧНИ ИГРАТЬ</span><h2 id="steps-title">Три шага до матча</h2></div>
-          </div>
-          <ol class="v31-step-list">
-            <li class="v31-step"><span class="v31-step-number">01</span><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/login.svg" aria-hidden="true"></span><div><h3>Войди или зарегистрируйся</h3><p>Создай аккаунт CQRTV.</p></div></li>
-            <li class="v31-step"><span class="v31-step-number">02</span><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span><div><h3>Создай профиль</h3><p>Укажи ник, страну и игровую роль.</p></div></li>
-            <li class="v31-step"><span class="v31-step-number">03</span><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad.svg" aria-hidden="true"></span><div><h3>Играй и повышай ELO</h3><p>Матчмейкинг и рейтинг появятся после запуска.</p><span class="status-badge status-soon">Скоро</span></div></li>
+      <section class="home-section home-roadmap" id="platform-status" aria-label="Статус платформы и планы развития" data-i18n-aria-label="home.platform.eyebrow">
+        <article class="home-platform-status" aria-labelledby="platform-title">
+          <div class="home-platform-symbol" aria-hidden="true"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/shield-user.svg"></span></div>
+          <div class="home-platform-copy"><span class="section-kicker" data-i18n="home.platform.eyebrow">СТАТУС ПЛАТФОРМЫ</span><div class="home-platform-title-row"><h2 id="platform-title" data-i18n="home.platform.title">CQRTV готовится к запуску</h2><span class="status-badge status-development" data-i18n="home.status.development">В разработке</span></div><p data-i18n="home.platform.body">Платформа находится в разработке. Игровые функции будут открываться по мере готовности.</p></div>
+        </article>
+        <div class="home-roadmap-card" aria-labelledby="roadmap-title">
+          <div class="section-heading"><div><span class="section-kicker" data-i18n="home.roadmap.eyebrow">ПЛАНЫ РАЗВИТИЯ</span><h2 id="roadmap-title" data-i18n="home.roadmap.title">Этапы запуска</h2></div></div>
+          <ol class="home-roadmap-list">
+            <li id="roadmap-matchmaking"><span class="roadmap-index" aria-hidden="true">01</span><span data-i18n="home.roadmap.matchmaking">Матчмейкинг 5×5</span></li>
+            <li id="roadmap-rating"><span class="roadmap-index" aria-hidden="true">02</span><span data-i18n="home.roadmap.rating">Рейтинг ELO</span></li>
+            <li id="roadmap-tournaments"><span class="roadmap-index" aria-hidden="true">03</span><span data-i18n="home.roadmap.tournaments">Турниры</span></li>
+            <li id="teams"><span class="roadmap-index" aria-hidden="true">04</span><span data-i18n="home.roadmap.teams">Команды и сезоны</span></li>
           </ol>
         </div>
-        <aside class="v31-tournament" id="tournaments" aria-labelledby="tournament-title">
-          <span class="v31-tournament-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/cup.svg" aria-hidden="true"></span></span>
-          <span class="section-kicker">СОРЕВНОВАНИЯ CQRTV</span>
-          <h2 id="tournament-title">Турниры — скоро</h2>
-          <p>Турнирные события появятся после запуска соревновательных матчей.</p>
-          <button class="v31-tournament-cta" type="button" disabled>Следите за анонсами</button>
-        </aside>
       </section>
 
-      <footer class="v31-footer">
+      <section class="home-section home-values" id="community" aria-labelledby="values-title">
+        <div class="section-heading"><div><span class="section-kicker" data-i18n="home.values.eyebrow">НАШИ ПРИНЦИПЫ</span><h2 id="values-title" data-i18n="home.values.title">Цели платформы</h2></div></div>
+        <div class="home-values-grid">
+          <article class="home-value home-value-fair"><span class="home-value-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/shield-user.svg" aria-hidden="true"></span></span><div><h3 data-i18n="home.value.fair.title">Без читов</h3><p data-i18n="home.value.fair.body">Цель — честная соревновательная среда и прозрачные правила.</p></div></article>
+          <article class="home-value home-value-stability"><span class="home-value-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/ranking.svg" aria-hidden="true"></span></span><div><h3 data-i18n="home.value.stability.title">Стабильность</h3><p data-i18n="home.value.stability.body">Стабильная работа матчей — цель платформы после запуска.</p></div></article>
+          <article class="home-value home-value-community"><span class="home-value-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/user-circle.svg" aria-hidden="true"></span></span><div><h3 data-i18n="home.value.community.title">Комьюнити</h3><p data-i18n="home.value.community.body">Создаём пространство для игроков и команд сообщества.</p></div></article>
+          <article class="home-value home-value-support"><span class="home-value-icon"><span class="pack-icon" data-src="/assets/icons/cqrtv/ui/login.svg" aria-hidden="true"></span></span><div><h3 data-i18n="home.value.support.title">Поддержка</h3><p data-i18n="home.value.support.body">Поддержка игроков станет частью платформы после запуска.</p></div></article>
+        </div>
+      </section>
+
+      <footer class="v31-footer home-footer">
         <a class="brand v31-footer-brand" href="#home" aria-label="CQRTV — главная"><span class="brand-mark" data-i18n-ignore>C</span><span class="brand-name" data-i18n-ignore>CQ<span>R</span>TV</span></a>
-        <p>Платформа CQRTV для соревновательного CS2.</p>
-        <nav aria-label="Ссылки в подвале"><a href="#play">Матчмейкинг</a><a href="#tournaments">Турниры</a><a href="/rules.html">Правила</a><a href="/privacy.html">Конфиденциальность</a></nav>
+        <p data-i18n="home.footer.description">Платформа CQRTV для соревновательного CS2.</p>
+        <nav aria-label="Ссылки в подвале" data-i18n-aria-label="home.footer.links"><a href="#play" data-i18n="home.nav.matches">Матчмейкинг</a><a href="#tournaments" data-i18n="home.nav.tournaments">Турниры</a><a href="/rules.html" data-i18n="Правила">Правила</a><a href="/privacy.html" data-i18n="Конфиденциальность">Конфиденциальность</a></nav>
         <small data-i18n="common.copyright">© CQRTV</small>
       </footer>
     </main>
