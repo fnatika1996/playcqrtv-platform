@@ -287,13 +287,13 @@ test("inline page scripts use catalogued fixed UI text and known translation ref
 
 test("runtime audit exemptions are narrow and country/select labels remain auditable", () => {
   const runtime = moduleSource.slice(moduleSource.indexOf("const ui ="));
-  assert.match(runtime, /const knownNonUiText = new Set\\(/);
-  assert.doesNotMatch(runtime, /\\[A-Z0-9_\\.\\/:@#-\\]\\+\\/i/, "arbitrary mixed-case UI must not be exempt");
-  assert.doesNotMatch(runtime, /select,option/, "visible native select values remain auditable");
-  assert.doesNotMatch(runtime, /\\.country-option,#country-selected-name/, "country labels are not blanket-exempt");
-  assert.match(runtime, /function isKnownNonUiValue/);
-  assert.match(runtime, /data-cqrtv-i18n-source="intl-region"/);
-  assert.match(runtime, /new Intl\\.DisplayNames\\(\\[locale\\], \\{ type: "region" \\}\\)/);
+  assert.ok(runtime.includes("const knownNonUiText = new Set("));
+  assert.ok(!runtime.includes("[A-Z0-9_./:@#-]+"), "arbitrary mixed-case UI must not be exempt");
+  assert.ok(!runtime.includes("select,option"), "visible native select values remain auditable");
+  assert.ok(!runtime.includes(".country-option,#country-selected-name"), "country labels are not blanket-exempt");
+  assert.ok(runtime.includes("function isKnownNonUiValue"));
+  assert.ok(runtime.includes('data-cqrtv-i18n-source="intl-region"'));
+  assert.ok(runtime.includes('new Intl.DisplayNames([locale], { type: "region" })'));
 });
 
 test("flag-only language switcher and dynamic locale diagnostics remain part of the runtime contract", () => {
