@@ -1,0 +1,37 @@
+name: CQRTV Admin concept preview
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/admin-concepts/**"
+      - "qa/admin-concepts-preview.mjs"
+      - ".github/workflows/admin-concepts-preview.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  responsive-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated screenshot runner
+        run: |
+          npm install --prefix "$RUNNER_TEMP/cqrtv-preview" --no-save --no-package-lock --ignore-scripts --no-audit --no-fund playwright@1.64.1
+          "$RUNNER_TEMP/cqrtv-preview/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Render all concept, page and viewport combinations
+        env:
+          PLAYWRIGHT_PACKAGE: ${{ runner.temp }}/cqrtv-preview/node_modules/playwright
+        run: node qa/admin-concepts-preview.mjs
+      - name: Upload responsive previews and icon audit sheets
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cqrtv-admin-concepts-responsive-previews
+          path: qa-artifacts/admin-concepts/*.png
+          if-no-files-found: error
+          retention-days: 30
