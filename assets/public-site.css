@@ -477,3 +477,16 @@
 @media(prefers-reduced-motion:reduce){
   .site-layout,.site-topbar,.mobile-drawer,.home-hero,.home-feature,.home-value{scroll-behavior:auto;animation:none!important;transition:none!important}
 }
+
+@media(max-width:240px){
+  .site-topbar{gap:3px;padding-inline:4px}
+  .site-topbar .mobile-menu-toggle{width:32px;height:32px}
+  .site-topbar .brand{gap:4px}
+  .site-topbar .brand-mark{width:24px;height:24px}
+  .site-topbar .brand-name{font-size:13px;letter-spacing:.2px}
+  .site-actions{gap:2px}
+  .auth-header-status{display:none}
+  .site-actions .signup-trigger#login-link{min-height:32px;padding-inline:5px;font-size:8px}
+  .site-actions .cqrtv-language-switcher{margin-inline-start:0}
+  .site-actions .cqrtv-language-trigger{width:32px;height:32px;padding:3px}
+}
