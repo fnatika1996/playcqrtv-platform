@@ -538,6 +538,7 @@
   .home-hero h1{font-size:clamp(40px,10.25vw,48px)}
 }
 @media(max-width:240px){
+  .site-topbar .brand-name{display:none!important}
   .site-topbar{gap:3px;padding-inline:4px}
   .site-topbar .mobile-menu-toggle{width:32px;height:32px}
   .site-topbar .brand{min-width:0;gap:3px}
