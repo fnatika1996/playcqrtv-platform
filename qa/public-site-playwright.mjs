@@ -46,6 +46,10 @@ const page=await context.newPage();
     assert.match(await page.title(),/CQRTV/);
     assert.equal((await page.locator("#home-title").innerText()).replace(/\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
     await page.locator(".home-hero").waitFor({state:"visible"});
+    if(width===1440||width===390){
+      await page.screenshot({path:path.join(screenshotDir,`home-pr36-ru-${width}-viewport.png`),fullPage:false});
+      await page.screenshot({path:path.join(screenshotDir,`home-pr36-ru-${width}-full.png`),fullPage:true});
+    }
     assert.equal(await page.locator(".home-feature").count(),4);
     assert.equal(await page.locator(".home-metric").count(),4);
     assert.deepEqual(await page.locator(".home-metric strong").allTextContents(),["—","—","—","—"],"unverified platform figures must remain placeholders");
@@ -61,6 +65,41 @@ const page=await context.newPage();
     assert.equal(await page.locator('.home-hero-actions a[href="/profile.html"]').count(),1);
     for(const href of ["/rules.html","/privacy.html"])assert.equal(await page.locator(`footer.home-footer a[href="${href}"]`).count(),1,`footer should keep ${href}`);
     assert.equal(await page.locator(".site-rail").count(),1,"the desktop navigation rail should be available");
+    if(width>760){
+      const rail=page.locator(".site-rail");
+      assert.equal(await rail.isVisible(),true,`sidebar should be visible at ${width}px`);
+      const navItems=rail.locator(".rail-btn[href]");
+      assert.equal(await navItems.count(),6,"all six sidebar destinations should exist");
+      const railGeometry=await navItems.evaluateAll(items=>items.map(item=>{const r=item.getBoundingClientRect();return {text:item.innerText.trim(),top:r.top,bottom:r.bottom,height:r.height,visible:r.width>0&&r.height>0&&getComputedStyle(item).visibility!=="hidden"}}));
+      assert.ok(railGeometry.every(item=>item.visible),`every sidebar destination is visible: ${JSON.stringify(railGeometry)}`);
+      assert.ok(railGeometry.every(item=>item.height>=40&&item.height<=44),`sidebar items should be about 42px: ${JSON.stringify(railGeometry)}`);
+      assert.ok(railGeometry.every((item,index)=>index===0||item.top>=railGeometry[index-1].bottom-0.5),`sidebar links must not overlap: ${JSON.stringify(railGeometry)}`);
+      if(width===1440){
+        const railBounds=await rail.boundingBox(),headerBounds=await page.locator(".site-topbar").boundingBox();
+        assert.ok(railBounds&&headerBounds&&railBounds.y>=headerBounds.y+headerBounds.height-1,"sidebar starts below the sticky header");
+      }
+    }
+    if(width<=760){
+      const wordmark=page.locator(".site-topbar .brand-name");
+      assert.equal(await wordmark.isVisible(),true,"mobile header keeps the complete CQRTV wordmark");
+      assert.equal((await wordmark.innerText()).replace(/\\s+/g,"").trim(),"CQRTV");
+      const wordmarkWidth=await wordmark.evaluate(node=>node.getBoundingClientRect().width);
+      assert.ok(wordmarkWidth>=55,`complete wordmark should have usable width: ${wordmarkWidth}px`);
+      for(const selector of ["#mobile-menu-toggle","#login-link",".site-topbar [data-cqrtv-language-switcher] .cqrtv-language-trigger"]){
+        const control=page.locator(selector);
+        assert.equal(await control.isVisible(),true,`mobile header control ${selector} remains visible`);
+        const box=await control.boundingBox();
+        assert.ok(box&&box.width>=40&&box.height>=40,`mobile header target ${selector} stays at least 40px: ${JSON.stringify(box)}`);
+      }
+      const headerRects=await page.locator(".site-topbar .mobile-menu-toggle,.site-topbar .brand,.site-topbar .site-actions").evaluateAll(nodes=>nodes.map(node=>{const r=node.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width}}));
+      assert.ok(headerRects.every((item,index)=>index===0||item.left>=headerRects[index-1].right-0.5),`mobile header groups must not overlap: ${JSON.stringify(headerRects)}`);
+    }
+    const headingState=await page.locator("#home-title").evaluate(node=>({width:node.clientWidth,scrollWidth:node.scrollWidth,lines:[...node.querySelectorAll("span")].map(span=>({text:span.innerText,color:getComputedStyle(span).color,width:span.clientWidth,scrollWidth:span.scrollWidth}))}));
+    assert.ok(headingState.scrollWidth<=headingState.width+1,`hero title must not clip at ${width}px: ${JSON.stringify(headingState)}`);
+    assert.equal(headingState.lines.length,2,"hero title keeps the approved two-line hierarchy");
+    assert.ok(headingState.lines.every(line=>line.width>=line.scrollWidth-1),`each hero title line fits without wrapping: ${JSON.stringify(headingState)}`);
+    assert.equal(headingState.lines[0].color,"rgb(243, 243, 242)","first hero line uses the light text color");
+    assert.equal(headingState.lines[1].color,"rgb(255, 118, 41)","second hero line uses the CQRTV orange accent");
     assert.equal(await page.locator(".site-rightbar,.mobile-bottom-nav,.home-dashboard-grid").count(),0,"the new homepage must not introduce mock dashboard chrome");
     assert.equal(await page.locator(".site-nav-unavailable").count(),2,"unimplemented settings must be truthfully marked in the rail and mobile nav");
     for(const href of ["#home","#play","#leaderboard","#tournaments","#teams","#community","#features"])
