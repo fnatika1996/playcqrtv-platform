@@ -307,18 +307,24 @@ function updateTitle() {
   const description = document.querySelector('meta[name="description"]');
   if (description) { if (!description.dataset.cqrtvOriginal) description.dataset.cqrtvOriginal = description.content; const source = description.dataset.cqrtvOriginal; const key = description.dataset.i18nContent; description.content = key ? t(key, {}, source) : (dictionaries.ru[source] ? t(source) : source); }
 }
-const knownNonUiText = /^(?:CQRTV|CS2|Counter-Strike 2|ELO|Steam|FACEIT|RU|EN|RO|ID|K|D|KD|K\/D|[A-Z0-9_./:@#-]+)$/i;
+const knownNonUiText = new Set(["CQRTV","CS2","Counter-Strike 2","ELO","Steam","FACEIT","RU","EN","RO","K","D","KD","K/D"]);
+function isKnownNonUiValue(value, element) {
+  if (knownNonUiText.has(value) || /^https?:\/\/\S+$/i.test(value) || /^[\d\s:.,/%+—–-]+$/u.test(value)) return true;
+  const region = element?.closest?.('[data-cqrtv-i18n-source="intl-region"]');
+  const code = region?.dataset?.countryCode || region?.getAttribute("data-country-code") || "";
+  if (!region || !/^[A-Z]{2}$/.test(code)) return false;
+  try { return new Intl.DisplayNames([locale], { type: "region" }).of(code) === normalize(region.textContent); }
+  catch { return false; }
+}
 function auditUnboundUi(root = document.body) {
   const findings = [];
-  const meaningful = value => /[\p{L}]{2}/u.test(value) && !knownNonUiText.test(value) &&
-    !/^[\d\s:.,/%+—–-]+$/u.test(value);
+  const meaningful = (value, element) => /[\p{L}]/u.test(value) && !isKnownNonUiValue(value, element);
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   while (walker.nextNode()) {
     const node = walker.currentNode;
     const element = node.parentElement;
     const value = normalize(node.nodeValue);
-    if (!value || ignored(node) || element?.closest("script,style,noscript,[contenteditable=true],input,textarea,select,option")) continue;
-    if (element?.closest(".country-option,#country-selected-name")) continue;
+    if (!value || ignored(node) || element?.closest("script,style,noscript,[contenteditable=true],input,textarea")) continue;
     const translatedSource = normalize(originalText.get(node) ?? value);
     if (Object.hasOwn(dictionaries.ru, translatedSource)) continue;
     const binding = element?.closest("[data-i18n]");
@@ -328,7 +334,7 @@ function auditUnboundUi(root = document.body) {
       continue;
     }
     if (Object.hasOwn(dictionaries.ru, value)) continue;
-    if (meaningful(value)) findings.push({kind:"unbound-text",key:value,value,element:element?.tagName.toLowerCase()||"text"});
+    if (meaningful(value, element)) findings.push({kind:"unbound-text",key:value,value,element:element?.tagName.toLowerCase()||"text"});
   }
   for (const element of root.querySelectorAll?.("[placeholder],[title],[aria-label],[alt]") || []) {
     if (ignored(element)) continue;
@@ -340,7 +346,7 @@ function auditUnboundUi(root = document.body) {
       if (!key && Object.hasOwn(dictionaries.ru, attrSource)) continue;
       if (key) {
         if (!Object.hasOwn(dictionaries.ru,key) || supported.some(code=>!Object.hasOwn(dictionaries[code],key))) findings.push({kind:"attribute-key",key,value,element:element.tagName.toLowerCase(),attribute:attr});
-      } else if (!Object.hasOwn(dictionaries.ru,value) && meaningful(value)) {
+      } else if (!Object.hasOwn(dictionaries.ru,value) && meaningful(value, element)) {
         findings.push({kind:"unbound-attribute",key:value,value,element:element.tagName.toLowerCase(),attribute:attr});
       }
     }
