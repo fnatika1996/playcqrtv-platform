@@ -14,6 +14,7 @@ on:
       - admin.html
       - admin-login.html
       - assets/admin/**
+      - assets/i18n.mjs
       - assets/auth-header.mjs
       - assets/player-experience.mjs
       - assets/public-site.css
@@ -270,6 +271,7 @@ jobs:
           node qa/site-control-playwright.mjs
           node qa/public-site-playwright.mjs
           node qa/profile-playwright.mjs
+          node qa/i18n-playwright.mjs
 
       - name: Upload non-sensitive browser screenshots
         id: upload-screenshots

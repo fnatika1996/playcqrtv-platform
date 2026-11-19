@@ -284,3 +284,43 @@ test("inline page scripts use catalogued fixed UI text and known translation ref
   }
   assert.deepEqual(missing,[],"inline dynamic UI must use authored translations and known semantic keys");
 });
+
+test("runtime audit exemptions are narrow and country/select labels remain auditable", () => {
+  const runtime = moduleSource.slice(moduleSource.indexOf("const ui ="));
+  assert.ok(runtime.includes("const knownNonUiText = new Set("));
+  assert.ok(Object.values(dictionaries).every(catalog => catalog["admin.users.id"] === "ID"));
+  assert.ok(!runtime.includes("[A-Z0-9_./:@#-]+"), "arbitrary mixed-case UI must not be exempt");
+  assert.ok(!runtime.includes("select,option"), "visible native select values remain auditable");
+  assert.ok(!runtime.includes(".country-option,#country-selected-name"), "country labels are not blanket-exempt");
+  assert.ok(runtime.includes("function isKnownNonUiValue"));
+  assert.ok(runtime.includes("CNIL"), "named institutions use exact identifier exemptions");
+  assert.ok(runtime.includes(".user-generated") && runtime.includes("#profile-nickname"), "user content and nicknames remain excluded from UI-string auditing");
+  assert.ok(runtime.includes('data-cqrtv-i18n-source="intl-region"'));
+  assert.ok(runtime.includes('new Intl.DisplayNames([locale], { type: "region" })'));
+});
+
+test("flag-only language switcher and dynamic locale diagnostics remain part of the runtime contract", () => {
+  const runtime = moduleSource.slice(moduleSource.indexOf("const ui ="));
+  assert.doesNotMatch(runtime, /cqrtv-language-label/);
+  assert.ok(!Object.hasOwn(dictionaries.ru,"common.language.label"),"obsolete visible language label key is removed from all catalogs");
+  assert.match(runtime, /function createFlag\(code\)/);
+  assert.match(runtime, /\.admin-app aside \.brand/);
+  assert.ok(Object.hasOwn(dictionaries.ru,"home.tagline")&&Object.hasOwn(dictionaries.en,"home.tagline")&&Object.hasOwn(dictionaries.ro,"home.tagline"));
+  assert.ok(Object.hasOwn(dictionaries.ru,"common.copyright")&&Object.hasOwn(dictionaries.en,"common.copyright")&&Object.hasOwn(dictionaries.ro,"common.copyright"));
+  assert.match(runtime, /setAttribute\("viewBox", "0 0 60 36"\)/);
+  assert.match(runtime, /data-i18n-aria-label/);
+  assert.match(runtime, /role", "listbox"/);
+  assert.match(runtime, /ArrowDown/);
+  assert.match(runtime, /event\.stopPropagation\(\)/, "switcher click stays inside its own open/close interaction");
+  assert.match(runtime, /event\.composedPath\(\)\.includes\(wrap\)/, "outside click detection respects the composed event path");
+  assert.match(runtime, /observer\.observe\(document\.body, \{[^}]*attributes:true/);
+  assert.match(runtime, /function auditUnboundUi/);
+  assert.match(runtime, /qa:\$\{finding\.kind\}/);
+  for (const key of ["language.name.ru","language.name.en","language.name.ro","common.language.current.ru","common.language.current.en","common.language.current.ro"]) {
+    for (const locale of locales) assert.ok(dictionaries[locale][key], `${locale}: ${key}`);
+  }
+  const uncovered = inspectMarkup('<html lang="ru"><body><input aria-label="Sign in"></body></html>', "future-page.html", dictionaries, {pages:{}});
+  assert.ok(uncovered.some(error => error.includes('unbound aria-label')), "new accessibility attributes without semantic binding fail CI");
+  const unknownDynamic = inspectRawSourceLiterals('node.setAttribute("title", "Untranslated status");', "assets/future-status.mjs");
+  assert.ok(unknownDynamic.some(error => error.includes("new raw source literal")), "new dynamic attribute copy fails source lint");
+});
