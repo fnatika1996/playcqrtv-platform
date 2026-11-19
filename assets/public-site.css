@@ -556,5 +556,5 @@
   .site-topbar .mobile-menu-toggle{width:42px;height:42px}
   .site-actions .signup-trigger#login-link{min-height:40px;padding-inline:8px;font-size:10px}
   .auth-header-status{max-width:45px;font-size:9px}
-  .home-hero h1{font-size:clamp(36px,11.2vw,41px)}
+  .home-hero h1{font-size:34px}
 }
