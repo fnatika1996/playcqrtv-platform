@@ -309,7 +309,7 @@ function updateTitle() {
 }
 const knownNonUiText = new Set(["CQRTV","CS2","Counter-Strike 2","ELO","Steam","FACEIT","CNIL","RU","EN","RO","K","D","KD","K/D"]);
 function isKnownNonUiValue(value, element) {
-  if (knownNonUiText.has(value) || /^\\S+@\\S+\\.\\S+$/u.test(value) || /^https?:\/\/\S+$/i.test(value) || /^[\d\s:.,/%+—–-]+$/u.test(value)) return true;
+  if (knownNonUiText.has(value) || /^\S+@\S+\.\S+$/u.test(value) || /^https?:\/\/\S+$/i.test(value) || /^[\d\s:.,/%+—–-]+$/u.test(value)) return true;
   const region = element?.closest?.('[data-cqrtv-i18n-source="intl-region"]');
   const code = region?.dataset?.countryCode || region?.getAttribute("data-country-code") || "";
   if (!region || !/^[A-Z]{2}$/.test(code)) return false;
