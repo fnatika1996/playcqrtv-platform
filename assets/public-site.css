@@ -498,7 +498,7 @@
 
 
 /* PR #36 visual review fixes — keep approved layout, correct rail sizing and responsive composition */
-.site-rail{min-height:0;align-items:stretch}
+.site-rail{min-height:0;align-items:stretch;flex-direction:column}
 .site-rail>.rail-label,.site-rail>.rail-divider{flex:none}
 .site-rail>.rail-btn{flex:0 0 42px;height:42px;min-height:42px;max-height:42px}
 .site-topbar .brand-name{display:block!important;visibility:visible;opacity:1;flex:none;max-width:none;overflow:visible;white-space:nowrap}
