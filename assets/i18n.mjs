@@ -200,7 +200,10 @@ function refreshSwitcher() {
 }
 function addSwitcher() {
   if (document.querySelector("[data-cqrtv-language-switcher]")) return;
-  const host = document.querySelector(".admin-app aside .brand,.top-actions,.profile-top-actions,.topbar,#auth-card,.card,main") || document.body;
+  const adminApp = document.body.classList.contains("admin-app");
+  const adminControlPage = location.pathname.includes("site-control");
+  const adminHost = adminApp ? document.querySelector(adminControlPage ? ".admin-app aside .brand" : ".admin-app .topbar") : null;
+  const host = adminHost || document.querySelector(".top-actions,.profile-top-actions,.topbar,#auth-card,.card,main") || document.body;
   const wrap = document.createElement("div");
   wrap.className = "cqrtv-language-switcher";
   wrap.dataset.cqrtvLanguageSwitcher = "";
@@ -261,7 +264,12 @@ function addSwitcher() {
   });
   document.addEventListener("click", event => { if (!event.composedPath().includes(wrap) && !popup.hidden) { popup.hidden = true; refreshSwitcher(); } });
   wrap.append(trigger, popup);
-  if (host === document.body) document.body.prepend(wrap);
+  if (host.matches(".admin-app .topbar")) {
+    host.classList.add("cqrtv-has-language-switcher");
+    const profile = host.querySelector(".profile");
+    if (profile) host.insertBefore(wrap, profile);
+    else host.append(wrap);
+  } else if (host === document.body) document.body.prepend(wrap);
   else host.append(wrap);
   refreshSwitcher();
 }
@@ -343,7 +351,7 @@ function auditUnboundUi(root = document.body) {
 function initialize() {
   document.documentElement.lang = locale;
   const style = document.createElement("style");
-  style.textContent = ".cqrtv-language-switcher{position:relative;display:inline-flex;align-items:center;margin-inline-start:12px;vertical-align:middle;z-index:30}.admin-app aside .brand>.cqrtv-language-switcher{margin-inline-start:auto;flex:none}.cqrtv-language-trigger{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:5px;border:1px solid #35373D;border-radius:6px;background:#17191D;color:#F3F3F2;cursor:pointer}.cqrtv-language-trigger:hover,.cqrtv-language-trigger[aria-expanded=true]{border-color:#FF7629}.cqrtv-language-trigger:focus-visible,.cqrtv-language-option:focus-visible{outline:2px solid #FF7629;outline-offset:2px}.cqrtv-language-flag{display:block;width:24px;height:15px;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px #ffffff24;flex:none}.cqrtv-language-options{position:absolute;top:calc(100% + 6px);inset-inline-end:0;display:grid;gap:3px;min-width:150px;padding:5px;border:1px solid #35373D;border-radius:8px;background:#17191D;box-shadow:0 10px 26px #0008}.cqrtv-language-options[hidden]{display:none}.cqrtv-language-option{display:flex;align-items:center;gap:9px;width:100%;min-height:36px;padding:6px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:#F3F3F2;text-align:start;font:inherit;cursor:pointer}.cqrtv-language-option:hover,.cqrtv-language-option[aria-selected=true]{border-color:#FF7629;background:#302219}.cqrtv-language-option span{font-size:13px}.cqrtv-language-switcher .cqrtv-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(max-width:480px){.cqrtv-language-switcher{margin-inline-start:4px}.cqrtv-language-trigger{width:40px;height:40px}}@media(max-width:360px){.topbar>.cqrtv-language-switcher{margin-inline-start:0}.admin-app .topbar>.cqrtv-language-switcher{margin-inline-start:0}.admin-app .topbar>.cqrtv-language-switcher .cqrtv-language-trigger{width:36px;height:36px}}";
+  style.textContent = ".cqrtv-language-switcher{position:relative;display:inline-flex;align-items:center;margin-inline-start:12px;vertical-align:middle;z-index:30}.admin-app aside .brand>.cqrtv-language-switcher{margin-inline-start:auto;flex:none}.admin-app .topbar.cqrtv-has-language-switcher{gap:8px}.admin-app .topbar.cqrtv-has-language-switcher .top-title{margin-right:0}.admin-app .topbar.cqrtv-has-language-switcher>.cqrtv-language-switcher{margin-inline-start:auto}.cqrtv-language-trigger{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:5px;border:1px solid #35373D;border-radius:6px;background:#17191D;color:#F3F3F2;cursor:pointer}.cqrtv-language-trigger:hover,.cqrtv-language-trigger[aria-expanded=true]{border-color:#FF7629}.cqrtv-language-trigger:focus-visible,.cqrtv-language-option:focus-visible{outline:2px solid #FF7629;outline-offset:2px}.cqrtv-language-flag{display:block;width:24px;height:15px;border-radius:2px;overflow:hidden;box-shadow:0 0 0 1px #ffffff24;flex:none}.cqrtv-language-options{position:absolute;top:calc(100% + 6px);inset-inline-end:0;display:grid;gap:3px;min-width:150px;padding:5px;border:1px solid #35373D;border-radius:8px;background:#17191D;box-shadow:0 10px 26px #0008}.cqrtv-language-options[hidden]{display:none}.cqrtv-language-option{display:flex;align-items:center;gap:9px;width:100%;min-height:36px;padding:6px 9px;border:1px solid transparent;border-radius:5px;background:transparent;color:#F3F3F2;text-align:start;font:inherit;cursor:pointer}.cqrtv-language-option:hover,.cqrtv-language-option[aria-selected=true]{border-color:#FF7629;background:#302219}.cqrtv-language-option span{font-size:13px}.cqrtv-language-switcher .cqrtv-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(max-width:480px){.cqrtv-language-switcher{margin-inline-start:4px}.cqrtv-language-trigger{width:40px;height:40px}}@media(max-width:360px){.topbar>.cqrtv-language-switcher{margin-inline-start:0}.admin-app .topbar>.cqrtv-language-switcher{margin-inline-start:0}.admin-app .topbar>.cqrtv-language-switcher .cqrtv-language-trigger{width:36px;height:36px}.admin-app .topbar.cqrtv-has-language-switcher{gap:5px;padding-inline:7px}.admin-app .topbar.cqrtv-has-language-switcher .profile{gap:4px}.admin-app .topbar.cqrtv-has-language-switcher .logout{gap:0;padding:7px}.admin-app .topbar.cqrtv-has-language-switcher .logout-label{display:none}.admin-app .topbar.cqrtv-has-language-switcher .top-title{font-size:21px}}";
   document.head.append(style);
   translateTree();
   addSwitcher();
