@@ -96,7 +96,8 @@ const page=await context.newPage();
         assert.equal(heightOverflow,true,`no horizontal overflow at 390x${height}`);
       }
       await page.setViewportSize({width:195,height:450});
-      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth),true,"half-width CSS viewport should remain usable at simulated 200% zoom");
+      const zoomOverflow=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth}));
+      assert.ok(zoomOverflow.scrollWidth<=zoomOverflow.clientWidth,`half-width CSS viewport overflow at simulated 200% zoom: ${JSON.stringify(zoomOverflow)}`);
       await page.setViewportSize({width,height:900});
       await page.emulateMedia({reducedMotion:"reduce"});
       assert.equal(await page.evaluate(()=>matchMedia("(prefers-reduced-motion: reduce)").matches),true);
