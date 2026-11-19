@@ -156,13 +156,23 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
       let missing=null;const onMissing=event=>{missing=event.detail.key};window.addEventListener('cqrtv:i18nmissing',onMissing,{once:true});
       const interpolation=window.CQRTVI18n.t('С возвращением, {nickname}',{nickname:'QA_PLAYER'});
       const fallback=window.CQRTVI18n.t('qa.fixture.unknown',{},'Safe fallback');window.removeEventListener('cqrtv:i18nmissing',onMissing);
-      return {first,second,interpolation,fallback,missing};
+      const auditFixture=document.createElement('section');
+      auditFixture.dataset.i18nAuditFixture='first-party';
+      for(const labelText of ['PLAY','register']){const label=document.createElement('span');label.textContent=labelText;auditFixture.append(label)}
+      document.body.append(auditFixture);
+      const unbound=window.CQRTVI18n.audit().filter(item=>item.kind==='unbound-text'&&['PLAY','register'].includes(item.value));
+      auditFixture.remove();
+      return {first,second,interpolation,fallback,missing,unbound};
     });
     assert.equal(probe.first,locale==='ru'?'Выбрать язык':locale==='en'?'Choose language':'Alege limba',`dynamic attribute binding for ${locale}`);
     assert.equal(probe.second,locale==='ru'?'Введите пароль':locale==='en'?'Enter your password':'Introdu parola',`dynamic attribute rebinding for ${locale}`);
     assert.equal(probe.interpolation,locale==='ru'?'С возвращением, QA_PLAYER':locale==='en'?'Welcome back, QA_PLAYER':'Bine ai revenit, QA_PLAYER',`interpolation in ${locale}`);
     assert.equal(probe.fallback,'Safe fallback');
     assert.equal(probe.missing,'qa.fixture.unknown',`missing translation must be observable for ${locale}`);
+    if(locale==="en"||locale==="ro")for(const label of ["PLAY","register"])assert.ok(
+      probe.unbound.some(item=>item.value===label),
+      `runtime audit must report untranslated ${label} first-party text in ${locale}`
+    );
   }
   assert.deepEqual(errors,[],`browser errors on ${route}: ${errors.join("; ")}`);
   if(route==="/admin.html"||route==="/site-control-admin.html")assert.ok(adminRequests.length>0,`synthetic authorized fixture was not used for ${route}`);
