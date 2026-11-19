@@ -288,10 +288,14 @@ test("inline page scripts use catalogued fixed UI text and known translation ref
 test("runtime audit exemptions are narrow and country/select labels remain auditable", () => {
   const runtime = moduleSource.slice(moduleSource.indexOf("const ui ="));
   assert.ok(runtime.includes("const knownNonUiText = new Set("));
+  assert.ok(Object.values(dictionaries).every(catalog => catalog["admin.users.id"] === "ID"));
   assert.ok(!runtime.includes("[A-Z0-9_./:@#-]+"), "arbitrary mixed-case UI must not be exempt");
   assert.ok(!runtime.includes("select,option"), "visible native select values remain auditable");
   assert.ok(!runtime.includes(".country-option,#country-selected-name"), "country labels are not blanket-exempt");
   assert.ok(runtime.includes("function isKnownNonUiValue"));
+  assert.ok(runtime.includes("CNIL"), "named institutions use exact identifier exemptions");
+  assert.ok(runtime.includes("@[^\\\\s@]+\\\\."), "dynamic email data uses a narrow address pattern");
+  assert.ok(runtime.includes(".user-generated") && runtime.includes("#profile-nickname"), "user content and nicknames remain excluded from UI-string auditing");
   assert.ok(runtime.includes('data-cqrtv-i18n-source="intl-region"'));
   assert.ok(runtime.includes('new Intl.DisplayNames([locale], { type: "region" })'));
 });
