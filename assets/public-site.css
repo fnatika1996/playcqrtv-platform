@@ -510,6 +510,7 @@
 .home-feature-art .pack-icon{width:46px;height:46px}
 .rail-soon{font-size:10px}
 @media(max-width:760px){
+  .site-topbar .cqrtv-language-trigger{width:42px;height:42px}
   .site-topbar .brand{flex:none;min-width:max-content}
   .site-topbar .brand-name{font-size:20px}
   .site-topbar .mobile-menu-toggle{width:42px;height:42px}
