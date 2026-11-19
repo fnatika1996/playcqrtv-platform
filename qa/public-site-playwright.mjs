@@ -52,7 +52,7 @@ const page=await context.newPage();
     assert.equal(await page.locator(".home-roadmap-list li").count(),4);
     assert.equal(await page.locator(".home-platform-status .status-development").textContent(),"В разработке");
     assert.equal(await page.locator(".home-feature .status-soon").count(),4);
-    assert.equal(await page.locator(".home-hero-actions a[href=\"#features\"]").count(),1);
+    assert.equal(await page.locator(".home-hero-actions a[href=\"#features\"]").count(),2,"guest and signed-in hero states each have the informational link");
     assert.equal(await page.locator(".home-hero-art img").evaluate(image=>image.complete&&image.naturalWidth>0),true,"approved local hero art should load");
     assert.equal(await page.locator("#guest-actions").isVisible(),true);
     assert.equal(await page.locator("#player-profile").isVisible(),false);
