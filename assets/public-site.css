@@ -550,6 +550,7 @@
   .auth-header-status{display:none}
 }
 @media(max-width:340px){
+  .auth-header-status{display:none}
   .site-topbar{gap:5px;padding-inline:7px}
   .site-topbar .brand-mark{width:30px;height:30px}
   .site-topbar .brand-name{font-size:17px}
