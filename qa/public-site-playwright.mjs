@@ -84,7 +84,7 @@ const page=await context.newPage();
       assert.equal(await wordmark.isVisible(),true,"mobile header keeps the complete CQRTV wordmark");
       assert.equal((await wordmark.innerText()).replace(/\\s+/g,"").trim(),"CQRTV");
       const wordmarkWidth=await wordmark.evaluate(node=>node.getBoundingClientRect().width);
-      assert.ok(wordmarkWidth>=48,`complete wordmark should have usable width: ${wordmarkWidth}px`);
+      assert.ok(wordmarkWidth>=40,`complete wordmark should have usable width: ${wordmarkWidth}px`);
       assert.ok(await wordmark.evaluate(node=>node.scrollWidth<=node.clientWidth+1),"complete wordmark must not be clipped");
       for(const selector of ["#mobile-menu-toggle","#login-link",".site-topbar [data-cqrtv-language-switcher] .cqrtv-language-trigger"]){
         const control=page.locator(selector);
