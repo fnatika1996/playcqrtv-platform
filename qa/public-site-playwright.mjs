@@ -48,7 +48,8 @@ const page=await context.newPage();
     await page.locator(".home-hero").waitFor({state:"visible"});
     await page.locator(".home-hero-art img").evaluate(image=>image.decode());
     const heroViewportPng=await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-viewport.png`),fullPage:false});
-    if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true});
+    let cardFullPagePng=null;
+    if(width===1440||width===390)cardFullPagePng=await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true});
     if(width===1440||width===390){
       const heroPixels=await page.evaluate(async dataUrl=>{
         const screenshot=new Image();screenshot.src=dataUrl;await screenshot.decode();
@@ -79,6 +80,38 @@ const page=await context.newPage();
     const featureIllustrations=await page.locator(".feature-illustration").evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {viewBox:node.getAttribute("viewBox"),ariaHidden:node.closest(".home-feature-art")?.getAttribute("aria-hidden"),width:box.width,height:box.height,shapeCount:node.querySelectorAll("path,rect,circle,ellipse,polygon,line").length,gradientId:node.querySelector("linearGradient,radialGradient")?.id}}));
     assert.equal(featureIllustrations.length,4,"all four feature cards render original inline illustrations");
     assert.ok(featureIllustrations.every(art=>art.viewBox==="0 0 640 360"&&art.ariaHidden==="true"&&art.width>0&&art.height>0&&art.shapeCount>=8),`feature art should be decorative, loaded and detailed: ${JSON.stringify(featureIllustrations)}`);
+    if(cardFullPagePng){
+      const cardPixels=await page.evaluate(async dataUrl=>{
+        const screenshot=new Image();screenshot.src=dataUrl;await screenshot.decode();
+        const canvas=document.createElement("canvas");canvas.width=screenshot.naturalWidth;canvas.height=screenshot.naturalHeight;
+        const ctx=canvas.getContext("2d",{willReadFrequently:true});ctx.drawImage(screenshot,0,0);
+        const sx=screenshot.naturalWidth/innerWidth,sy=screenshot.naturalHeight/document.documentElement.scrollHeight;
+        const panels=[...document.querySelectorAll(".home-feature-art")].map(node=>{const r=node.getBoundingClientRect();return {x:(r.left+scrollX)*sx,y:(r.top+scrollY)*sy,width:r.width*sx,height:r.height*sy}});
+        const sample=(panel,x1,y1,x2,y2)=>{
+          const left=Math.max(0,Math.floor(panel.x+panel.width*x1)),right=Math.min(canvas.width,Math.ceil(panel.x+panel.width*x2));
+          const top=Math.max(0,Math.floor(panel.y+panel.height*y1)),bottom=Math.min(canvas.height,Math.ceil(panel.y+panel.height*y2));
+          let count=0,orange=0,gold=0,bright=0;
+          for(let row=0;row<24;row++)for(let column=0;column<32;column++){
+            const x=Math.min(canvas.width-1,Math.floor(left+(right-left)*(column+.5)/32)),y=Math.min(canvas.height-1,Math.floor(top+(bottom-top)*(row+.5)/24));
+            const [r,g,b]=ctx.getImageData(x,y,1,1).data;count++;
+            if(r>175&&g>70&&g<210&&r>g*1.18&&b<145)orange++;
+            if(r>150&&g>90&&r>g*1.04&&g>b*1.12)gold++;
+            if(.2126*r+.7152*g+.0722*b>125)bright++;
+          }
+          return {orangeRatio:Number((orange/count).toFixed(3)),goldRatio:Number((gold/count).toFixed(3)),brightRatio:Number((bright/count).toFixed(3))};
+        };
+        const operators=[.17,.334,.5,.666,.83].map(x=>sample(panels[0],x-.06,.67,x+.06,.88));
+        return {operators,shield:sample(panels[1],.29,.12,.71,.88),trophy:sample(panels[2],.29,.13,.71,.9),statistics:sample(panels[3],.1,.15,.86,.86)};
+      },`data:image/png;base64,${cardFullPagePng.toString("base64")}`);
+      assert.ok(cardPixels.operators.every(region=>region.orangeRatio>=.1||region.brightRatio>=.16),`all five matchmaking silhouettes must be visible in the full-page PNG: ${JSON.stringify(cardPixels.operators)}`);
+      assert.ok(cardPixels.shield.goldRatio>=.1,`the ELO shield must have visible gold pixels in the full-page PNG: ${JSON.stringify(cardPixels.shield)}`);
+      assert.ok(cardPixels.trophy.goldRatio>=.1,`the tournament trophy must have visible gold pixels in the full-page PNG: ${JSON.stringify(cardPixels.trophy)}`);
+      assert.ok(cardPixels.statistics.orangeRatio>=.025,`the statistics plot must have visible orange pixels in the full-page PNG: ${JSON.stringify(cardPixels.statistics)}`);
+      console.log(`PASS rendered card foreground pixels at ${width}px: ${JSON.stringify(cardPixels)}`);
+      await page.locator(".home-features").scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-cards-viewport.png`),fullPage:false});
+      await page.evaluate(()=>window.scrollTo({top:0,behavior:"instant"}));
+    }
     const featureCopyBoxes=await page.locator(".home-feature-copy").evaluateAll(nodes=>nodes.map(node=>({scrollHeight:node.scrollHeight,clientHeight:node.clientHeight,scrollWidth:node.scrollWidth,clientWidth:node.clientWidth})));
     assert.ok(featureCopyBoxes.every(box=>box.scrollHeight<=box.clientHeight+1&&box.scrollWidth<=box.clientWidth+1),`card copy must not clip at ${width}px: ${JSON.stringify(featureCopyBoxes)}`);
     if(width===1440){
