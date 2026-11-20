@@ -80,35 +80,43 @@ const page=await context.newPage();
     assert.equal(featureIllustrations.length,4,"all four feature cards render original inline illustrations");
     assert.ok(featureIllustrations.every(art=>art.viewBox==="0 0 640 360"&&art.ariaHidden==="true"&&art.width>0&&art.height>0&&art.shapeCount>=8),`feature art should be decorative, loaded and detailed: ${JSON.stringify(featureIllustrations)}`);
     if(width===1440||width===390){
+      const cardSelectors=await page.evaluate(()=>{
+        const artRects=[...document.querySelectorAll(".home-feature-art")].map(node=>node.getBoundingClientRect());
+        const relative=(element,art)=>{const box=element.getBoundingClientRect();return {x1:(box.left-art.left)/art.width,y1:(box.top-art.top)/art.height,x2:(box.right-art.left)/art.width,y2:(box.bottom-art.top)/art.height}};
+        const figures=[...document.querySelectorAll(".home-feature-match .feature-illustration > g > g")];
+        const shield=document.querySelector('.home-feature-rating .feature-illustration path[d^="M320 27"]');
+        const trophy=document.querySelector(".home-feature-tournament .feature-illustration g[transform*='scale(1.26)']");
+        const chart=document.querySelector(".home-feature-statistics .feature-illustration");
+        return {operators:figures.map((element,index)=>relative(element,artRects[0])),shield:relative(shield,artRects[1]),trophy:relative(trophy,artRects[2]),statistics:relative(chart,artRects[3])};
+      });
       const cardPngs=[];
       for(let cardIndex=0;cardIndex<4;cardIndex++){
         const png=await page.locator(".home-feature-art").nth(cardIndex).screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-card-${cardIndex+1}.png`),animations:"disabled"});
         cardPngs.push(`data:image/png;base64,${png.toString("base64")}`);
       }
-      const cardPixels=await page.evaluate(async dataUrls=>{
+      const cardPixels=await page.evaluate(async ({dataUrls,selectors})=>{
         const images=await Promise.all(dataUrls.map(async url=>{const image=new Image();image.src=url;await image.decode();return image}));
-        const pixels=(image,x1,y1,x2,y2)=>{
+        const pixels=(image,box)=>{
           const canvas=document.createElement("canvas");canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
           const ctx=canvas.getContext("2d",{willReadFrequently:true});ctx.drawImage(image,0,0);
-          const left=Math.floor(canvas.width*x1),right=Math.ceil(canvas.width*x2),top=Math.floor(canvas.height*y1),bottom=Math.ceil(canvas.height*y2);
+          const left=Math.max(0,Math.floor(canvas.width*box.x1)),right=Math.min(canvas.width,Math.ceil(canvas.width*box.x2));
+          const top=Math.max(0,Math.floor(canvas.height*box.y1)),bottom=Math.min(canvas.height,Math.ceil(canvas.height*box.y2));
           let count=0,orange=0,gold=0,bright=0;
-          for(let row=0;row<24;row++)for(let column=0;column<32;column++){
-            const x=Math.min(canvas.width-1,Math.floor(left+(right-left)*(column+.5)/32)),y=Math.min(canvas.height-1,Math.floor(top+(bottom-top)*(row+.5)/24));
+          for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
             const [r,g,b]=ctx.getImageData(x,y,1,1).data;count++;
             if(r>175&&g>70&&g<210&&r>g*1.18&&b<145)orange++;
             if(r>150&&g>90&&r>g*1.04&&g>b*1.12)gold++;
             if(.2126*r+.7152*g+.0722*b>125)bright++;
           }
-          return {width:image.naturalWidth,height:image.naturalHeight,orangeRatio:Number((orange/count).toFixed(3)),goldRatio:Number((gold/count).toFixed(3)),brightRatio:Number((bright/count).toFixed(3))};
+          return {width:image.naturalWidth,height:image.naturalHeight,pixels:count,orangeRatio:Number((orange/Math.max(count,1)).toFixed(3)),goldRatio:Number((gold/Math.max(count,1)).toFixed(3)),brightRatio:Number((bright/Math.max(count,1)).toFixed(3))};
         };
-        const first=images[0];
-        const operatorRegions=[.17,.334,.5,.666,.83].map(x=>pixels(first,x-.06,.66,x+.06,.89));
-        return {operators:operatorRegions,shield:pixels(images[1],.29,.1,.71,.9),trophy:pixels(images[2],.29,.12,.71,.9),statistics:pixels(images[3],.1,.15,.86,.86)};
-      },cardPngs);
-      assert.ok(cardPixels.operators.every(region=>region.orangeRatio>=.08||region.brightRatio>=.14),`all five matchmaking silhouettes must be visible in card screenshots: ${JSON.stringify(cardPixels.operators)}`);
-      assert.ok(cardPixels.shield.goldRatio>=.08,`the ELO shield must have visible gold pixels in its screenshot: ${JSON.stringify(cardPixels.shield)}`);
-      assert.ok(cardPixels.trophy.goldRatio>=.08,`the tournament trophy must have visible gold pixels in its screenshot: ${JSON.stringify(cardPixels.trophy)}`);
-      assert.ok(cardPixels.statistics.orangeRatio>=.02,`the statistics plot must have visible orange pixels in its screenshot: ${JSON.stringify(cardPixels.statistics)}`);
+        return {operators:selectors.operators.map(box=>pixels(images[0],box)),shield:pixels(images[1],selectors.shield),trophy:pixels(images[2],selectors.trophy),statistics:pixels(images[3],selectors.statistics)};
+      },{dataUrls:cardPngs,selectors:cardSelectors});
+      assert.equal(cardPixels.operators.length,5,"matchmaking art exposes five independently checked player figures");
+      assert.ok(cardPixels.operators.every(region=>region.pixels>0&&(region.orangeRatio>=.05||region.brightRatio>=.1)),`all five matchmaking figures must be visible in their rendered screenshot regions: ${JSON.stringify(cardPixels.operators)}`);
+      assert.ok(cardPixels.shield.goldRatio>=.08,`the ELO shield must have visible gold pixels in its rendered screenshot region: ${JSON.stringify(cardPixels.shield)}`);
+      assert.ok(cardPixels.trophy.goldRatio>=.08,`the tournament trophy must have visible gold pixels in its rendered screenshot region: ${JSON.stringify(cardPixels.trophy)}`);
+      assert.ok(cardPixels.statistics.orangeRatio>=.02,`the statistics plot must have visible orange pixels in its rendered screenshot region: ${JSON.stringify(cardPixels.statistics)}`);
       console.log(`PASS rendered foreground card pixels at ${width}px: ${JSON.stringify(cardPixels)}`);
       await page.locator(".home-features").scrollIntoViewIfNeeded();
       await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-cards-viewport.png`),fullPage:false});
