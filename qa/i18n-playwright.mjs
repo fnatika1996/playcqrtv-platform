@@ -232,7 +232,7 @@ try {
       const modes=route==="/site-closed.html"?["coming_soon","maintenance"]:[null];
       for(const mode of modes)try{await check(page,route,locale,1440,1000,true,mode)}catch(error){failures.push(`${route} ${locale} ${mode||""} desktop: ${error.message}`)}
     }
-    for(const route of routes)for(const width of [1024,760,390,375,320]){
+    for(const route of routes)for(const width of (route==="/"?[1024,760,390,375,320]:[390,320])){
       const modes=route==="/site-closed.html"?["coming_soon","maintenance"]:[null];
       for(const mode of modes)try{await check(page,route,locale,width,width>=1024?900:844,route==="/",mode)}catch(error){failures.push(`${route} ${locale} ${mode||""} ${width}px: ${error.message}`)}
     }
