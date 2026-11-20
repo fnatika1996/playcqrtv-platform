@@ -63,13 +63,13 @@ export function auditIconUsage({ sources, icons, generatedFiles, sprite, map, va
   for (const item of sources) {
     const name = relativeName(item.path);
     const text = item.content;
-    for (const match of text.matchAll(/\/assets\/icons\/cqrtv\/ui\/([a-z0-9-]+\.svg)/gi)) {
+    for (const match of text.matchAll(/(?:\.{1,2}\/)*\/?assets\/icons\/cqrtv\/ui\/([a-z0-9-]+\.svg)/gi)) {
       const file = match[1];
       if (file === "admin-icon-sprite.svg") continue;
       if (!manifestFiles.has(file)) errors.push(`${name}: unapproved icon reference ${file}`);
       else if (!generated.has(file)) errors.push(`${name}: referenced generated icon missing: ${file}`);
     }
-    for (const match of text.matchAll(/\/assets\/icons\/cqrtv\/ui\/admin-icon-sprite\.svg#([a-z0-9-]+)/gi)) {
+    for (const match of text.matchAll(/(?:\.{1,2}\/)*\/?assets\/icons\/cqrtv\/ui\/admin-icon-sprite\.svg#([a-z0-9-]+)/gi)) {
       if (!keys.has(match[1])) errors.push(`${name}: sprite symbol is not in the manifest: ${match[1]}`);
     }
     if (!name.endsWith(".html")) continue;
