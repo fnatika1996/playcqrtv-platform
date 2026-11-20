@@ -162,9 +162,10 @@ const page=await context.newPage();
       assert.equal(await page.locator("#mobile-menu-toggle").getAttribute("aria-expanded"),"false");
       if(width<=760){
         const bottomBox=await page.locator("#mobile-bottom-nav").boundingBox();
-        await page.locator(".home-footer").scrollIntoViewIfNeeded();
+        await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
+        await page.waitForTimeout(30);
         const footerBox=await page.locator(".home-footer").boundingBox();
-        assert.ok(bottomBox&&footerBox&&footerBox.bottom<=bottomBox.y+1,"fixed tabs must not cover the final page content after scrolling");
+        assert.ok(bottomBox&&footerBox&&footerBox.bottom<=bottomBox.y+1,`fixed tabs must not cover the final page content after scrolling: footer=${JSON.stringify(footerBox)} tabs=${JSON.stringify(bottomBox)}`);
       }
     }
     if(width===390){
