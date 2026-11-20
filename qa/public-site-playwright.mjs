@@ -46,10 +46,8 @@ const page=await context.newPage();
     assert.match(await page.title(),/CQRTV/);
     assert.equal((await page.locator("#home-title").innerText()).replace(/\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
     await page.locator(".home-hero").waitFor({state:"visible"});
-    if(width===1440||width===390){
-      await page.screenshot({path:path.join(screenshotDir,`home-pr36-ru-${width}-viewport.png`),fullPage:false});
-      await page.screenshot({path:path.join(screenshotDir,`home-pr36-ru-${width}-full.png`),fullPage:true});
-    }
+    await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-viewport.png`),fullPage:false});
+    if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true);
     assert.equal(await page.locator(".home-feature").count(),4);
     assert.equal(await page.locator(".home-metric").count(),4);
     assert.deepEqual(await page.locator(".home-metric strong").allTextContents(),["—","—","—","—"],"unverified platform figures must remain placeholders");
@@ -58,6 +56,17 @@ const page=await context.newPage();
     assert.equal(await page.locator(".home-feature .status-soon").count(),4);
     assert.equal(await page.locator(".home-hero-actions a[href=\"#features\"]").count(),2,"guest and signed-in hero states each have the informational link");
     assert.equal(await page.locator(".home-hero-art img").evaluate(image=>image.complete&&image.naturalWidth>0),true,"approved local hero art should load");
+    const artVisibility=await page.locator(".home-hero").evaluate(hero=>{
+      const art=hero.querySelector(".home-hero-art"),image=art?.querySelector("img"),copy=hero.querySelector(".home-hero-copy"),heroRect=hero.getBoundingClientRect();
+      const artStyle=getComputedStyle(art),copyStyle=getComputedStyle(copy),overlayStyle=getComputedStyle(hero,"::before");
+      const probeX=heroRect.left+heroRect.width*.9,probeY=heroRect.top+Math.min(70,heroRect.height*.22);
+      return {artZ:artStyle.zIndex,copyZ:copyStyle.zIndex,overlayZ:overlayStyle.zIndex,overlayPointerEvents:overlayStyle.pointerEvents,artRect:art.getBoundingClientRect().toJSON(),probeIncludesImage:document.elementsFromPoint(probeX,probeY).includes(image),probeX,probeY};
+    });
+    assert.equal(artVisibility.artZ,"0",`hero image layer must sit above the card background: ${JSON.stringify(artVisibility)}`);
+    assert.equal(artVisibility.overlayZ,"1");
+    assert.equal(artVisibility.copyZ,"2");
+    assert.equal(artVisibility.overlayPointerEvents,"none");
+    assert.ok(artVisibility.probeIncludesImage,`the right hero art remains in the visible browser paint stack and is not hidden by the overlay: ${JSON.stringify(artVisibility)}`);
     assert.equal(await page.locator("#guest-actions").isVisible(),true);
     assert.equal(await page.locator("#player-profile").isVisible(),false);
     assert.equal(await page.locator("#auth-user-menu").isVisible(),false);
@@ -65,14 +74,22 @@ const page=await context.newPage();
     assert.equal(await page.locator('.home-hero-actions a[href="/profile.html"]').count(),1);
     for(const href of ["/rules.html","/privacy.html"])assert.equal(await page.locator(`footer.home-footer a[href="${href}"]`).count(),1,`footer should keep ${href}`);
     assert.equal(await page.locator(".site-rail").count(),1,"the desktop navigation rail should be available");
+    assert.equal(await page.locator(".site-topbar .site-nav a").count(),0,"desktop top navigation must not duplicate game destinations");
+    assert.equal(await page.locator(".site-topbar .site-nav .site-nav-unavailable").count(),4,"desktop top navigation exposes only the four honest commercial Soon sections");
+    const topNavFont=await page.locator(".site-topbar .site-nav .site-nav-unavailable").first().evaluate(item=>getComputedStyle(item).fontFamily);
+    assert.match(topNavFont,/Teko/i,"commercial menu uses the approved Teko typeface");
     if(width>760){
       const rail=page.locator(".site-rail");
       assert.equal(await rail.isVisible(),true,`sidebar should be visible at ${width}px`);
       const navItems=rail.locator(".rail-btn[href]");
-      assert.equal(await navItems.count(),6,"all six sidebar destinations should exist");
+      assert.equal(await navItems.count(),7,"all available sidebar destinations, including the session-aware profile, should exist");
+      assert.equal(await rail.locator(".site-nav-unavailable").count(),2,"Players and Settings are explicitly unavailable");
       const railGeometry=await navItems.evaluateAll(items=>items.map(item=>{const r=item.getBoundingClientRect();return {text:item.innerText.trim(),top:r.top,bottom:r.bottom,height:r.height,visible:r.width>0&&r.height>0&&getComputedStyle(item).visibility!=="hidden"}}));
       assert.ok(railGeometry.every(item=>item.visible),`every sidebar destination is visible: ${JSON.stringify(railGeometry)}`);
       assert.ok(railGeometry.every(item=>item.height>=40&&item.height<=44),`sidebar items should be about 42px: ${JSON.stringify(railGeometry)}`);
+      const railFont=await rail.locator(".rail-btn").first().evaluate(item=>getComputedStyle(item).fontFamily);
+      assert.match(railFont,/Teko/i,"sidebar menu uses the approved Teko typeface");
+      assert.deepEqual(await rail.locator(".rail-btn[href] span[data-i18n]").allTextContents(),["ГЛАВНАЯ","МАТЧИ","РЕЙТИНГ ELO","ТУРНИРЫ","КОМАНДЫ","СТАТИСТИКА","ПРОФИЛЬ"]);
       assert.ok(railGeometry.every((item,index)=>index===0||item.top>=railGeometry[index-1].bottom-0.5),`sidebar links must not overlap: ${JSON.stringify(railGeometry)}`);
       if(width===1440){
         const railBounds=await rail.boundingBox(),headerBounds=await page.locator(".site-topbar").boundingBox();
@@ -101,9 +118,21 @@ const page=await context.newPage();
     assert.ok(headingState.lines.every(line=>line.width>=line.scrollWidth-1),`each hero title line fits without wrapping: ${JSON.stringify(headingState)}`);
     assert.equal(headingState.lines[0].color,"rgb(243, 243, 242)","first hero line uses the light text color");
     assert.equal(headingState.lines[1].color,"rgb(255, 118, 41)","second hero line uses the CQRTV orange accent");
-    assert.equal(await page.locator(".site-rightbar,.mobile-bottom-nav,.home-dashboard-grid").count(),0,"the new homepage must not introduce mock dashboard chrome");
-    assert.equal(await page.locator(".site-nav-unavailable").count(),2,"unimplemented settings must be truthfully marked in the rail and mobile nav");
-    for(const href of ["#home","#play","#leaderboard","#tournaments","#teams","#community","#features"])
+    assert.equal(await page.locator(".site-rightbar,.home-dashboard-grid").count(),0,"the new homepage must not introduce mock dashboard chrome");
+    assert.equal(await page.locator(".mobile-bottom-nav .mobile-tab").count(),5,"mobile bottom navigation has exactly five primary tabs");
+    assert.equal(await page.locator(".home-metric-icon .pack-icon").count(),4,"each unverified metric has its own icon-pack glyph");
+    assert.equal(await page.locator(".site-nav-unavailable").count(),12,"not-yet-available commercial, players and settings sections are clearly marked");
+    if(width<=760){
+      const bottom=page.locator("#mobile-bottom-nav");
+      assert.equal(await bottom.isVisible(),true,`fixed primary tabs are visible at ${width}px`);
+      assert.equal(await page.locator(".site-topbar .site-nav").isVisible(),false,"mobile header does not duplicate the primary game navigation");
+      const tabs=await bottom.locator(".mobile-tab").evaluateAll(nodes=>nodes.map(node=>{const r=node.getBoundingClientRect();return {name:node.innerText.trim(),width:r.width,height:r.height,aria:node.getAttribute("aria-label"),current:node.getAttribute("aria-current")}}));
+      assert.equal(tabs.length,5);
+      assert.ok(tabs.every(tab=>tab.height>=44&&tab.width>=44&&tab.name.length>0),`bottom tabs retain accessible 44px targets and names: ${JSON.stringify(tabs)}`);
+      assert.equal(tabs.filter(tab=>tab.current==="page").length,1,"exactly one bottom tab exposes current-page state");
+      assert.equal(tabs[0].current,"page");
+    }else assert.equal(await page.locator("#mobile-bottom-nav").isVisible(),false,"bottom tabs are mobile-only");
+    for(const href of ["#home","#play","#leaderboard","#tournaments","#teams","#stats","#features","#community"])
       assert.equal(await page.locator(`[id="${href.slice(1)}"]`).count(),1,`in-page destination ${href} should resolve`);
     for(const forbidden of ["CQRTV Open #1","1 246","игроков онлайн","матчей сегодня","Начать играть через Steam","Смотреть трейлер"])
       assert.equal(await page.getByText(forbidden,{exact:false}).count(),0,`homepage must not promise ${forbidden}`);
@@ -113,7 +142,7 @@ const page=await context.newPage();
     assert.ok(icons>0,"CQRTV pack icons should load into the header and homepage");
     const overflow=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,clientWidth:document.documentElement.clientWidth}));
     assert.ok(overflow.scrollWidth<=overflow.clientWidth,`horizontal overflow at ${width}px: ${JSON.stringify(overflow)}`);
-    if(width>1024){
+    if(width>760){
       assert.equal(await page.locator(".site-topbar .site-nav").isVisible(),true);
       assert.equal(await page.locator("#mobile-menu-toggle").isVisible(),false);
     }else{
@@ -124,10 +153,19 @@ const page=await context.newPage();
       await page.keyboard.press("Enter");
       assert.equal(await page.locator("#mobile-navigation").isVisible(),true);
       assert.equal(await page.locator("#mobile-menu-toggle").getAttribute("aria-expanded"),"true");
+      assert.equal(await page.locator("#mobile-navigation a[href=\"#home\"],#mobile-navigation a[href=\"#play\"],#mobile-navigation a[href=\"#leaderboard\"],#mobile-navigation a[href=\"#tournaments\"]").count(),0,"overflow menu must not duplicate the five primary bottom tabs");
+      assert.equal(await page.locator("#mobile-navigation .mobile-drawer-section").count(),2,"overflow menu separates commercial and additional destinations");
+      assert.equal(await page.locator("#mobile-navigation .site-nav-unavailable").count(),6,"all not-yet-launched overflow destinations are explicitly marked");
       await page.keyboard.press("Escape");
       assert.equal(await page.evaluate(()=>document.activeElement?.id),"mobile-menu-toggle","Escape should restore focus to the mobile menu button");
       assert.equal(await page.locator("#mobile-navigation").isVisible(),false);
       assert.equal(await page.locator("#mobile-menu-toggle").getAttribute("aria-expanded"),"false");
+      if(width<=760){
+        const bottomBox=await page.locator("#mobile-bottom-nav").boundingBox();
+        await page.locator(".home-footer").scrollIntoViewIfNeeded();
+        const footerBox=await page.locator(".home-footer").boundingBox();
+        assert.ok(bottomBox&&footerBox&&footerBox.bottom<=bottomBox.y+1,"fixed tabs must not cover the final page content after scrolling");
+      }
     }
     if(width===390){
       for(const height of [667,1024]){
@@ -148,7 +186,7 @@ const page=await context.newPage();
       await page.locator("#signup-close").click();
       assert.equal(registerPosts,0,"opening signup should not submit to the registration API");
     }
-    await page.screenshot({path:path.join(screenshotDir,`home-v31-guest-${width}.png`),fullPage:true});
+    if(width!==1440&&width!==390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true});
     assert.ok(meCalls>=1,"existing session endpoint should still initialize the header");
     if([1440,390].includes(width)){
       user=player;
@@ -162,10 +200,12 @@ const page=await context.newPage();
       assert.equal(await page.locator("#guest-actions").isVisible(),false);
       assert.equal(await page.locator("#member-actions").isVisible(),true);
       assert.equal(await page.locator("#mobile-menu-profile-link").getAttribute("href"),"/profile.html");
+      assert.equal(await page.locator("#sidebar-profile-link").getAttribute("href"),"/profile.html");
       assert.equal(await page.locator("#auth-user-menu .avatar").getAttribute("href"),"/profile.html");
       assert.equal(await page.locator("#player-profile").locator("#profile-edit-btn").isVisible(),true);
       assert.equal(await page.locator("#player-profile").locator("text=ELO").count(),0,"large dashboard profile metrics should not return to the homepage");
-      await page.screenshot({path:path.join(screenshotDir,`home-v31-player-${width}.png`),fullPage:true});
+      await page.screenshot({path:path.join(screenshotDir,`home-v2-player-ru-${width}-viewport.png`),fullPage:false});
+      await page.screenshot({path:path.join(screenshotDir,`home-v2-player-ru-${width}-full.png`),fullPage:true});
       if(width===390){
         await page.locator("#logout-btn").click();
         assert.equal(logoutPosts,1);
