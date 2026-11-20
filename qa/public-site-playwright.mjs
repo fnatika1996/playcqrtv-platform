@@ -135,10 +135,10 @@ const page=await context.newPage();
       assert.equal(tabs.filter(tab=>tab.current==="page").length,1,"exactly one bottom tab exposes current-page state");
       assert.equal(tabs[0].current,"page");
       const activeStyle=await bottom.locator(".mobile-tab[aria-current=page]").evaluate(node=>{
-        const style=getComputedStyle(node),rgb=style.backgroundColor.match(/[\\d.]+/g)?.slice(0,3).map(Number)||[];
+        const style=getComputedStyle(node),rgb=style.backgroundColor.match(/[0-9.]+/g)?.slice(0,3).map(Number)||[];
         const linear=rgb.map(value=>{const channel=value/255;return channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4});
         const luminance=.2126*linear[0]+.7152*linear[1]+.0722*linear[2];
-        const fg=getComputedStyle(node).color.match(/[\\d.]+/g)?.slice(0,3).map(Number)||[];
+        const fg=getComputedStyle(node).color.match(/[0-9.]+/g)?.slice(0,3).map(Number)||[];
         const fgLinear=fg.map(value=>{const channel=value/255;return channel<=.04045?channel/12.92:((channel+.055)/1.055)**2.4});
         const fgLuminance=.2126*fgLinear[0]+.7152*fgLinear[1]+.0722*fgLinear[2];
         return {background:style.backgroundColor,color:style.color,contrast:(Math.max(luminance,fgLuminance)+.05)/(Math.min(luminance,fgLuminance)+.05),chroma:rgb.length?Math.max(...rgb)-Math.min(...rgb):0,border:style.borderTopColor,shadow:style.boxShadow};
