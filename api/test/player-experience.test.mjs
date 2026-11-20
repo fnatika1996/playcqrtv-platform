@@ -45,22 +45,32 @@ test("public navigation links resolve to real sections and mobile controls are l
   for(const target of targets)assert.ok(ids.has(target),`navigation target #${target} should exist`);
   assert.match(html,/aria-controls="mobile-navigation"/);
   assert.match(html,/aria-expanded="false"/);
-  assert.match(html,/aria-label="Мобильная навигация"/);
+  assert.match(html,/aria-label="Дополнительные разделы CQRTV"/);
+  assert.equal((html.match(/class="mobile-tab(?: active)?"/g)||[]).length,5,"the approved mobile bar contains exactly five primary tabs");
+  assert.ok(html.includes('data-i18n-aria-label="home.nav.mobile_primary"'));
+  const topNavStart=html.indexOf('<nav class="topnav site-nav"');
+  const topNavEnd=html.indexOf("</nav>",topNavStart);
+  const topNav=html.slice(topNavStart,topNavEnd);
+  assert.equal((topNav.match(/href="#/g)||[]).length,0,"the commercial header must not duplicate game destinations");
+  assert.equal((topNav.match(/class="site-nav-unavailable"/g)||[]).length,4,"the header has four explicitly unavailable commercial sections");
 });
 
-test("approved homepage uses existing CQRTV hero art and responsive breakpoints",async()=>{
+test("approved homepage uses local CQRTV hero art and responsive breakpoints",async()=>{
   const [html,css]=await Promise.all([
     readFile(new URL("../../index.html",import.meta.url),"utf8"),
     readFile(new URL("../../assets/public-site.css",import.meta.url),"utf8")
   ]);
   assert.match(html,/\/assets\/public-site\.css/);
-  assert.match(css,/\/assets\/auth\/login-hero\.jpg/);
+  assert.match(html,/src="\/assets\/signup-registration-banner\.png"/,"homepage uses the existing local CQRTV banner art");
+  assert.ok(css.includes(".home-hero-art{z-index:0}"),"hero artwork paints above the hero background");
+  assert.ok(css.includes("env(safe-area-inset-bottom"),"mobile navigation respects device safe areas");
   assert.match(html,/class="home-feature-grid"/);
   assert.match(html,/class="home-roadmap-list"/);
   assert.match(html,/class="home-values-grid"/);
   assert.match(html,/class="home-hero-art"/);
   assert.match(html,/id="mobile-menu-toggle"/);
-  assert.match(html,/aria-label="Мобильная навигация"/);
+  assert.match(html,/aria-label="Дополнительные разделы CQRTV"/);
+  assert.equal((html.match(/class="mobile-tab(?: active)?"/g)||[]).length,5,"the approved mobile bar contains exactly five primary tabs");
   for(const width of ["1180px","1024px","760px","390px","340px"])assert.ok(css.includes(`max-width:${width}`),`missing responsive rule at ${width}`);
   assert.match(css,/prefers-reduced-motion/);
 });
