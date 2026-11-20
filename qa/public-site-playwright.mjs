@@ -14,7 +14,7 @@ async function assertHomeRendering(page,width,screenshotPath,viewportPng){
   const mobile=width<=760;
   const item=page.locator(mobile?'#mobile-bottom-nav a[href="#home"]':'.site-rail a[href="#home"]');
   assert.equal(await item.isVisible(),true,`Home navigation must be visible at ${width}px`);
-  assert.ok((await item.getAttribute("class")||"").split(/\\s+/).includes("active"),`Home must be active at ${width}px`);
+  assert.ok((await item.getAttribute("class")||"").split(/\s+/).includes("active"),`Home must be active at ${width}px`);
   assert.equal(await item.getAttribute("aria-current"),"page",`Home must expose the current page at ${width}px`);
   const icon=item.locator("svg.admin-icon");
   await icon.waitFor({state:"visible"});
