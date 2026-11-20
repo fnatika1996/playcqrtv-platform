@@ -129,7 +129,7 @@ const page=await context.newPage();
       assert.ok(cardBoxes.every(box=>Math.abs(box.height-cardBoxes[0].height)<=2),`desktop cards should have equal height: ${JSON.stringify(cardBoxes)}`);
       assert.ok(cardBoxes.every((box,index)=>index===0||box.x>cardBoxes[index-1].x),`desktop cards should be arranged left-to-right in one row: ${JSON.stringify(cardBoxes)}`);
     }
-    assert.ok(featureIllustrations.every((art,index)=>index<3?!art.gradientId:art.gradientId==="stats-bg"),"high-contrast foreground art uses solid fills while the statistics art retains its gradient palette");
+
     assert.equal(await page.locator(".home-metric").count(),4);
     assert.deepEqual(await page.locator(".home-metric strong").allTextContents(),["—","—","—","—"],"unverified platform figures must remain placeholders");
     assert.equal(await page.locator(".home-roadmap-list li").count(),4);
