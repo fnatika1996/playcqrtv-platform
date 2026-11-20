@@ -46,8 +46,34 @@ const page=await context.newPage();
     assert.match(await page.title(),/CQRTV/);
     assert.equal((await page.locator("#home-title").innerText()).replace(/\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
     await page.locator(".home-hero").waitFor({state:"visible"});
-    await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-viewport.png`),fullPage:false});
+    const heroViewportPng=await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-viewport.png`),fullPage:false});
     if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true});
+    if(width===1440||width===390){
+      const heroPixels=await page.evaluate(async dataUrl=>{
+        const screenshot=new Image();screenshot.src=dataUrl;await screenshot.decode();
+        const canvas=document.createElement("canvas");canvas.width=screenshot.naturalWidth;canvas.height=screenshot.naturalHeight;
+        const context=canvas.getContext("2d",{willReadFrequently:true});context.drawImage(screenshot,0,0);
+        const hero=document.querySelector(".home-hero"),art=document.querySelector(".home-hero-art");
+        const box=(window.innerWidth>760?hero:art).getBoundingClientRect();
+        const scaleX=screenshot.naturalWidth/window.innerWidth,scaleY=screenshot.naturalHeight/window.innerHeight;
+        const left=(box.left+box.width*(window.innerWidth>760?.68:.14))*scaleX;
+        const right=(box.left+box.width*(window.innerWidth>760?.98:.94))*scaleX;
+        const top=(box.top+box.height*(window.innerWidth>760?.08:.08))*scaleY;
+        const bottom=(box.top+box.height*(window.innerWidth>760?.92:.92))*scaleY;
+        const luminance=[];
+        for(let row=0;row<20;row++)for(let column=0;column<36;column++){
+          const x=Math.max(0,Math.min(canvas.width-1,Math.round(left+(right-left)*(column+.5)/36)));
+          const y=Math.max(0,Math.min(canvas.height-1,Math.round(top+(bottom-top)*(row+.5)/20)));
+          const pixel=context.getImageData(x,y,1,1).data;
+          luminance.push(.2126*pixel[0]+.7152*pixel[1]+.0722*pixel[2]);
+        }
+        const mean=luminance.reduce((sum,value)=>sum+value,0)/luminance.length;
+        const deviation=Math.sqrt(luminance.reduce((sum,value)=>sum+(value-mean)**2,0)/luminance.length);
+        return {mean:Number(mean.toFixed(1)),deviation:Number(deviation.toFixed(1)),brightRatio:Number((luminance.filter(value=>value>45).length/luminance.length).toFixed(3)),region:{left:Number(left.toFixed(0)),top:Number(top.toFixed(0)),right:Number(right.toFixed(0)),bottom:Number(bottom.toFixed(0))}};
+      },`data:image/png;base64,${heroViewportPng.toString("base64")}`);
+      assert.ok(heroPixels.deviation>=18&&heroPixels.brightRatio>=.08,`rendered hero screenshot must show a discernible scene, pixel evidence: ${JSON.stringify(heroPixels)}`);
+      console.log(`PASS rendered hero pixels at ${width}px: ${JSON.stringify(heroPixels)}`);
+    }
     assert.equal(await page.locator(".home-feature").count(),4);
     const featureArt=await page.locator(".home-feature-art").evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).backgroundImage));
     assert.ok(featureArt.every(background=>background!=="none"&&background.includes("gradient")),"each feature card has a CSS illustration background");
