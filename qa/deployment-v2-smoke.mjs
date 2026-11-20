@@ -1,6 +1,7 @@
 export function classifyHomepage(html) {
   if (typeof html !== "string" || !html.includes("<html") || html.includes("�")) throw new Error("Invalid or corrupted CQRTV homepage HTML.");
   if (/id=["']heading["'][^>]*>\s*CQRTV скоро откроется\s*</i.test(html)) return "closed-gate";
+  if (/id=["']home-title["'][^>]*>[\s\S]*?ТВОЯ ИГРА\.[\s\S]*?ТВОЙ РЕЙТИНГ\./i.test(html) && html.includes('class="home-feature-grid"')) return "approved-home-desktop-mobile";
   if (/id=["']home-title["'][^>]*>\s*Твой путь в соревновательный\s*<span>CS2<\/span>\s*</i.test(html)) return "home-v3.1-public";
   if (/id=["']home-title["'][^>]*>\s*CQRTV\s*[—-]\s*твоя платформа для CS2\s*</i.test(html)) return "phase1-public";
   if (html.includes("<title>CQRTV - CS2 Matchmaking</title>") && html.includes("Профиль игрока")) return "current-main-public";

@@ -117,6 +117,31 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
     assert.deepEqual(residual,[],`unlocalized rendered text or attributes on ${route}: ${residual.join(" | ")}`);
   }
   if(route==="/"){
+    const homeNav=await page.evaluate(()=>({
+      top:[...document.querySelectorAll(".site-topbar .site-nav .site-nav-unavailable")].map(node=>({text:node.querySelector("span")?.innerText.trim()||"",font:getComputedStyle(node).fontFamily})),
+      gameLinks:[...document.querySelectorAll(".site-topbar .site-nav a")].map(node=>node.getAttribute("href")),
+      rail:[...document.querySelectorAll(".site-rail .rail-btn[href] span[data-i18n]")].map(node=>node.innerText.trim()),
+      bottom:[...document.querySelectorAll("#mobile-bottom-nav .mobile-tab")].map(node=>node.innerText.trim()),
+      bottomVisible:getComputedStyle(document.querySelector("#mobile-bottom-nav")).display!=="none",
+      topVisible:getComputedStyle(document.querySelector(".site-topbar .site-nav")).display!=="none",
+      overflowGameLinks:document.querySelectorAll("#mobile-navigation a[href=\"#home\"],#mobile-navigation a[href=\"#play\"],#mobile-navigation a[href=\"#leaderboard\"],#mobile-navigation a[href=\"#tournaments\"]").length
+    }));
+    assert.equal(homeNav.top.length,4,`four commercial header entries are translated for ${locale}`);
+    assert.deepEqual(homeNav.gameLinks,[],"header does not duplicate game navigation");
+    assert.ok(homeNav.top.every(item=>item.text===item.text.toLocaleUpperCase(locale)),`commercial menu casing in ${locale}: ${JSON.stringify(homeNav.top)}`);
+    assert.ok(homeNav.top.every(item=>/Teko/i.test(item.font)),"commercial header menu uses Teko");
+    if(width<=760){
+      assert.equal(homeNav.bottom.length,5,`five bottom tabs exist in ${locale}`);
+      assert.equal(homeNav.bottomVisible,true,`bottom tabs are visible at ${width}px in ${locale}`);
+      assert.equal(homeNav.topVisible,false,"mobile header must not repeat game links");
+      assert.equal(homeNav.overflowGameLinks,0,"mobile overflow is not a duplicate game menu");
+      assert.ok(homeNav.bottom.every(text=>text===text.toLocaleUpperCase(locale)),`mobile tabs are uppercase in ${locale}`);
+    }else{
+      assert.equal(homeNav.topVisible,true,`desktop commercial header is visible at ${width}px`);
+      assert.equal(homeNav.bottomVisible,false,"bottom tab bar is mobile-only");
+      assert.equal(homeNav.rail.length,7,"desktop rail includes every real navigation destination");
+      assert.ok(homeNav.rail.every(text=>text===text.toLocaleUpperCase(locale)),`desktop side menu is uppercase in ${locale}`);
+    }
     await page.locator("#hero-signup").click();
     const signupDialog=page.locator("#signup-dialog");
     await signupDialog.waitFor({state:"visible",timeout:5000});
@@ -189,7 +214,14 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
     await page.locator("#cancel").click();
     assert.ok(await page.locator("#modal").evaluate(element=>element.classList.contains("hidden")),"cancel closes the synthetic confirmation dialog without an API mutation");
   }
-  if(screenshot)await page.screenshot({path:new URL(`i18n-${route.replaceAll("/","")||"home"}-${locale}-${statusMode||"default"}-${width}.png`,artifactDir).pathname,fullPage:true});
+  if(screenshot&&route==="/"){
+    const filename=`home-v2-${locale}-guest-${width}`;
+    await page.screenshot({path:new URL(`${filename}-viewport.png`,artifactDir).pathname,fullPage:false});
+    if(width===1440||width===390)await page.screenshot({path:new URL(`${filename}-full.png`,artifactDir).pathname,fullPage:true});
+  }else if(screenshot){
+    const filename=`i18n-${route.replaceAll("/","")||"home"}-${locale}-${statusMode||"default"}-${width}`;
+    await page.screenshot({path:new URL(`${filename}-full.png`,artifactDir).pathname,fullPage:true});
+  }
   return true;
 }
 try {
@@ -200,9 +232,9 @@ try {
       const modes=route==="/site-closed.html"?["coming_soon","maintenance"]:[null];
       for(const mode of modes)try{await check(page,route,locale,1440,1000,true,mode)}catch(error){failures.push(`${route} ${locale} ${mode||""} desktop: ${error.message}`)}
     }
-    for(const route of routes)for(const width of [390,320]){
+    for(const route of routes)for(const width of (route==="/"?[1024,760,390,375,320]:[390,320])){
       const modes=route==="/site-closed.html"?["coming_soon","maintenance"]:[null];
-      for(const mode of modes)try{await check(page,route,locale,width,844,width===390,mode)}catch(error){failures.push(`${route} ${locale} ${mode||""} ${width}px: ${error.message}`)}
+      for(const mode of modes)try{await check(page,route,locale,width,width>=1024?900:844,route==="/",mode)}catch(error){failures.push(`${route} ${locale} ${mode||""} ${width}px: ${error.message}`)}
     }
     await context.close();
   }

@@ -76,7 +76,7 @@ try {
       assert.equal(await page.locator("#password-input").getAttribute("type"), "text", "public password visibility must continue working");
       assert.match(await page.locator("#password-visibility use").getAttribute("href"), /admin-icon-sprite\.svg#eye-closed$/);
       await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-      await page.locator(".icon-btn .admin-icon use").first().waitFor({ state: "attached" });
+      await page.locator(".site-rail .rail-btn .admin-icon use").first().waitFor({ state: "attached" });
       assert.equal(await page.locator(".pack-icon[data-src]").count(), 0, "public navigation placeholders should hydrate into the shared SVG sprite");
     }
     await page.close();
