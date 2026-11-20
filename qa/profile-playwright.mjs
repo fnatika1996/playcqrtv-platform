@@ -52,6 +52,10 @@ try{
     }
     user={...fixture};await page.reload({waitUntil:"domcontentloaded"});
     await page.locator("#profile-content:not([hidden])").waitFor({state:"visible"});
+    await page.waitForFunction(()=>document.querySelectorAll(".pack-icon[data-src]").length===0);
+    assert.equal(await page.locator('.profile-sidebar-link[href="#settings"] .admin-icon use').getAttribute("href"),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#settings","profile Settings link uses the settings gear");
+    assert.equal(await page.locator('.settings-panel .profile-panel-icon .admin-icon use').getAttribute("href"),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#settings","Settings panel uses the settings gear");
+    assert.equal(await page.locator("#profile-edit-btn .admin-icon use").getAttribute("href"),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#edit","Edit profile action retains the edit symbol");
     assert.equal(await page.locator("#profile-nickname").textContent(),"ClutchAce");
     assert.equal(await page.locator("#profile-email-verified").isVisible(),true);
     assert.equal(await page.locator("#profile-country-code").textContent(),"MD");
