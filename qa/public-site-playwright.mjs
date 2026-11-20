@@ -46,6 +46,7 @@ const page=await context.newPage();
     assert.match(await page.title(),/CQRTV/);
     assert.equal((await page.locator("#home-title").innerText()).replace(/\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
     await page.locator(".home-hero").waitFor({state:"visible"});
+    await page.locator(".home-hero-art img").evaluate(image=>image.decode());
     const heroViewportPng=await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-viewport.png`),fullPage:false});
     if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true});
     if(width===1440||width===390){
