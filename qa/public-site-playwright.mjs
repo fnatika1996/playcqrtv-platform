@@ -76,7 +76,7 @@ const page=await context.newPage();
       console.log(`PASS rendered hero pixels at ${width}px: ${JSON.stringify(heroPixels)}`);
     }
     assert.equal(await page.locator(".home-feature").count(),4);
-    const featureIllustrations=await page.locator(".feature-illustration").evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {viewBox:node.getAttribute("viewBox"),ariaHidden:node.closest(".home-feature-art")?.getAttribute("aria-hidden"),width:box.width,height:box.height,shapeCount:node.querySelectorAll("path,rect,circle,ellipse,polygon,line").length}}));
+    const featureIllustrations=await page.locator(".feature-illustration").evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {viewBox:node.getAttribute("viewBox"),ariaHidden:node.closest(".home-feature-art")?.getAttribute("aria-hidden"),width:box.width,height:box.height,shapeCount:node.querySelectorAll("path,rect,circle,ellipse,polygon,line").length,gradientId:node.querySelector("linearGradient,radialGradient")?.id}}));
     assert.equal(featureIllustrations.length,4,"all four feature cards render original inline illustrations");
     assert.ok(featureIllustrations.every(art=>art.viewBox==="0 0 640 360"&&art.ariaHidden==="true"&&art.width>0&&art.height>0&&art.shapeCount>=8),`feature art should be decorative, loaded and detailed: ${JSON.stringify(featureIllustrations)}`);
     const featureCopyBoxes=await page.locator(".home-feature-copy").evaluateAll(nodes=>nodes.map(node=>({scrollHeight:node.scrollHeight,clientHeight:node.clientHeight,scrollWidth:node.scrollWidth,clientWidth:node.clientWidth})));
@@ -86,9 +86,7 @@ const page=await context.newPage();
       assert.ok(cardBoxes.every(box=>Math.abs(box.height-cardBoxes[0].height)<=2),`desktop cards should have equal height: ${JSON.stringify(cardBoxes)}`);
       assert.ok(cardBoxes.every((box,index)=>index===0||box.x>cardBoxes[index-1].x),`desktop cards should be arranged left-to-right in one row: ${JSON.stringify(cardBoxes)}`);
     }
-    const featureArt=await page.locator(".home-feature-art").evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).backgroundImage));
-    assert.ok(featureArt.every(background=>background!=="none"&&background.includes("gradient")),"each feature card has a CSS illustration background");
-    assert.equal(new Set(featureArt).size,4,"feature card backgrounds remain visually distinct without locking exact palette values");
+    assert.equal(new Set(featureIllustrations.map(art=>art.gradientId)).size,4,"each original illustration has a distinct visual palette source");
     assert.equal(await page.locator(".home-metric").count(),4);
     assert.deepEqual(await page.locator(".home-metric strong").allTextContents(),["—","—","—","—"],"unverified platform figures must remain placeholders");
     assert.equal(await page.locator(".home-roadmap-list li").count(),4);
