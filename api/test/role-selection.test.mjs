@@ -79,23 +79,28 @@ test("role cards use the approved compact grid, colors, radius, and responsive s
   assert.match(indexHtml, /@media\(max-width:390px\)\{\.signup-dialog \.signup-role-grid\{grid-template-columns:1fr;gap:8px\}\}/);
 });
 
-test("role cards use the five approved distinct icons and role colors in both groups", () => {
+test("role cards use distinct approved icons and role colors in both groups", () => {
   const roleStyles = { awper: ["#C09AFF", "#29203A"], entry: ["#FF7777", "#321D21"], rifler: ["#6BB7FF", "#172638"], support: ["#71D5A2", "#183027"], igl: ["#FFD16B", "#332C1D"] };
   const icons = new Map();
   for (const [role, [accent, selectedBackground]] of Object.entries(roleStyles)) {
     const labels = [...indexHtml.matchAll(new RegExp(`<label class="role-option" data-role="${role}">([\\s\\S]*?)</label>`, "g"))].map(match => match[1]);
     assert.equal(labels.length, 2, `${role} has primary and secondary cards`);
-    const svgMarkup = labels.map(label => { const start = label.indexOf("<svg"); const end = label.indexOf("</svg>", start) + 6; return start >= 0 && end > 5 ? label.slice(start, end) : ""; });
-    assert.ok(svgMarkup.every(Boolean), `${role} has an inline SVG icon in both groups`);
-    assert.equal(svgMarkup[0], svgMarkup[1], `${role} icon matches across groups`);
-    assert.match(svgMarkup[0], /stroke="currentColor"/);
+    const iconSignatures = labels.map(label => {
+      const pack = label.match(/class="role-icon pack-icon" data-src="([^"]+)"/);
+      if (pack) return `pack:${pack[1]}`;
+      const start = label.indexOf("<svg"); const end = label.indexOf("</svg>", start) + 6;
+      return start >= 0 && end > 5 ? `inline:${label.slice(start, end)}` : "";
+    });
+    assert.ok(iconSignatures.every(Boolean), `${role} has an icon in both groups`);
+    assert.equal(iconSignatures[0], iconSignatures[1], `${role} icon matches across groups`);
+    if (role === "support") assert.equal(iconSignatures[0], "pack:/assets/icons/cqrtv/ui/shield.svg", "Support uses the archive's matching shield-check icon");
+    else assert.match(iconSignatures[0], /^inline:<svg[\s\S]*stroke="currentColor"/, `${role} keeps its distinct role glyph because the pack has no semantic match`);
     assert.match(labels[0], /aria-hidden="true"/);
-    icons.set(role, svgMarkup[0]);
+    icons.set(role, iconSignatures[0]);
     assert.ok(indexHtml.includes(`.signup-dialog .role-option[data-role="${role}"]{--role-color:${accent};--role-bg:${selectedBackground}`));
   }
   assert.equal(new Set(icons.values()).size, 5, "each role has a unique icon");
   assert.ok(indexHtml.includes(":has(input:checked)>span{border-color:var(--role-color);background:var(--role-bg)"));
-  assert.equal(indexHtml.includes('role-icon pack-icon" data-src="/assets/icons/cqrtv/ui/gamepad-minimalistic.svg'), false);
 });
 
 test("counter updates at 0/2, 1/2, and 2/2; at two choices only selected options remain enabled", () => {
