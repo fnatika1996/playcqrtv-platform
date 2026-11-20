@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { auditIconUsage } from "./check-cqrtv-icon-usage.mjs";
 
 const root = process.cwd();
 const manifest = JSON.parse(fs.readFileSync("assets/icons/cqrtv/admin-icon-manifest.json", "utf8"));
@@ -89,4 +90,31 @@ test("the build pipeline rejects active markup and external SVG references", asy
   } finally {
     fs.rmSync(temp,{recursive:true,force:true});
   }
+});
+
+
+test("generated pack audit rejects missing manifest files and unknown references", () => {
+  const result = auditIconUsage({
+    icons: [{ key: "home", file: "home.svg" }],
+    generatedFiles: [],
+    sources: [{ path: "index.html", content: '<span class="pack-icon" data-src="/assets/icons/cqrtv/ui/home.svg"></span><span data-src="../assets/icons/cqrtv/ui/ghost.svg"></span>' }],
+    sprite: '<svg><symbol id="home"></symbol></svg>',
+    map: { icons: [{ key: "home", file: "home.svg" }] },
+    validateAllowlistCounts: false
+  });
+  assert.ok(result.errors.some(error => error.includes("generated icon missing: home.svg")), "negative fixture must catch a missing extracted icon");
+  assert.ok(result.errors.some(error => error.includes("referenced generated icon missing: home.svg")), "negative fixture must catch a dangling app reference");
+  assert.ok(result.errors.some(error => error.includes("unapproved icon reference ghost.svg")), "relative icon paths must be audited too");
+});
+
+test("generated pack audit rejects undocumented custom inline UI glyphs", () => {
+  const result = auditIconUsage({
+    icons: [{ key: "home", file: "home.svg" }],
+    generatedFiles: ["home.svg"],
+    sources: [{ path: "index.html", content: '<svg class="new-inline-icon" viewBox="0 0 24 24"><path d="M0 0"/></svg>' }],
+    sprite: '<svg><symbol id="home"></symbol></svg>',
+    map: { icons: [{ key: "home", file: "home.svg" }] },
+    validateAllowlistCounts: false
+  });
+  assert.ok(result.errors.some(error => error.includes("unapproved inline SVG UI glyph new-inline-icon")), "negative fixture must fail closed for a new inline icon");
 });

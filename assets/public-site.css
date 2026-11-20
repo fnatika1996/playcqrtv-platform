@@ -752,7 +752,7 @@
   .mobile-tab{min-height:50px;font-size:15px;letter-spacing:.045em}
   .mobile-tab .pack-icon{width:21px;height:21px}
   .mobile-tab.active{border:1px solid #ff9a58;background:#ff7629;color:#101113;box-shadow:0 0 18px #ff762966,inset 0 1px #ffc092;font-weight:600}
-  .mobile-tab.active .pack-icon{color:#101113}
+  .mobile-tab.active .pack-icon{--icon-primary:#101113;--icon-secondary:#3a2416;color:#101113}
 }
 @media(max-width:390px){
   .mobile-tab{font-size:13px}

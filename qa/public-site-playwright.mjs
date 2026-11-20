@@ -10,6 +10,40 @@ const baseUrl=process.env.CQRTV_QA_BASE_URL||"http://playcqrtv.com:8765";
 const screenshotDir=fileURLToPath(new URL("../qa-artifacts/",import.meta.url));
 await mkdir(screenshotDir,{recursive:true});
 const widths=[1440,1024,760,390,375,320];
+async function assertHomeRendering(page,width,screenshotPath,viewportPng){
+  const mobile=width<=760;
+  const item=page.locator(mobile?'#mobile-bottom-nav a[href="#home"]':'.site-rail a[href="#home"]');
+  assert.equal(await item.isVisible(),true,`Home navigation must be visible at ${width}px`);
+  assert.ok((await item.getAttribute("class")||"").split(/\s+/).includes("active"),`Home must be active at ${width}px`);
+  assert.equal(await item.getAttribute("aria-current"),"page",`Home must expose the current page at ${width}px`);
+  const icon=item.locator("svg.admin-icon");
+  await icon.waitFor({state:"visible"});
+  const box=await icon.boundingBox();
+  assert.ok(box&&box.width>=16&&box.height>=16,`Home icon must retain its rendered box at ${width}px: ${JSON.stringify(box)}`);
+  await item.screenshot({path:screenshotPath,animations:"disabled"});
+  const evidence=await page.evaluate(async({png,box})=>{
+    const image=new Image();image.src=png;await image.decode();
+    const canvas=document.createElement("canvas");canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+    const ctx=canvas.getContext("2d",{willReadFrequently:true});ctx.drawImage(image,0,0);
+    const sx=image.naturalWidth/innerWidth,sy=image.naturalHeight/innerHeight;
+    const left=Math.max(0,Math.floor(box.x*sx)),top=Math.max(0,Math.floor(box.y*sy));
+    const width=Math.min(canvas.width-left,Math.ceil(box.width*sx)),height=Math.min(canvas.height-top,Math.ceil(box.height*sy));
+    const data=ctx.getImageData(left,top,width,height).data;
+    const pixel=(x,y)=>{const i=(y*width+x)*4;return [data[i],data[i+1],data[i+2]]};
+    const corners=[pixel(0,0),pixel(width-1,0),pixel(0,height-1),pixel(width-1,height-1)];
+    const background=corners[0].map((_,channel)=>corners.reduce((sum,color)=>sum+color[channel],0)/corners.length);
+    let contrastPixels=0;const rows=new Set(),columns=new Set();
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+      const color=pixel(x,y);
+      const distance=Math.sqrt(color.reduce((sum,value,index)=>sum+(value-background[index])**2,0));
+      if(distance>55){contrastPixels++;rows.add(y);columns.add(x);}
+    }
+    return {width,height,contrastPixels,rows:rows.size,columns:columns.size};
+  },{png:`data:image/png;base64,${viewportPng.toString("base64")}`,box});
+  assert.ok(evidence.contrastPixels>=50&&evidence.rows>=8&&evidence.columns>=8,`active Home must render a high-contrast house silhouette at ${width}px, pixel evidence: ${JSON.stringify(evidence)}`);
+  console.log(`PASS visible active Home geometry at ${width}px: ${JSON.stringify(evidence)}`);
+}
+
 const browser=await chromium.launch({headless:true,args:["--host-resolver-rules=MAP playcqrtv.com 127.0.0.1"]});
 const player={nickname:"ClutchAce",country:"MD",primary_role:"awper",secondary_roles:["rifler"],nickname_available_at:null};
 try{
@@ -47,7 +81,17 @@ const page=await context.newPage();
     assert.equal((await page.locator("#home-title").innerText()).replace(/\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
     await page.locator(".home-hero").waitFor({state:"visible"});
     await page.locator(".home-hero-art img").evaluate(image=>image.decode());
+    await page.waitForFunction(()=>document.querySelectorAll(".pack-icon[data-src]").length===0,null,{timeout:10000});
+    const expectedArchiveIcon=async selector=>page.locator(`${selector} .admin-icon use`).getAttribute("href");
+    assert.equal(await expectedArchiveIcon('.site-rail a[href="#home"]'),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#home","desktop Home uses the archive Home symbol");
+    assert.equal(await expectedArchiveIcon('.site-rail a[href="#play"]'),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#gamepad","desktop Matches retains the gamepad symbol");
+    assert.equal(await expectedArchiveIcon('#mobile-bottom-nav a[href="#home"]'),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#home","mobile Home uses the archive Home symbol");
+    assert.equal(await expectedArchiveIcon('#mobile-bottom-nav a[href="#play"]'),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#gamepad","mobile Matches retains the gamepad symbol");
+    assert.equal(await expectedArchiveIcon('.site-rail a[href="#teams"]'),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#users","Teams uses the group symbol");
+    assert.equal(await page.locator('.site-rail .rail-btn:has([data-i18n="home.nav.players"]) .admin-icon use').getAttribute("href"),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#user","Players uses the person symbol");
+    assert.equal(await page.locator('.site-rail .rail-btn:has([data-i18n="home.nav.settings"]) .admin-icon use').getAttribute("href"),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#settings","Settings uses the gear symbol");
     const heroViewportPng=await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-viewport.png`),fullPage:false});
+    await assertHomeRendering(page,width,path.join(screenshotDir,`home-icon-nav-${width}.png`),heroViewportPng);
     if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true});
     if(width===1440||width===390){
       const heroPixels=await page.evaluate(async dataUrl=>{
@@ -276,10 +320,30 @@ const page=await context.newPage();
       assert.equal(await page.evaluate(()=>matchMedia("(prefers-reduced-motion: reduce)").matches),true);
       assert.equal(await page.locator(".home-feature").first().evaluate(element=>getComputedStyle(element).transitionDuration.split(",").every(value=>parseFloat(value)===0)),true,"reduced-motion should disable feature transitions");
       await page.emulateMedia({reducedMotion:"no-preference"});
+      assert.equal(await page.locator("#hero-signup .admin-icon use").getAttribute("href"),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#invite","registration CTA uses the archive invite icon");
       await page.locator("#hero-signup").click();
       assert.equal(await page.locator("#signup-dialog").evaluate(dialog=>dialog.open),true,"homepage signup should open the existing registration dialog");
+      for(const roleIcon of await page.locator('.role-option[data-role="support"] .role-icon.admin-icon use').all())assert.equal(await roleIcon.getAttribute("href"),"/assets/icons/cqrtv/ui/admin-icon-sprite.svg#shield","Support role uses the matching archive shield");
+      const visibility=page.locator('#signup-form [data-password-toggle="password"]');
+      assert.equal(await visibility.getAttribute("aria-label"),"Показать пароль","password visibility control has an accessible name");
+      await visibility.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await visibility.getAttribute("aria-pressed"),"true","keyboard activation toggles password visibility state");
+      assert.equal(await visibility.locator(".eye-off").isVisible(),true,"shown-password state displays the closed-eye archive symbol");
       await page.locator("#signup-close").click();
       assert.equal(registerPosts,0,"opening signup should not submit to the registration API");
+    }
+
+    if(width===1440||width===390){
+      const cta=page.locator("#hero-signup");
+      await cta.screenshot({path:path.join(screenshotDir,`registration-cta-${width}.png`),animations:"disabled"});
+      await cta.click();
+      assert.equal(await page.locator("#signup-dialog").evaluate(dialog=>dialog.open),true,`registration dialog opens from the homepage CTA at ${width}px`);
+      const support=page.locator('#signup-form .role-option[data-role="support"]').first();
+      await support.waitFor({state:"visible"});
+      await support.screenshot({path:path.join(screenshotDir,`registration-support-role-${width}.png`),animations:"disabled"});
+      assert.equal(registerPosts,0,"registration preview must not submit to the API");
+      await page.locator("#signup-close").click();
     }
     if(width!==1440&&width!==390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true});
     assert.ok(meCalls>=1,"existing session endpoint should still initialize the header");

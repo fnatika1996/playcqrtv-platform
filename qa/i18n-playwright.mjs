@@ -117,6 +117,7 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
     assert.deepEqual(residual,[],`unlocalized rendered text or attributes on ${route}: ${residual.join(" | ")}`);
   }
   if(route==="/"){
+    await page.waitForFunction(()=>document.querySelectorAll(".pack-icon[data-src]").length===0);
     const homeNav=await page.evaluate(()=>({
       top:[...document.querySelectorAll(".site-topbar .site-nav .site-nav-unavailable")].map(node=>({text:node.querySelector("span")?.innerText.trim()||"",font:getComputedStyle(node).fontFamily})),
       gameLinks:[...document.querySelectorAll(".site-topbar .site-nav a")].map(node=>node.getAttribute("href")),
@@ -124,9 +125,13 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
       bottom:[...document.querySelectorAll("#mobile-bottom-nav .mobile-tab")].map(node=>node.innerText.trim()),
       bottomVisible:getComputedStyle(document.querySelector("#mobile-bottom-nav")).display!=="none",
       topVisible:getComputedStyle(document.querySelector(".site-topbar .site-nav")).display!=="none",
-      overflowGameLinks:document.querySelectorAll("#mobile-navigation a[href=\"#home\"],#mobile-navigation a[href=\"#play\"],#mobile-navigation a[href=\"#leaderboard\"],#mobile-navigation a[href=\"#tournaments\"]").length
+      overflowGameLinks:document.querySelectorAll("#mobile-navigation a[href=\"#home\"],#mobile-navigation a[href=\"#play\"],#mobile-navigation a[href=\"#leaderboard\"],#mobile-navigation a[href=\"#tournaments\"]").length,
+      desktopIcons:[document.querySelector('.site-rail a[href="#home"] use')?.getAttribute("href"),document.querySelector('.site-rail a[href="#play"] use')?.getAttribute("href"),document.querySelector('.site-rail a[href="#teams"] use')?.getAttribute("href"),document.querySelector('.site-rail .rail-btn:has([data-i18n="home.nav.players"]) use')?.getAttribute("href"),document.querySelector('.site-rail .rail-btn:has([data-i18n="home.nav.settings"]) use')?.getAttribute("href")],
+      mobileIcons:[document.querySelector('#mobile-bottom-nav a[href="#home"] use')?.getAttribute("href"),document.querySelector('#mobile-bottom-nav a[href="#play"] use')?.getAttribute("href")]
     }));
     assert.equal(homeNav.top.length,4,`four commercial header entries are translated for ${locale}`);
+    assert.deepEqual(homeNav.desktopIcons,["/assets/icons/cqrtv/ui/admin-icon-sprite.svg#home","/assets/icons/cqrtv/ui/admin-icon-sprite.svg#gamepad","/assets/icons/cqrtv/ui/admin-icon-sprite.svg#users","/assets/icons/cqrtv/ui/admin-icon-sprite.svg#user","/assets/icons/cqrtv/ui/admin-icon-sprite.svg#settings"],`desktop icon assignments remain semantically correct in ${locale}`);
+    assert.deepEqual(homeNav.mobileIcons,["/assets/icons/cqrtv/ui/admin-icon-sprite.svg#home","/assets/icons/cqrtv/ui/admin-icon-sprite.svg#gamepad"],`mobile Home and Matches stay distinct in ${locale}`);
     assert.deepEqual(homeNav.gameLinks,[],"header does not duplicate game navigation");
     assert.ok(homeNav.top.every(item=>item.text===item.text.toLocaleUpperCase(locale)),`commercial menu casing in ${locale}: ${JSON.stringify(homeNav.top)}`);
     assert.ok(homeNav.top.every(item=>/Teko/i.test(item.font)),"commercial header menu uses Teko");
@@ -153,6 +158,17 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
     assert.equal(signupState.open,true,"registration dialog opens in the synthetic fixture");
     assert.equal(signupState.valid,false,"registration fields remain required before any submission");
     assert.deepEqual(signupState.audit,[],`registration dialog contains untranslated UI on ${locale}: ${JSON.stringify(signupState.audit)}`);
+    assert.deepEqual(await page.locator('.role-option[data-role="support"] .role-icon use').evaluateAll(nodes=>nodes.map(node=>node.getAttribute("href"))),Array(2).fill("/assets/icons/cqrtv/ui/admin-icon-sprite.svg#shield"),"both Support cards use the matching archive shield");
+    if(locale==="ru"&&(width===1440||width===390)){
+      await page.locator("#signup-form .signup-role-section").first().scrollIntoViewIfNeeded();
+      await page.screenshot({path:new URL(`../qa-artifacts/signup-roles-ru-${width}.png`,import.meta.url).pathname,fullPage:false});
+    }
+    const passwordToggle=page.locator('#signup-form [data-password-toggle="password"]');
+    assert.ok((await passwordToggle.getAttribute("aria-label"))?.length>0,"password visibility has an accessible translated name");
+    await passwordToggle.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await passwordToggle.getAttribute("aria-pressed"),"true",`keyboard password toggle works in ${locale}`);
+    assert.equal(await passwordToggle.locator(".eye-off").isVisible(),true,"closed-eye glyph is rendered after reveal");
     await page.locator("#country-picker-button").click();
     await page.locator("#country-menu").waitFor({state:"visible",timeout:5000});
     await page.locator("#country-search").fill(locale==="ru"?"Румы":locale==="en"?"Roman":"Româ");
