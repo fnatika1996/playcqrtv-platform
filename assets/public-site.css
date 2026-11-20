@@ -760,3 +760,31 @@
 @media(max-width:340px){
   .mobile-tab{font-size:12px;letter-spacing:.015em}
 }
+
+
+/* Homepage hero art visibility: preserve the source artwork and let the tactical scene read */
+@media(min-width:761px){
+  .home-hero{background:#101113}
+  .home-hero-art{inset:0;z-index:0}
+  .home-hero-art img{object-position:57% center;filter:brightness(1.08) saturate(1.05)}
+  .home-hero::before{
+    z-index:1;
+    pointer-events:none;
+    background:
+      linear-gradient(90deg,#101113f5 0%,#101113e8 24%,#101113a6 42%,#10111330 62%,#10111308 100%),
+      linear-gradient(0deg,#10111355,transparent 43%),
+      linear-gradient(115deg,transparent 60%,#ff76291c 100%);
+  }
+  .home-hero-copy{z-index:2}
+}
+@media(max-width:760px){
+  .home-hero{min-height:0;height:auto;display:flex;flex-direction:column;align-items:stretch;background:#101113}
+  .home-hero-art{position:relative;inset:auto;z-index:0;display:block;width:100%;height:clamp(180px,55vw,250px);min-height:180px;flex:none;overflow:hidden}
+  .home-hero-art img{display:block;width:100%;height:100%;object-fit:cover;object-position:68% 42%;filter:brightness(1.08) saturate(1.05)}
+  .home-hero::before{
+    z-index:1;
+    pointer-events:none;
+    background:linear-gradient(180deg,transparent 0%,transparent 58%,#10111322 76%,#101113b8 94%,#101113 100%);
+  }
+  .home-hero-copy{position:relative;z-index:2;width:100%;padding:20px 18px 22px}
+}
