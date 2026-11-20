@@ -20,7 +20,6 @@ on:
       - assets/public-site.css
       - assets/icons/cqrtv/**
       - scripts/build-cqrtv-admin-icons.mjs
-      - scripts/check-cqrtv-icon-usage.mjs
       - qa/**
       - docs/**
       - Caddyfile
@@ -165,7 +164,7 @@ jobs:
           7z x -y -o/tmp/cqrtv-icons "Icon Play CQRTV.rar"
           node scripts/build-cqrtv-admin-icons.mjs --source "/tmp/cqrtv-icons/Icon Play CQRTV" --out assets/icons/cqrtv/ui
           node --check scripts/build-cqrtv-admin-icons.mjs
-          node scripts/check-cqrtv-icon-usage.mjs
+          node qa/check-cqrtv-icon-usage.mjs
           node --test qa/admin-icon-pack.test.mjs
           test -s assets/icons/cqrtv/ui/admin-icon-sprite.svg
           test "$(find assets/icons/cqrtv/ui -maxdepth 1 -type f -name '*.svg' ! -name 'admin-icon-sprite.svg' | wc -l)" -eq 38
