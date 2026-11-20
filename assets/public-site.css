@@ -702,3 +702,61 @@
   .site-topbar .site-actions .signup-trigger#login-link{min-height:32px;padding-inline:5px;font-size:8px}
   .site-topbar .cqrtv-language-trigger{width:32px;height:32px;padding:3px}
 }
+
+
+/* V2 visual polish: stronger navigation hierarchy and original CSS feature motifs */
+.site-topbar .site-nav{gap:clamp(16px,2vw,30px)}
+.site-topbar .site-nav-unavailable{min-height:48px;color:#e5e6e9;font-size:18px;letter-spacing:.065em;text-shadow:0 1px 10px #0008}
+.site-topbar .site-nav-unavailable small{font-size:11px;color:#ff9a58}
+.site-rail>.rail-btn{font-size:18px;letter-spacing:.045em}
+.site-rail>.rail-btn .pack-icon{width:20px;height:20px}
+.site-rail>.rail-btn[aria-current=page]{border-color:#6d432b;background:linear-gradient(100deg,#ff76291c,#1c1e23 72%);box-shadow:inset 3px 0 #ff7629,0 0 18px #ff762910}
+.site-rail>.rail-btn:not([aria-disabled=true]):hover{border-color:#67422f;background:#202024}
+.home-feature{border:1px solid #34363c;box-shadow:0 12px 26px #0002}
+.home-feature-art{border-bottom:1px solid #454047;background-color:#17191d}
+.home-feature-art:before{position:absolute;inset:0;z-index:0;content:"";pointer-events:none;opacity:.9}
+.home-feature-art:after{z-index:0;border-color:#ffffff12;box-shadow:0 0 0 18px #ffffff08,0 0 0 38px #ffffff05}
+.home-feature-art .pack-icon{width:38px;height:38px;color:#ffb178;filter:drop-shadow(0 0 12px #ff762955)}
+.feature-art-mark{color:#f4eee5a6;text-shadow:0 2px 16px #0008}
+.home-feature-match .home-feature-art:before{
+  background-image:
+    radial-gradient(circle at 77% 48%,#ff762936,transparent 31%),
+    repeating-linear-gradient(0deg,transparent 0 15px,#ffffff0b 15px 16px),
+    repeating-linear-gradient(90deg,transparent 0 22px,#ffffff0b 22px 23px),
+    linear-gradient(135deg,#34231c,#1b1d21 72%);
+  mask-image:linear-gradient(90deg,#000 0%,#000 76%,#0008 100%);
+}
+.home-feature-rating .home-feature-art:before{
+  background-image:
+    radial-gradient(circle at 78% 48%,transparent 0 18px,#ffcb7b55 19px 20px,transparent 21px 34px,#ffcb7b32 35px 36px,transparent 37px 51px,#ffffff20 52px 53px,transparent 54px),
+    radial-gradient(ellipse at 80% 48%,#d39a4438,transparent 45%),
+    linear-gradient(125deg,#30281c,#1b1d21 72%);
+}
+.home-feature-tournament .home-feature-art:before{
+  background-image:
+    linear-gradient(135deg,transparent 35%,#ff762922 35% 36%,transparent 36% 64%,#ff762922 64% 65%,transparent 65%),
+    radial-gradient(ellipse at 78% 50%,#ff762940,transparent 40%),
+    linear-gradient(135deg,#34231c,#1b1d21 72%);
+}
+.home-feature-statistics .home-feature-art:before{
+  background-image:
+    linear-gradient(to top,#b995ed55 0 34%,transparent 34%) 69% 100%/12px 60% no-repeat,
+    linear-gradient(to top,#d0a7ff66 0 62%,transparent 62%) 78% 100%/12px 82% no-repeat,
+    linear-gradient(to top,#a879dd66 0 48%,transparent 48%) 87% 100%/12px 70% no-repeat,
+    linear-gradient(to top,#d7b8ff77 0 82%,transparent 82%) 96% 100%/12px 94% no-repeat,
+    radial-gradient(ellipse at 82% 25%,#a06ddd35,transparent 48%),
+    linear-gradient(135deg,#292235,#1b1d21 72%);
+}
+@media(max-width:760px){
+  .mobile-bottom-nav{border-top-color:#514034;box-shadow:0 -12px 30px #0009,0 -1px 0 #ff76291c}
+  .mobile-tab{min-height:50px;font-size:15px;letter-spacing:.045em}
+  .mobile-tab .pack-icon{width:21px;height:21px}
+  .mobile-tab.active{border:1px solid #ff9a58;background:#ff7629;color:#101113;box-shadow:0 0 18px #ff762966,inset 0 1px #ffc092;font-weight:600}
+  .mobile-tab.active .pack-icon{color:#101113}
+}
+@media(max-width:390px){
+  .mobile-tab{font-size:13px}
+}
+@media(max-width:340px){
+  .mobile-tab{font-size:12px;letter-spacing:.015em}
+}
