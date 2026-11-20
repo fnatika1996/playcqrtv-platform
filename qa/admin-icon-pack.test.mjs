@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { auditIconUsage } from "../scripts/check-cqrtv-icon-usage.mjs";
+import { auditIconUsage } from "./check-cqrtv-icon-usage.mjs";
 
 const root = process.cwd();
 const manifest = JSON.parse(fs.readFileSync("assets/icons/cqrtv/admin-icon-manifest.json", "utf8"));
