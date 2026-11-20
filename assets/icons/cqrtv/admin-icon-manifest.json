@@ -31,7 +31,7 @@
       "file": "home.svg",
       "source": "Essentional UI/Home--playcqrtv.svg",
       "usedBy": [
-        "Site Control social icon option"
+        "Public homepage: desktop Home rail and mobile Home tab (replaces duplicated gamepad on Home)"
       ]
     },
     {
@@ -39,7 +39,7 @@
       "file": "gamepad.svg",
       "source": "Electronic Devices/Gamepad--playcqrtv.svg",
       "usedBy": [
-        "Site Control social icon option"
+        "Public homepage: desktop Matches rail, mobile Matches tab, matchmaking feature, match metric"
       ]
     },
     {
@@ -63,9 +63,7 @@
       "file": "users.svg",
       "source": "Users/Users-Group-Rounded--playcqrtv.svg",
       "usedBy": [
-        "Admin sidebar: users",
-        "Dashboard KPI",
-        "Site Control social icon option"
+        "Public homepage: Teams rail"
       ]
     },
     {
@@ -73,7 +71,8 @@
       "file": "settings.svg",
       "source": "Settings Fine Tuning/Settings-Minimalistic--playcqrtv.svg",
       "usedBy": [
-        "Admin sidebar: Site Control"
+        "Public homepage: Settings rail",
+        "Player profile: Settings sidebar link and Settings panel heading"
       ]
     },
     {
@@ -81,7 +80,7 @@
       "file": "edit.svg",
       "source": "Messages Conversation/Pen--playcqrtv.svg",
       "usedBy": [
-        "Existing public site path compatibility"
+        "Player profile: Edit profile action only"
       ]
     },
     {
@@ -130,7 +129,7 @@
       "file": "shield.svg",
       "source": "Security/Shield-Check--playcqrtv.svg",
       "usedBy": [
-        "Admin session security context"
+        "Player registration: Support role in primary and secondary role cards; source is Shield-Check and matches the existing support shield/check meaning"
       ]
     },
     {
@@ -138,7 +137,8 @@
       "file": "invite.svg",
       "source": "Users/User-Plus-Rounded--playcqrtv.svg",
       "usedBy": [
-        "Existing public site path compatibility"
+        "Public homepage: hero registration CTA",
+        "Player registration: submit action"
       ]
     },
     {
@@ -212,6 +212,7 @@
       "file": "user.svg",
       "source": "Users/User--playcqrtv.svg",
       "usedBy": [
+        "Public homepage: disabled Players rail and online metric",
         "Admin account identity"
       ]
     },
