@@ -165,7 +165,7 @@ const page=await context.newPage();
         await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
         await page.waitForTimeout(30);
         const footerBox=await page.locator(".home-footer").boundingBox();
-        assert.ok(bottomBox&&footerBox&&footerBox.bottom<=bottomBox.y+1,`fixed tabs must not cover the final page content after scrolling: footer=${JSON.stringify(footerBox)} tabs=${JSON.stringify(bottomBox)}`);
+        assert.ok(bottomBox&&footerBox&&footerBox.y+footerBox.height<=bottomBox.y+1,`fixed tabs must not cover the final page content after scrolling: footer=${JSON.stringify(footerBox)} tabs=${JSON.stringify(bottomBox)}`);
       }
     }
     if(width===390){
