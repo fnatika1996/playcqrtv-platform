@@ -47,7 +47,7 @@ const page=await context.newPage();
     assert.equal((await page.locator("#home-title").innerText()).replace(/\s+/g," ").trim(),"ТВОЯ ИГРА. ТВОЙ РЕЙТИНГ.");
     await page.locator(".home-hero").waitFor({state:"visible"});
     await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-viewport.png`),fullPage:false});
-    if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true);
+    if(width===1440||width===390)await page.screenshot({path:path.join(screenshotDir,`home-v2-guest-ru-${width}-full.png`),fullPage:true});
     assert.equal(await page.locator(".home-feature").count(),4);
     assert.equal(await page.locator(".home-metric").count(),4);
     assert.deepEqual(await page.locator(".home-metric strong").allTextContents(),["—","—","—","—"],"unverified platform figures must remain placeholders");
