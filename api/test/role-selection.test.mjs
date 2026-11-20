@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { bindRegistrationRoles } from "../../assets/registration-roles.mjs";
 
 const indexHtml = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+const iconManifest = JSON.parse(await readFile(new URL("../../assets/icons/cqrtv/admin-icon-manifest.json", import.meta.url), "utf8"));
 const apiSource = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
 const roleValues = ["awper", "entry", "rifler", "support", "igl"];
 
@@ -100,6 +101,7 @@ test("role cards use distinct approved icons and role colors in both groups", ()
     assert.ok(indexHtml.includes(`.signup-dialog .role-option[data-role="${role}"]{--role-color:${accent};--role-bg:${selectedBackground}`));
   }
   assert.equal(new Set(icons.values()).size, 5, "each role has a unique icon");
+  assert.equal(iconManifest.icons.find(icon => icon.key === "shield")?.source, "Security/Shield-Check--playcqrtv.svg", "Support uses the curated archive shield-check source");
   assert.ok(indexHtml.includes(":has(input:checked)>span{border-color:var(--role-color);background:var(--role-bg)"));
 });
 
