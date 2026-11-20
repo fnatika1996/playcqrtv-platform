@@ -97,13 +97,14 @@ test("generated pack audit rejects missing manifest files and unknown references
   const result = auditIconUsage({
     icons: [{ key: "home", file: "home.svg" }],
     generatedFiles: [],
-    sources: [{ path: "index.html", content: '<span class="pack-icon" data-src="/assets/icons/cqrtv/ui/home.svg"></span>' }],
+    sources: [{ path: "index.html", content: '<span class="pack-icon" data-src="/assets/icons/cqrtv/ui/home.svg"></span><span data-src="../assets/icons/cqrtv/ui/ghost.svg"></span>' }],
     sprite: '<svg><symbol id="home"></symbol></svg>',
     map: { icons: [{ key: "home", file: "home.svg" }] },
     validateAllowlistCounts: false
   });
   assert.ok(result.errors.some(error => error.includes("generated icon missing: home.svg")), "negative fixture must catch a missing extracted icon");
   assert.ok(result.errors.some(error => error.includes("referenced generated icon missing: home.svg")), "negative fixture must catch a dangling app reference");
+  assert.ok(result.errors.some(error => error.includes("unapproved icon reference ghost.svg")), "relative icon paths must be audited too");
 });
 
 test("generated pack audit rejects undocumented custom inline UI glyphs", () => {
