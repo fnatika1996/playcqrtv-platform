@@ -49,10 +49,12 @@ export function auditIconUsage({ sources, icons, generatedFiles, sprite, map, va
   for (const icon of icons) {
     if (!generated.has(icon.file)) errors.push(`generated icon missing: ${icon.file}`);
   }
+  if (!map) errors.push("generated icon map is missing");
   if (map) {
     const mapped = new Set((map.icons || []).map(icon => icon.file));
     if (mapped.size !== manifestFiles.size || [...manifestFiles].some(file => !mapped.has(file))) errors.push("generated icon map does not match the manifest");
   }
+  if (!sprite) errors.push("generated icon sprite is missing");
   if (sprite) {
     const symbols = [...sprite.matchAll(/<symbol\b[^>]*\bid=["']([a-z0-9-]+)["']/gi)].map(match => match[1]);
     if (symbols.length !== keys.size || new Set(symbols).size !== keys.size || [...keys].some(key => !symbols.includes(key))) errors.push("generated icon sprite does not contain exactly the manifest symbols");
