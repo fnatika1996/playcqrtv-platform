@@ -159,6 +159,10 @@ async function check(page,route,locale,width,height,screenshot=false,statusMode=
     assert.equal(signupState.valid,false,"registration fields remain required before any submission");
     assert.deepEqual(signupState.audit,[],`registration dialog contains untranslated UI on ${locale}: ${JSON.stringify(signupState.audit)}`);
     assert.deepEqual(await page.locator('.role-option[data-role="support"] .role-icon use').evaluateAll(nodes=>nodes.map(node=>node.getAttribute("href"))),Array(2).fill("/assets/icons/cqrtv/ui/admin-icon-sprite.svg#shield"),"both Support cards use the matching archive shield");
+    if(locale==="ru"&&(width===1440||width===390)){
+      await page.locator("#signup-form .signup-role-section").first().scrollIntoViewIfNeeded();
+      await page.screenshot({path:new URL(`../qa-artifacts/signup-roles-ru-${width}.png`,import.meta.url).pathname,fullPage:false});
+    }
     const passwordToggle=page.locator('#signup-form [data-password-toggle="password"]');
     assert.ok((await passwordToggle.getAttribute("aria-label"))?.length>0,"password visibility has an accessible translated name");
     await passwordToggle.focus();
