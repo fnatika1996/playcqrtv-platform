@@ -788,3 +788,7 @@
   }
   .home-hero-copy{position:relative;z-index:2;width:100%;padding:20px 18px 22px}
 }
+
+@media(max-width:340px){
+  .home-hero-copy{padding-inline:12px}
+}
