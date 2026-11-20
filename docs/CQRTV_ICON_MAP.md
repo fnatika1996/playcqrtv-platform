@@ -41,6 +41,6 @@ The `usedBy` values in the JSON manifest are descriptive metadata and do **not**
 
 ## Verification
 
-`scripts/check-cqrtv-icon-usage.mjs` runs after RAR extraction in the non-production browser QA job. It checks every manifest file exists in the generated directory, all app-owned icon paths resolve to a manifest alias and generated file, sprite references/map/symbols agree with the manifest, and production HTML contains only the inline exceptions above. Its negative tests prove that a missing generated icon and an undocumented inline SVG fail CI.
+`qa/check-cqrtv-icon-usage.mjs` runs after RAR extraction in the non-production browser QA job. It checks every manifest file exists in the generated directory, all app-owned icon paths resolve to a manifest alias and generated file, sprite references/map/symbols agree with the manifest, and production HTML contains only the inline exceptions above. Its negative tests prove that a missing generated icon and an undocumented inline SVG fail CI.
 
 The existing browser QA produces homepage screenshots at 1440, 390, and 320 px (and other breakpoints), plus locale fixtures for RU/EN/RO and guest/synthetic-member states. It checks the rendered Home/Matches SVG symbols, Settings cog mapping, registration role glyph, and accessible show/hide controls. These are isolated QA fixtures; they do not send real registrations or email.
