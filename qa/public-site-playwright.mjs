@@ -76,6 +76,16 @@ const page=await context.newPage();
       console.log(`PASS rendered hero pixels at ${width}px: ${JSON.stringify(heroPixels)}`);
     }
     assert.equal(await page.locator(".home-feature").count(),4);
+    const featureIllustrations=await page.locator(".feature-illustration").evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {viewBox:node.getAttribute("viewBox"),ariaHidden:node.closest(".home-feature-art")?.getAttribute("aria-hidden"),width:box.width,height:box.height,shapeCount:node.querySelectorAll("path,rect,circle,ellipse,polygon,line").length}}));
+    assert.equal(featureIllustrations.length,4,"all four feature cards render original inline illustrations");
+    assert.ok(featureIllustrations.every(art=>art.viewBox==="0 0 640 360"&&art.ariaHidden==="true"&&art.width>0&&art.height>0&&art.shapeCount>=8),`feature art should be decorative, loaded and detailed: ${JSON.stringify(featureIllustrations)}`);
+    const featureCopyBoxes=await page.locator(".home-feature-copy").evaluateAll(nodes=>nodes.map(node=>({scrollHeight:node.scrollHeight,clientHeight:node.clientHeight,scrollWidth:node.scrollWidth,clientWidth:node.clientWidth})));
+    assert.ok(featureCopyBoxes.every(box=>box.scrollHeight<=box.clientHeight+1&&box.scrollWidth<=box.clientWidth+1),`card copy must not clip at ${width}px: ${JSON.stringify(featureCopyBoxes)}`);
+    if(width===1440){
+      const cardBoxes=await page.locator(".home-feature").evaluateAll(nodes=>nodes.map(node=>{const box=node.getBoundingClientRect();return {x:box.x,y:box.y,width:box.width,height:box.height}}));
+      assert.ok(cardBoxes.every(box=>Math.abs(box.height-cardBoxes[0].height)<=2),`desktop cards should have equal height: ${JSON.stringify(cardBoxes)}`);
+      assert.ok(cardBoxes.every((box,index)=>index===0||box.x>cardBoxes[index-1].x),`desktop cards should be arranged left-to-right in one row: ${JSON.stringify(cardBoxes)}`);
+    }
     const featureArt=await page.locator(".home-feature-art").evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).backgroundImage));
     assert.ok(featureArt.every(background=>background!=="none"&&background.includes("gradient")),"each feature card has a CSS illustration background");
     assert.equal(new Set(featureArt).size,4,"feature card backgrounds remain visually distinct without locking exact palette values");
